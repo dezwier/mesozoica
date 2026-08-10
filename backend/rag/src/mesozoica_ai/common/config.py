@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .errors import ConfigurationError
@@ -12,7 +12,9 @@ class AiConfig(BaseSettings):
     """Single settings object for embeddings, Azure Search, and chat generation.
 
     Search deliberately uses separate credentials: an admin key for schema/write
-    operations and a query key for least-privileged retrieval.
+    operations and a query key for least-privileged retrieval. Local/dev may set
+    only ``AZURE_SEARCH_ADMIN_KEY`` (or legacy ``AZURE_SEARCH_API_KEY``); the query
+    key then falls back to the admin key.
     """
 
     model_config = SettingsConfigDict(
@@ -46,9 +48,12 @@ class AiConfig(BaseSettings):
 
     search_endpoint: str = Field(min_length=1, validation_alias="AZURE_SEARCH_ENDPOINT")
     search_admin_key: SecretStr | None = Field(
-        default=None, validation_alias="AZURE_SEARCH_ADMIN_KEY"
+        default=None,
+        validation_alias=AliasChoices("AZURE_SEARCH_ADMIN_KEY", "AZURE_SEARCH_API_KEY"),
     )
-    search_query_key: SecretStr = Field(validation_alias="AZURE_SEARCH_QUERY_KEY")
+    search_query_key: SecretStr | None = Field(
+        default=None, validation_alias="AZURE_SEARCH_QUERY_KEY"
+    )
     search_index: str = Field(min_length=1, validation_alias="AZURE_SEARCH_INDEX")
     semantic_configuration_name: str = Field(
         default="knowledge-semantic", validation_alias="RAG_SEMANTIC_CONFIGURATION"
@@ -94,12 +99,26 @@ class AiConfig(BaseSettings):
         problems: list[str] = []
         if not self.openai_api_key.get_secret_value().strip():
             problems.append("AZURE_OPENAI_API_KEY must not be blank")
-        if not self.search_query_key.get_secret_value().strip():
-            problems.append("AZURE_SEARCH_QUERY_KEY must not be blank")
-        if (
-            self.search_admin_key is not None
-            and not self.search_admin_key.get_secret_value().strip()
-        ):
+
+        admin = (
+            self.search_admin_key.get_secret_value().strip()
+            if self.search_admin_key is not None
+            else ""
+        )
+        query = (
+            self.search_query_key.get_secret_value().strip()
+            if self.search_query_key is not None
+            else ""
+        )
+        if not query and admin:
+            query = admin
+            self.search_query_key = SecretStr(admin)
+        if not query:
+            problems.append(
+                "AZURE_SEARCH_QUERY_KEY is required "
+                "(or set AZURE_SEARCH_ADMIN_KEY / AZURE_SEARCH_API_KEY for local fallback)"
+            )
+        if self.search_admin_key is not None and not admin:
             problems.append("AZURE_SEARCH_ADMIN_KEY must be omitted or nonblank")
         if self.chunk_overlap >= self.chunk_size:
             problems.append("RAG_CHUNK_OVERLAP must be smaller than RAG_CHUNK_SIZE")

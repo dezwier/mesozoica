@@ -1,59 +1,49 @@
-"""
-Build dinosaur knowledge: acquire Wikipedia/OpenAlex snapshots, then index.
-
-Run manually:
-  python -m app.crons.runner --job dinosaur_knowledge
-  python -m app.crons.runner --job dinosaur_knowledge --dinos Tyrannosaurus
-  python -m app.crons.runner --job dinosaur_knowledge --sources wikipedia
-"""
+"""Cron/app entry: acquire SQL snapshots, then index into Azure Search."""
 
 from __future__ import annotations
 
-from sqlmodel import Session
+import importlib.util
+from pathlib import Path
+from typing import Any
 
-from app.core.config import settings
-from app.core.database import engine
-from app.features.ingestion.models.dinosaur_knowledge import DinosaurKnowledge
-from app.features.specimens.public import list_dinosaur_knowledge_subjects
-from mesozoica_ai.index import index_knowledge
-from mesozoica_ai.sources import acquire_knowledge
+_SCRIPTS = Path(__file__).resolve().parents[3] / "rag" / "scripts"
 
 
-def run_knowledge_job(
-    *,
-    dry_run: bool = False,
-    overwrite: bool = False,
-    recreate_index: bool = False,
-    dinos: list[str] | None = None,
-    sources: list[str] | None = None,
-    max_items: int | None = None,
-) -> int:
-    """Fetch source docs for all dinosaurs, store them, then index into Azure Search."""
-    with Session(engine) as session:
-        subjects = list_dinosaur_knowledge_subjects(session, names=dinos)
+def _load(name: str, path: Path) -> Any:
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load script: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-        acquire = acquire_knowledge(
-            session,
-            DinosaurKnowledge,
-            subjects=subjects,
-            user_agent=settings.wikipedia_user_agent,
-            openalex_api_key=settings.openalex_api_key or "",
-            openalex_limit=settings.openalex_max_works,
-            sources=sources,
-            max_items=max_items,
-            overwrite=overwrite,
-            dry_run=dry_run,
+
+def run_knowledge_job(**kwargs: Any) -> int:
+    """Run acquire then index (same pair of rag scripts)."""
+    acquire_kwargs = {
+        key: kwargs[key]
+        for key in ("dry_run", "overwrite", "dinos", "sources", "max_items")
+        if key in kwargs
+    }
+    index_kwargs = {
+        key: kwargs[key]
+        for key in (
+            "dry_run",
+            "overwrite",
+            "recreate_index",
+            "dinos",
+            "sources",
+            "max_items",
         )
-        index = index_knowledge(
-            session=session,
-            model=DinosaurKnowledge,
-            names=dinos,
-            sources=sources,
-            max_items=max_items,
-            overwrite=overwrite,
-            dry_run=dry_run,
-            recreate_index=recreate_index,
-        )
-
-    print({"acquire": acquire.model_dump(), "index": index.model_dump()})
-    return 1 if acquire.failed or index.failed else 0
+        if key in kwargs
+    }
+    acquire = _load(
+        "mesozoica_acquire_dinosaur_knowledge",
+        _SCRIPTS / "01_acquire_dinosaur_knowledge.py",
+    ).run(**acquire_kwargs)
+    if acquire:
+        return acquire
+    return _load(
+        "mesozoica_index_dinosaur_knowledge",
+        _SCRIPTS / "02_index_dinosaur_knowledge.py",
+    ).run(**index_kwargs)

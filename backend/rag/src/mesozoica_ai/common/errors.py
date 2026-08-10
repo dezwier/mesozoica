@@ -13,6 +13,25 @@ class SourceFetchError(AiError):
     """Raised when an external document source cannot be retrieved."""
 
 
+class RateLimitedError(SourceFetchError):
+    """Raised when a source returns HTTP 429 and the caller should stop cleanly."""
+
+    def __init__(
+        self,
+        source: str,
+        *,
+        retry_after: str | None = None,
+        partial_documents: list | None = None,
+    ) -> None:
+        self.source = source
+        self.retry_after = retry_after
+        self.partial_documents = list(partial_documents or [])
+        detail = f"{source} returned HTTP 429 Too Many Requests"
+        if retry_after:
+            detail = f"{detail} (Retry-After: {retry_after})"
+        super().__init__(detail)
+
+
 class IndexCompatibilityError(AiError):
     """Raised when an existing Azure Search index is unsafe to use."""
 

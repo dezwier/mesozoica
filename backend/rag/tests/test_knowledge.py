@@ -100,9 +100,21 @@ class FakeStore:
     def get_chunk_states(self, filters):
         return self.states
 
+    def get_chunk_states_by_ids(self, ids):
+        return {key: self.states[key] for key in ids if key in self.states}
+
+    def existing_ids(self, ids):
+        return set(self.get_chunk_states_by_ids(ids))
+
     def upsert(self, chunks):
         self.events.append("upsert")
         self.uploaded.extend(chunks)
+        for chunk in chunks:
+            self.states[chunk.id] = ChunkState(
+                embedding_hash=chunk.embedding_hash,
+                document_hash=chunk.document_hash,
+                pipeline_fingerprint=chunk.pipeline_fingerprint,
+            )
 
     def merge_metadata(self, chunks):
         self.events.append("merge")
@@ -111,6 +123,8 @@ class FakeStore:
     def delete(self, ids):
         self.events.append("delete")
         self.deleted.extend(ids)
+        for key in ids:
+            self.states.pop(key, None)
 
     def list_ids(self, filters):
         return list(self.states)
@@ -214,7 +228,13 @@ def test_flat_processing_embedding_and_index_functions_accept_structural_values(
     assert pipeline_fingerprint(config=config) == chunker.pipeline_fingerprint
 
 
-def test_settings_validate_cross_field_constraints_and_tokenizer_load_errors():
+def test_settings_validate_cross_field_constraints_and_tokenizer_load_errors(monkeypatch):
+    for key in (
+        "AZURE_SEARCH_ADMIN_KEY",
+        "AZURE_SEARCH_API_KEY",
+        "AZURE_SEARCH_QUERY_KEY",
+    ):
+        monkeypatch.delenv(key, raising=False)
     values = dict(
         openai_endpoint="https://openai.test", openai_api_key="secret",
         embedding_deployment="embedding", search_endpoint="https://search.test",
@@ -250,7 +270,7 @@ def test_sync_distinguishes_embedding_metadata_and_stale_changes_before_deletion
     assert result.embedded_count == 0
     assert result.metadata_updated_count == 1
     assert result.deleted_count == 1
-    assert store.events == ["upsert", "merge", "delete"]
+    assert store.events == ["merge", "delete"]
 
 
 def test_retrieval_modes_and_evidence_policy_deduplicate_and_cap_documents(monkeypatch):
@@ -313,7 +333,7 @@ def test_azure_store_batches_by_count_and_retries_transient_partial_failures():
         def __init__(self):
             self.calls = []
 
-        def upload_documents(self, *, documents):
+        def merge_or_upload_documents(self, *, documents):
             self.calls.append([document["id"] for document in documents])
             return [SimpleNamespace(
                 succeeded=not (document["id"] == "chunk-1" and len(self.calls) == 1),

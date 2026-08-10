@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -28,8 +28,10 @@ class SourceMetadata(BaseModel):
 
     @field_validator("published_at", "updated_at")
     @classmethod
-    def require_timezone(cls, value: datetime | None) -> datetime | None:
-        """Require unambiguous provenance timestamps."""
-        if value is not None and value.tzinfo is None:
-            raise ValueError("source timestamps must include a timezone")
+    def coerce_timezone(cls, value: datetime | None) -> datetime | None:
+        """Assume UTC when SQL/JSON round-trips drop tzinfo (date-only OpenAlex)."""
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
         return value

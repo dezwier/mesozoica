@@ -1,4 +1,4 @@
-"""Optional metadata enrichment for retrieved documents."""
+"""Shared helpers for source retrieval modules."""
 
 from __future__ import annotations
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Sequence
 from typing import Any, TypeVar
 
@@ -22,14 +23,17 @@ from mesozoica_ai.common.config import AiConfig
 from mesozoica_ai.common.resume import UnitOfWork, run_resumable_item
 from mesozoica_ai.common.store import SessionUnitOfWork
 from mesozoica_ai.index.api import (
+    chunk_documents,
     ensure_index,
     pipeline_fingerprint,
     recreate_index as recreate_search_index,
     sync_documents,
 )
+from mesozoica_ai.index.runtime import build_store
 
 CheckpointT = TypeVar("CheckpointT")
 SUPPORTED_SOURCES = ("wikipedia", "openalex")
+logger = logging.getLogger(__name__)
 
 
 def require_full_recreate_scope(
@@ -79,6 +83,9 @@ def index_snapshots(
         summary.skipped = len(snapshots)
         return summary
     if recreate_index:
+        logger.warning(
+            "Recreating Azure index and resetting index checkpoints",
+        )
         recreate_search_index(config=config)
         for snapshot in snapshots_to_reset or ():
             reset_indexing(snapshot)
@@ -86,12 +93,74 @@ def index_snapshots(
         work_unit.commit()
         snapshots = [reload(snapshot) for snapshot in snapshots]
         prepare_index = False
-    summary = JobSummary(candidates=len(snapshots))
     if prepare_index:
         ensure_index(config=config)
+        index_name = getattr(config, "search_index", None) or "?"
+        logger.info("Azure index ready (%s)", index_name)
+
     fingerprint = pipeline_fingerprint(config=config)
+    store = build_store(config, write_enabled=False)
+    pending: list[CheckpointT] = []
+    already_indexed = 0
+    drift_resets = 0
     for snapshot in snapshots:
+        label = (
+            label_for(snapshot)
+            if label_for
+            else f"{snapshot.subject_name}/{snapshot.source}"
+        )
+        if indexing_needed(
+            snapshot, pipeline_fingerprint=fingerprint, overwrite=overwrite
+        ):
+            pending.append(snapshot)
+            continue
+        documents = resolve_documents(snapshot)
+        try:
+            chunk_ids = {chunk.id for chunk in chunk_documents(documents, config=config)}
+            # Key lookup is authoritative; search=* scope scans under-count.
+            azure_ids = store.existing_ids(sorted(chunk_ids))
+        except Exception as exc:
+            logger.warning("%s: Azure verify failed (%s); re-syncing", label, exc)
+            reset_indexing(snapshot)
+            work_unit.save(snapshot)
+            pending.append(snapshot)
+            drift_resets += 1
+            continue
+        if chunk_ids == azure_ids:
+            already_indexed += 1
+            continue
+        logger.info(
+            "%s: Azure drift (sql_chunks=%s azure_keys=%s); re-syncing",
+            label,
+            len(chunk_ids),
+            len(azure_ids),
+        )
+        reset_indexing(snapshot)
+        work_unit.save(snapshot)
+        pending.append(snapshot)
+        drift_resets += 1
+    if drift_resets:
+        work_unit.commit()
+
+    logger.info(
+        "dinosaur_knowledge: %s acquired row(s); %s pending, %s already indexed%s",
+        len(snapshots),
+        len(pending),
+        already_indexed,
+        f", {drift_resets} Azure drift" if drift_resets else "",
+    )
+    summary = JobSummary(candidates=len(snapshots))
+    summary.skipped = already_indexed
+    if not pending:
+        return summary
+
+    for snapshot in pending:
         sync_result: dict[str, Any] = {}
+        label = (
+            label_for(snapshot)
+            if label_for
+            else f"{snapshot.subject_name}/{snapshot.source}"
+        )
 
         def work(row: CheckpointT, *, _result=sync_result) -> None:
             _result["result"] = sync_documents(
@@ -100,12 +169,11 @@ def index_snapshots(
                 config=config,
             )
 
+        logger.info("%s: indexing", label)
         outcome = run_resumable_item(
             work_unit,
             snapshot,
-            should_run=lambda row: indexing_needed(
-                row, pipeline_fingerprint=fingerprint, overwrite=overwrite
-            ),
+            should_run=lambda row: True,
             begin=begin_indexing,
             work=work,
             complete=lambda row, _result=sync_result: complete_indexing(
@@ -113,12 +181,26 @@ def index_snapshots(
             ),
             fail=fail_indexing,
             reload=reload,
-            label=(
-                label_for(snapshot)
-                if label_for
-                else f"Knowledge indexing ({snapshot.subject_name}/{snapshot.source})"
-            ),
+            label=label,
         )
+        if outcome == "succeeded":
+            result = sync_result.get("result")
+            if result is not None:
+                logger.info(
+                    "%s: done embed=%s skip=%s meta=%s delete=%s",
+                    label,
+                    getattr(result, "embedded_count", "?"),
+                    getattr(result, "skipped_count", "?"),
+                    getattr(result, "metadata_updated_count", "?"),
+                    getattr(result, "deleted_count", "?"),
+                )
+            else:
+                logger.info("%s: done", label)
+        elif outcome == "failed":
+            logger.error("%s: failed", label)
+        elif outcome == "skipped":
+            summary.skipped += 1
+            continue
         summary.record(outcome)
     return summary
 

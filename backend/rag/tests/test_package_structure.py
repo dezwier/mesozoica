@@ -72,10 +72,10 @@ def test_feature_packages_only_depend_on_allowed_peers():
 
 
 def test_domain_packages_export_expected_helpers():
+    common = importlib.import_module("mesozoica_ai.common")
+    assert {"store_documents", "acquire_knowledge"} <= set(common.__all__)
     sources = importlib.import_module("mesozoica_ai.sources")
-    assert {"acquire_knowledge", "store_documents", "retrieve_wikipedia", "retrieve_openalex"} <= set(
-        sources.__all__
-    )
+    assert set(sources.__all__) == {"retrieve_wikipedia", "retrieve_openalex"}
     index = importlib.import_module("mesozoica_ai.index")
     assert "index_knowledge" in index.__all__
     generate = importlib.import_module("mesozoica_ai.generate")

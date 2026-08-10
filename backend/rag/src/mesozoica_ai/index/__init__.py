@@ -121,6 +121,8 @@ from .batch import (
     require_full_recreate_scope,
 )
 
+azure_knowledge_overview = _api.azure_knowledge_overview
+
 __all__ = [
     "EmbeddedChunk",
     "EvidencePolicy",
@@ -130,6 +132,7 @@ __all__ = [
     "RetrievalResult",
     "RetrievedChunk",
     "SyncResult",
+    "azure_knowledge_overview",
     "chunk_documents",
     "embed_chunks",
     "embed_query",

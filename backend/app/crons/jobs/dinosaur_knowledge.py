@@ -1,5 +1,5 @@
-"""Compatibility alias for the feature-owned scheduled job."""
+"""Cron entry for dinosaur knowledge ingest."""
 
-import sys
-from app.features.ingestion.jobs import dinosaur_knowledge as _implementation
-sys.modules[__name__] = _implementation
+from app.features.ingestion.jobs.dinosaur_knowledge import run_knowledge_job
+
+__all__ = ["run_knowledge_job"]

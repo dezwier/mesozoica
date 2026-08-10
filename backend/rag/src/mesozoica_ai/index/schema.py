@@ -46,7 +46,13 @@ class AzureKnowledgeIndex:
         """Build the authoritative schema without creating remote resources."""
         filterable = {"namespace", "subject_id", "source", "source_id", "document_id"}
         fields = [
-            SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
+            SimpleField(
+                name="id",
+                type=SearchFieldDataType.String,
+                key=True,
+                filterable=True,
+                sortable=True,
+            ),
             *[
                 SimpleField(name=name, type=SearchFieldDataType.String, filterable=True,
                             facetable=name in {"namespace", "source"})
@@ -119,6 +125,13 @@ class AzureKnowledgeIndex:
             )
         if "id" in fields and not getattr(fields["id"], "key", False):
             invalid.append("id must be the key")
+        if "id" in fields and not getattr(fields["id"], "sortable", False):
+            logger.warning(
+                "Azure index %s: id is not sortable — search=* cannot use "
+                "continuation tokens; listing uses skip paging (or recreate "
+                "the index to enable orderby)",
+                self.index_name,
+            )
         for name in ("namespace", "subject_id", "source", "source_id", "document_id",
                      "section", "pipeline_fingerprint", "schema_version"):
             if name in fields and not getattr(fields[name], "filterable", False):

@@ -39,7 +39,7 @@ class RetrievalMode(str, Enum):
 
 
 class Document(BaseModel):
-    """One source-level unit, normally a Wikipedia section or paper abstract."""
+    """One source-level unit: a Wikipedia section or OpenAlex TEI section."""
 
     id: str = Field(min_length=1)
     text: str = Field(min_length=1)

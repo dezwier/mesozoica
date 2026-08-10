@@ -7,15 +7,15 @@ the rest:
 
 | Package | Role | May import |
 |---|---|---|
-| `common` | config, models, tokens, checkpoint/resume | nothing else in mesozoica_ai |
-| `sources` | retrieve Wikipedia/OpenAlex + store_documents | `common` |
+| `common` | config, models, tokens, checkpoint/`store_documents` | nothing else in mesozoica_ai |
+| `sources` | `retrieve_wikipedia` / `retrieve_openalex` (+ http/helpers) | `common` |
 | `index` | chunk/embed/sync/retrieve + batch index | `common` |
 | `generate` | prompt_rag, answer_from_index, quiz | `common`, `index` |
 | `evaluate` | offline/live metrics, status | `common`, `index` |
 
 ```text
-retrieve_* / acquire_knowledge
-  -> store_documents (Postgres)
+retrieve_wikipedia / retrieve_openalex
+  -> store_documents (Postgres; ingest script)
   -> sync_documents / index_knowledge
   -> Azure AI Search
 

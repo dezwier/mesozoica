@@ -35,11 +35,12 @@ class Embedder:
             EmbeddedChunk(**chunk.model_dump(), embedding=vector)
             for chunk, vector in zip(chunks, vectors, strict=True)
         ]
-        logger.info("rag.embed", extra={"rag": {
-            "chunk_count": len(chunks), "dimensions": self.dimensions,
-            "deployment": self.model,
-            "duration_ms": (time.perf_counter() - started) * 1000,
-        }})
+        logger.info(
+            "embed %s chunks (%s dims, %.0fms)",
+            len(chunks),
+            self.dimensions,
+            (time.perf_counter() - started) * 1000,
+        )
         return embedded
 
     def embed_query(self, query: str) -> list[float]:

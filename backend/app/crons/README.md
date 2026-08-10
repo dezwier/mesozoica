@@ -10,7 +10,7 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 
 | ID | Schedule (UTC) | Description |
 |----|----------------|-------------|
-| `dinosaur_knowledge` | manual/disabled | Acquire Wikipedia/OpenAlex snapshots and index them into Azure AI Search for all dinosaurs |
+| `dinosaur_knowledge` | daily 01:00 UTC (disabled) | Acquire Wikipedia/OpenAlex snapshots and index them into Azure AI Search for all dinosaurs |
 | `dinosaur_wiki_sync` | `0 3 * * 0` (Sun 03:00) | Sync dinosaur types + append Wikipedia content revisions |
 | `dinosaur_llm_enrich` | `0 4 * * 0` (Sun 04:00) | LLM enrichment (Gemini) for dinosaurs |
 | `fossil_pbdb_sync` | `0 5 * * 0` (Sun 05:00) | Sync fossil occurrences from PBDB |
@@ -161,11 +161,17 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 
 ### Dinosaur knowledge workflow
 
-The single `dinosaur_knowledge` cron is disabled by default. Configure the variables in [`../../rag/README.md`](../../rag/README.md), then run:
+The single `dinosaur_knowledge` cron is disabled by default (scheduled daily at
+01:00 UTC). It runs acquire then index via
+[`01_acquire_dinosaur_knowledge.py`](../../rag/scripts/01_acquire_dinosaur_knowledge.py)
+and [`02_index_dinosaur_knowledge.py`](../../rag/scripts/02_index_dinosaur_knowledge.py).
+Configure the variables in [`../../rag/README.md`](../../rag/README.md), then run:
 
 ```bash
 make run-dinosaur-knowledge
 make run-dinosaur-knowledge CRON_EXTRA='--dinos Tyrannosaurus --sources wikipedia openalex'
+.venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Tyrannosaurus
+.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Tyrannosaurus
 ```
 
 Each dinosaur/source is committed independently in `dinosaur_knowledge`. Successful unchanged acquisitions are skipped, failed/running states retry, content changes reset only that source's indexing checkpoint, and a pipeline fingerprint change also makes a row eligible for indexing without `--overwrite`. Status/quiz/eval helpers live in the `mesozoica_ai` library (see [`../../rag/docs/USAGE.md`](../../rag/docs/USAGE.md)), not as app crons.

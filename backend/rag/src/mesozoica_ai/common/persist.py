@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
-from mesozoica_ai.common.batch import DEFAULT_SUBJECT_KIND
+from mesozoica_ai.common.batch import (
+    DEFAULT_SUBJECT_KIND,
+    JobSummary,
+    subject_metadata,
+)
 from mesozoica_ai.common.checkpoints import (
     acquisition_needed,
     begin_acquisition,
@@ -15,6 +19,91 @@ from mesozoica_ai.common.checkpoints import (
     fail_acquisition,
 )
 from mesozoica_ai.common.models import Document
+
+SUPPORTED_SOURCES = ("wikipedia", "openalex")
+RetrieveFn = Callable[[Any, str, dict[str, Any]], Sequence[Document]]
+
+
+def needs_acquisition(
+    session: Any,
+    model: type[Any],
+    subject: Any,
+    source: str,
+    *,
+    overwrite: bool = False,
+    subject_kind: str = DEFAULT_SUBJECT_KIND,
+) -> bool:
+    """True when this subject/source is missing or not yet successfully stored."""
+    from sqlmodel import select
+
+    row = session.exec(
+        select(model).where(
+            model.subject_kind == subject_kind,
+            model.subject_id == str(subject.id),
+            model.source == source,
+        )
+    ).first()
+    return row is None or acquisition_needed(row, overwrite=overwrite)
+
+
+def acquire_knowledge(
+    session: Any,
+    model: type[Any],
+    *,
+    subjects: Sequence[Any],
+    retrieve: RetrieveFn,
+    sources: Sequence[str] | None = None,
+    max_items: int | None = None,
+    overwrite: bool = False,
+    dry_run: bool = False,
+    subject_kind: str = DEFAULT_SUBJECT_KIND,
+) -> JobSummary:
+    """Retrieve and store documents for each subject/source pair.
+
+    ``retrieve(subject, source, metadata)`` must return documents or raise.
+    """
+    selected = _normalize_sources(sources)
+    selected_subjects = list(subjects[:max_items] if max_items is not None else subjects)
+    summary = JobSummary(candidates=len(selected_subjects) * len(selected))
+    for subject in selected_subjects:
+        for source in selected:
+            if dry_run:
+                summary.skipped += 1
+                continue
+            if not needs_acquisition(
+                session,
+                model,
+                subject,
+                source,
+                overwrite=overwrite,
+                subject_kind=subject_kind,
+            ):
+                summary.skipped += 1
+                continue
+            metadata = subject_metadata(subject, source)
+            try:
+                documents = retrieve(subject, source, metadata)
+                outcome = store_documents(
+                    session,
+                    model,
+                    subject=subject,
+                    source=source,
+                    documents=documents,
+                    overwrite=overwrite,
+                    subject_kind=subject_kind,
+                )
+            except Exception as exc:
+                outcome = store_documents(
+                    session,
+                    model,
+                    subject=subject,
+                    source=source,
+                    error=exc,
+                    overwrite=overwrite,
+                    subject_kind=subject_kind,
+                )
+            summary.record(outcome)
+    return summary
 
 
 def store_documents(
@@ -57,6 +146,15 @@ def store_documents(
     session.commit()
     session.refresh(row)
     return "succeeded"
+
+
+def _normalize_sources(sources: Sequence[str] | None) -> list[str]:
+    values = SUPPORTED_SOURCES if not sources else sources
+    normalized = [value.strip().casefold() for value in values if value.strip()]
+    unknown = sorted(set(normalized) - set(SUPPORTED_SOURCES))
+    if unknown:
+        raise ValueError(f"Unsupported knowledge sources: {', '.join(unknown)}")
+    return list(dict.fromkeys(normalized))
 
 
 def _get_or_create(

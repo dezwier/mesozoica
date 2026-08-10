@@ -79,13 +79,16 @@ def sync_documents(
     """Safely synchronize one scope while embedding only vector-changed chunks."""
     if not scope:
         raise ValueError("sync scope must contain at least one exact-match filter")
+    label = _scope_label(scope)
     normalized = _normalize_documents(documents)
     _validate_document_scope(normalized, scope)
     chunker = build_chunker(config)
     chunks = chunker.split(normalized)
     store = build_store(config, write_enabled=True)
     current = {chunk.id: chunk for chunk in chunks}
-    existing = store.get_chunk_states(scope)
+    # Key lookup is authoritative. search=* scope scans are incomplete on this index
+    # (missing docs after successful upsert), which caused endless re-embeds.
+    existing = store.get_chunk_states_by_ids(list(current))
     to_embed = [
         chunk
         for chunk in chunks
@@ -102,11 +105,37 @@ def sync_documents(
         and existing[chunk.id].document_hash != chunk.document_hash
     ]
     # Writes precede deletion so partial failures cannot erase the last usable scope.
-    store.upsert(build_embedder(config).embed(to_embed))
-    store.merge_metadata(metadata_only)
-    stale_ids = sorted(set(existing) - set(current))
-    store.delete(stale_ids)
-    result = SyncResult(
+    if to_embed:
+        logger.info(
+            "%s: embed %s/%s chunks (Azure already has %s)",
+            label,
+            len(to_embed),
+            len(chunks),
+            len(existing),
+        )
+        store.upsert(build_embedder(config).embed(to_embed))
+    else:
+        logger.info(
+            "%s: skip embed (%s chunks already in Azure)",
+            label,
+            len(chunks),
+        )
+    if metadata_only:
+        store.merge_metadata(metadata_only)
+    # Best-effort stale cleanup via search; may under-delete if search is incomplete.
+    stale_ids = sorted(set(store.list_ids(scope)) - set(current))
+    if stale_ids:
+        store.delete(stale_ids)
+
+    missing_after = _wait_for_keys(store, list(current), label=label)
+    if missing_after:
+        raise RuntimeError(
+            f"{label}: after sync Azure key lookup still missing "
+            f"{len(missing_after)}/{len(current)} chunks "
+            f"(sample: {', '.join(missing_after[:3])})"
+        )
+
+    return SyncResult(
         document_count=len(normalized),
         chunk_count=len(chunks),
         embedded_count=len(to_embed),
@@ -116,8 +145,109 @@ def sync_documents(
         chunk_ids=sorted(current),
         pipeline_fingerprint=chunker.pipeline_fingerprint,
     )
-    logger.info("rag.index.sync", extra={"rag": result.model_dump(exclude={"chunk_ids"})})
-    return result
+
+
+def _scope_label(scope: dict[str, Any]) -> str:
+    subject = scope.get("subject_id") or scope.get("namespace") or "?"
+    source = scope.get("source") or "?"
+    return f"{subject}/{source}"
+
+
+def _wait_for_keys(
+    store: Any,
+    ids: list[str],
+    *,
+    label: str,
+    attempts: int = 5,
+    delay_seconds: float = 1.0,
+) -> list[str]:
+    """Retry key lookup briefly so post-upsert eventual consistency can catch up."""
+    missing = sorted(ids)
+    for attempt in range(1, attempts + 1):
+        found = store.existing_ids(ids)
+        missing = sorted(set(ids) - found)
+        if not missing:
+            return []
+        if attempt < attempts:
+            logger.info(
+                "%s: waiting for Azure keys (%s missing, attempt %s/%s)",
+                label,
+                len(missing),
+                attempt,
+                attempts,
+            )
+            time.sleep(delay_seconds * attempt)
+    return missing
+
+
+def azure_knowledge_overview(
+    *,
+    config: KnowledgeConfig,
+    session: Any | None = None,
+    model: type[Any] | None = None,
+):
+    """Summarize dinosaurs / wiki / papers / chunks currently in Azure Search.
+
+    When ``session``/``model`` are provided, expected chunk IDs are derived from
+    SQL documents and probed with key lookup (not search=*), which is reliable
+    on indexes where wildcard scope scans under-count.
+    """
+    from mesozoica_ai.common.batch import DEFAULT_SUBJECT_KIND, snapshot_scope
+    from mesozoica_ai.common.inventory import KnowledgeOverview
+    from sqlmodel import select
+
+    store = build_store(config, write_enabled=False)
+    if session is None or model is None:
+        from mesozoica_ai.common.inventory import azure_knowledge_overview_from_rows
+
+        return azure_knowledge_overview_from_rows(store.inventory_rows())
+
+    statement = select(model).where(
+        model.subject_kind == DEFAULT_SUBJECT_KIND,
+        model.acquisition_status == "succeeded",
+    )
+    sql_rows = list(session.exec(statement).all())
+
+    subjects: set[str] = set()
+    wiki_subjects: set[str] = set()
+    openalex_subjects: set[str] = set()
+    papers: set[tuple[str, str]] = set()
+    wiki_chunks = 0
+    openalex_chunks = 0
+
+    for row in sql_rows:
+        scope = snapshot_scope(row)
+        subject = str(scope.get("subject_id") or "")
+        source = str(row.source or "").casefold()
+        chunks = chunk_documents(list(row.documents or []), config=config)
+        found_ids = store.existing_ids([chunk.id for chunk in chunks])
+        if not found_ids:
+            continue
+        subjects.add(subject)
+        if source == "wikipedia":
+            wiki_subjects.add(subject)
+            wiki_chunks += len(found_ids)
+        elif source == "openalex":
+            openalex_subjects.add(subject)
+            openalex_chunks += len(found_ids)
+            by_id = {chunk.id: chunk for chunk in chunks}
+            for chunk_id in found_ids:
+                chunk = by_id.get(chunk_id)
+                if chunk is None:
+                    continue
+                source_id = str(chunk.metadata.source_id or "").strip()
+                if subject and source_id:
+                    papers.add((subject, source_id))
+
+    return KnowledgeOverview(
+        dinosaurs=len(subjects),
+        wikipedia_dinos=len(wiki_subjects),
+        wikipedia_units=wiki_chunks,
+        openalex_dinos=len(openalex_subjects),
+        openalex_papers=len(papers),
+        openalex_units=openalex_chunks,
+        unit_label="chunks",
+    )
 
 
 def pipeline_fingerprint(*, config: KnowledgeConfig) -> str:

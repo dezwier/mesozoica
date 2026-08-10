@@ -3,6 +3,7 @@ import pytest
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+from mesozoica_ai.common.errors import RateLimitedError, SourceFetchError
 from mesozoica_ai.common import (
     acquisition_needed,
     begin_acquisition,
@@ -10,24 +11,61 @@ from mesozoica_ai.common import (
     fail_acquisition,
 )
 from mesozoica_ai import retrieve_wikipedia
-from mesozoica_ai.common.models import Document as SourceDocument
 from mesozoica_ai.sources.openalex import _retrieve as retrieve_openalex_with_client
-from mesozoica_ai.sources.openalex import reconstruct_abstract
-from mesozoica_ai.sources.openalex import retrieve_openalex_documents
+from mesozoica_ai.sources.openalex import _retrieve_documents as retrieve_openalex_documents
 from mesozoica_ai.sources.wikipedia import _retrieve as retrieve_wikipedia_with_client
-from mesozoica_ai.sources.wikipedia import retrieve_wikipedia_documents
+from mesozoica_ai.sources.wikipedia import _retrieve_documents as retrieve_wikipedia_documents
 from mesozoica_ai.sources.http import RetryingJsonClient
 from mesozoica_ai.sources.http import _retry_after_seconds
 
 
 class StubJsonClient:
-    def __init__(self, payload):
+    def __init__(self, payload, *, text_by_url=None):
         self.payload = payload
+        self.text_by_url = text_by_url or {}
         self.calls = []
+        self.text_calls = []
 
     def get(self, url, *, params, headers, source="unknown"):
         self.calls.append((url, params, headers, source))
         return self.payload
+
+    def get_text(self, url, *, params, headers, source="unknown"):
+        self.text_calls.append((url, params, headers, source))
+        if url not in self.text_by_url:
+            raise SourceFetchError(f"{source} returned HTTP 404")
+        return self.text_by_url[url]
+
+
+SAMPLE_TEI = """<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <profileDesc>
+      <abstract>
+        <p>First abstract sentence.</p>
+        <p>Second abstract sentence.</p>
+      </abstract>
+    </profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div>
+        <head>Introduction</head>
+        <p>Intro paragraph one.</p>
+        <p>Intro paragraph two.</p>
+        <div>
+          <head>Background</head>
+          <p>Nested background text.</p>
+        </div>
+      </div>
+      <div type="references">
+        <head>References</head>
+        <p>Should be skipped.</p>
+      </div>
+    </body>
+  </text>
+</TEI>
+"""
 
 
 def test_wikipedia_returns_sections_with_revision_metadata():
@@ -73,16 +111,17 @@ def test_wikipedia_duplicate_headings_have_unique_ids_and_hierarchical_paths():
     assert skull.metadata.section_path == ["Anatomy", "Skull"]
 
 
-def test_openalex_reconstructs_and_filters_abstracts():
-    assert reconstruct_abstract({"world": [1], "Hello": [0]}) == "Hello world"
+def test_openalex_fulltext_splits_tei_sections_and_preserves_paragraphs():
+    work_url = "https://content.openalex.org/works/W9.grobid-xml"
     client = StubJsonClient(
         {
             "results": [
                 {
-                    "id": "https://openalex.org/W1",
-                    "display_name": "A useful paper",
-                    "abstract_inverted_index": {"fossil": [1], "A": [0]},
+                    "id": "https://openalex.org/W9",
+                    "display_name": "Full paper",
                     "is_retracted": False,
+                    "has_content": {"pdf": True, "grobid_xml": True},
+                    "content_urls": {"grobid_xml": work_url},
                     "authorships": [{"author": {"display_name": "A. Author"}}],
                     "primary_location": {"source": {"display_name": "Journal"}},
                     "doi": "https://doi.org/10/example",
@@ -95,23 +134,115 @@ def test_openalex_reconstructs_and_filters_abstracts():
                 {
                     "id": "https://openalex.org/W2",
                     "display_name": "Retracted",
-                    "abstract_inverted_index": {"bad": [0]},
                     "is_retracted": True,
+                    "has_content": {"grobid_xml": True},
                 },
             ]
-        }
+        },
+        text_by_url={work_url: SAMPLE_TEI},
     )
 
     documents = retrieve_openalex_with_client(
-        "Example", api_key="key", user_agent="test@example.com", limit=10,
+        "Example",
+        api_key="key",
+        user_agent="test@example.com",
+        limit=5,
+        exclude_work_ids=set(),
         client=client,
     )
 
-    assert len(documents) == 1
-    assert documents[0].id == "openalex:W1"
-    assert documents[0].text == "A fossil"
+    assert [document.metadata.section for document in documents] == [
+        "Abstract",
+        "Introduction",
+        "Background",
+    ]
+    assert documents[0].text == "First abstract sentence.\n\nSecond abstract sentence."
+    assert documents[1].text == "Intro paragraph one.\n\nIntro paragraph two."
+    assert documents[2].metadata.section_path == ["Introduction", "Background"]
+    assert documents[1].id == "openalex:W9:section:1:introduction"
+    assert documents[0].metadata.content_format == "grobid_xml"
     assert documents[0].metadata.authors == ["A. Author"]
-    assert client.calls[0][1]["per_page"] == 10
+    assert "has_content.grobid_xml:true" in client.calls[0][1]["filter"]
+    assert client.calls[0][1]["per_page"] == 20
+    assert client.text_calls[0][0] == work_url
+    assert client.text_calls[0][1]["api_key"] == "key"
+
+
+def test_openalex_fulltext_failure_skips_work():
+    client = StubJsonClient(
+        {
+            "results": [
+                {
+                    "id": "https://openalex.org/W3",
+                    "display_name": "Broken TEI paper",
+                    "is_retracted": False,
+                    "has_content": {"grobid_xml": True},
+                    "authorships": [],
+                    "primary_location": {},
+                }
+            ]
+        }
+    )
+    with pytest.raises(SourceFetchError, match="no usable GROBID TEI"):
+        retrieve_openalex_with_client(
+            "Example",
+            api_key="key",
+            user_agent="test@example.com",
+            limit=5,
+            exclude_work_ids=set(),
+            client=client,
+        )
+    assert len(client.text_calls) == 1
+
+
+def test_openalex_skips_excluded_work_ids_and_returns_empty():
+    client = StubJsonClient(
+        {
+            "results": [
+                {
+                    "id": "https://openalex.org/W9",
+                    "display_name": "Already have this",
+                    "is_retracted": False,
+                    "has_content": {"grobid_xml": True},
+                    "authorships": [],
+                    "primary_location": {},
+                }
+            ]
+        },
+        text_by_url={},
+    )
+    documents = retrieve_openalex_with_client(
+        "Example",
+        api_key="key",
+        user_agent="test@example.com",
+        limit=5,
+        exclude_work_ids={"W9"},
+        client=client,
+    )
+    assert documents == []
+    assert client.text_calls == []
+
+
+def test_http_get_text_decompresses_raw_gzip_bodies():
+    import gzip
+
+    request = httpx.Request("GET", "https://example.test/tei")
+    payload = gzip.compress(b"<TEI><text><body><p>Hi</p></body></text></TEI>")
+
+    class Client:
+        def get(self, *args, **kwargs):
+            return httpx.Response(
+                200,
+                content=payload,
+                headers={"content-type": "application/gzip"},
+                request=request,
+            )
+
+    text = RetryingJsonClient(Client(), attempts=1).get_text(
+        "https://example.test/tei", params={}, headers={}, source="openalex-content"
+    )
+    assert "<TEI>" in text
+    assert "Hi" in text
 
 
 def test_retrieve_wikipedia_enriches_metadata(monkeypatch):
@@ -129,7 +260,7 @@ def test_retrieve_wikipedia_enriches_metadata(monkeypatch):
     )[0]
     monkeypatch.setattr(
         wikipedia_module,
-        "retrieve_wikipedia_documents",
+        "_retrieve_documents",
         lambda *args, **kwargs: [document],
     )
 
@@ -184,24 +315,25 @@ def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
     assert checkpoint.acquisition_error == "temporary"
 
 
-def test_source_http_client_retries_throttling_with_retry_after():
+def test_source_http_client_stops_cleanly_on_429():
     request = httpx.Request("GET", "https://example.test")
-    responses = [
-        httpx.Response(429, headers={"Retry-After": "0"}, request=request),
-        httpx.Response(200, json={"ok": True}, request=request),
-    ]
 
     class Client:
+        calls = 0
+
         def get(self, *args, **kwargs):
-            return responses.pop(0)
+            self.calls += 1
+            return httpx.Response(429, headers={"Retry-After": "30"}, request=request)
 
     delays = []
-    result = RetryingJsonClient(
-        Client(), attempts=2, sleeper=delays.append
-    ).get("https://example.test", params={}, headers={})
+    client = Client()
+    with pytest.raises(RateLimitedError, match="HTTP 429"):
+        RetryingJsonClient(client, attempts=4, sleeper=delays.append).get(
+            "https://example.test", params={}, headers={}, source="openalex-content"
+        )
 
-    assert result == {"ok": True}
-    assert delays == [0.0]
+    assert client.calls == 1
+    assert delays == []
 
 
 def test_http_date_retry_after_and_normal_4xx_is_not_retried():

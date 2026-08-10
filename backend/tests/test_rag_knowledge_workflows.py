@@ -14,13 +14,14 @@ from app.features.ingestion.models.dinosaur_knowledge import (
     DinosaurKnowledge,
 )
 from app.features.specimens.public import DinosaurKnowledgeSubject
-from mesozoica_ai.common import Document
+from mesozoica_ai.common import (
+    Document,
+    acquire_knowledge,
+)
 from mesozoica_ai.evaluate import RetrievalCase, load_retrieval_cases, prepare_retrieval_cases
 from mesozoica_ai.evaluate import format_checkpoint_status
 from mesozoica_ai.generate import QuizQuestion
 from mesozoica_ai.index import index_knowledge, list_knowledge_rows
-from mesozoica_ai.sources import acquire_knowledge
-import mesozoica_ai.sources.acquire as acquire_module
 
 
 SUBJECT = DinosaurKnowledgeSubject(id=7, name="Example", wikipedia_title="Example")
@@ -38,27 +39,20 @@ def acquire_dinosaur_knowledge(
 ):
     """Test helper: wire fake retrievers into acquire_knowledge."""
 
-    def fake_wikipedia(query, *, user_agent, metadata=None, **_kwargs):
-        return retrievers["wikipedia"](query, metadata=metadata or {})
+    def retrieve(subject, source, metadata):
+        query = subject.wikipedia_title if source == "wikipedia" else subject.name
+        return retrievers[source](query, metadata=metadata)
 
-    def fake_openalex(query, *, api_key, user_agent, limit=10, metadata=None, **_kwargs):
-        return retrievers["openalex"](query, metadata=metadata or {})
-
-    with (
-        patch.object(acquire_module, "retrieve_wikipedia", fake_wikipedia),
-        patch.object(acquire_module, "retrieve_openalex", fake_openalex),
-    ):
-        return acquire_knowledge(
-            session,
-            DinosaurKnowledge,
-            subjects=subjects,
-            user_agent="test@example.com",
-            openalex_api_key="test-key",
-            sources=sources,
-            max_items=max_items,
-            overwrite=overwrite,
-            dry_run=dry_run,
-        )
+    return acquire_knowledge(
+        session,
+        DinosaurKnowledge,
+        subjects=subjects,
+        retrieve=retrieve,
+        sources=sources,
+        max_items=max_items,
+        overwrite=overwrite,
+        dry_run=dry_run,
+    )
 
 
 def index_dinosaur_knowledge(session, *, config, dinosaur_names=None, **kwargs):
@@ -290,12 +284,26 @@ def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None)
             raise RuntimeError("embedding unavailable")
         return SimpleNamespace(pipeline_fingerprint=fingerprint)
 
+    class FakeStore:
+        def list_ids(self, filters):
+            return ["chunk-1"]
+
     monkeypatch.setattr(workflow_module, "recreate_search_index", recreate)
     monkeypatch.setattr(workflow_module, "ensure_index", ensure)
     monkeypatch.setattr(
         workflow_module, "pipeline_fingerprint", lambda *, config: fingerprint
     )
     monkeypatch.setattr(workflow_module, "sync_documents", sync)
+    monkeypatch.setattr(
+        workflow_module,
+        "chunk_documents",
+        lambda documents, *, config: [SimpleNamespace(id="chunk-1")],
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "build_store",
+        lambda config, *, write_enabled: FakeStore(),
+    )
     return calls
 
 

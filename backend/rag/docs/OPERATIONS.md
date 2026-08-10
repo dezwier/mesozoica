@@ -16,7 +16,7 @@ configuration; `RagConfig` owns only chat and prompt-budget settings.
 
 ## Cost controls
 
-Changed-only vectors, metadata-only merges, bounded batches, ten OpenAlex works, and fixed retrieval depths limit variable cost. The largest cost levers are acquired subjects, embedding dimensions, snapshot churn, evaluation case/mode count, and generation completion allowance. Structured logs expose counts and durations but never raw content, prompts, query parameters, or secrets.
+Changed-only vectors, metadata-only merges, bounded batches, ten OpenAlex works, and fixed retrieval depths limit variable cost. OpenAlex GROBID TEI downloads cost ~$0.01 each (free keys get ~$1/day); failed downloads are skipped with no abstract fallback. The largest cost levers are acquired subjects, OpenAlex full-text downloads, embedding dimensions, snapshot churn, evaluation case/mode count, and generation completion allowance. Structured logs expose counts and durations but never raw content, prompts, query parameters, or secrets.
 
 ## Fingerprints and resume behavior
 

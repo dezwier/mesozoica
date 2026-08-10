@@ -134,9 +134,10 @@ class RecursiveChunker:
                         pipeline_fingerprint=self.pipeline_fingerprint,
                     )
                 )
-        logger.info("rag.chunk", extra={"rag": {
-            "document_count": len(documents), "chunk_count": len(chunks),
-            "duration_ms": (time.perf_counter() - started) * 1000,
-            "pipeline_fingerprint": self.pipeline_fingerprint,
-        }})
+        logger.debug(
+            "chunked %s docs → %s chunks (%.0fms)",
+            len(documents),
+            len(chunks),
+            (time.perf_counter() - started) * 1000,
+        )
         return chunks

@@ -19,8 +19,8 @@ Also:
 ```text
 mesozoica_ai/
   __init__.py     pipeline verbs only
-  common/         AiConfig, Document, checkpoints, resume
-  sources/        retrieve_*, store_documents, acquire_knowledge
+  common/         AiConfig, Document, checkpoints, store_documents
+  sources/        wikipedia.py, openalex.py, http.py, helpers.py
   index/          chunk / embed / sync / retrieve / index_knowledge
   generate/       prompt_rag, answer_from_index, generate_quiz
   evaluate/       offline + live metrics, knowledge_status
@@ -39,8 +39,8 @@ from mesozoica_ai import (
     retrieve_chunks,
     prompt_rag,
 )
+from mesozoica_ai.common import store_documents
 from mesozoica_ai.generate import generate_quiz, answer_from_index
-from mesozoica_ai.sources import acquire_knowledge, store_documents
 from mesozoica_ai.index import index_knowledge
 from mesozoica_ai.evaluate import evaluate_knowledge, knowledge_status
 ```
@@ -49,9 +49,13 @@ from mesozoica_ai.evaluate import evaluate_knowledge, knowledge_status
 
 ```bash
 cd backend
-.venv/bin/python rag/scripts/01_retrieve_documents.py
-.venv/bin/python rag/scripts/02_build_knowledge_base.py
+.venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py
+.venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Tyrannosaurus
+.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py
 .venv/bin/python rag/scripts/03_generate_quiz.py
 .venv/bin/python rag/scripts/04_evaluate_retrieval.py
 .venv/bin/python -m pytest rag/tests -q
 ```
+
+1. **Acquire** — Wikipedia + OpenAlex → Postgres `dinosaur_knowledge`
+2. **Index** — SQL snapshots → chunk / embed / Azure Search

@@ -27,9 +27,11 @@ from mesozoica_ai.common.errors import (
     ConfigurationError,
     IndexCompatibilityError,
     InsufficientEvidenceError,
+    RateLimitedError,
     SourceFetchError,
     StructuredOutputError,
 )
+from mesozoica_ai.common.inventory import KnowledgeOverview, sql_knowledge_overview
 from mesozoica_ai.common.metadata import SourceMetadata
 from mesozoica_ai.common.models import (
     Chunk,
@@ -47,6 +49,7 @@ from mesozoica_ai.common.models import (
     SourceDocument,
     SyncResult,
 )
+from mesozoica_ai.common.persist import acquire_knowledge, needs_acquisition, store_documents
 from mesozoica_ai.common.resume import UnitOfWork, run_resumable_item
 from mesozoica_ai.common.store import SessionUnitOfWork
 from mesozoica_ai.common.tokens import Encoding, TokenCounter, TokenizerError, load_encoding
@@ -70,6 +73,8 @@ __all__ = [
     "IndexResult",
     "InsufficientEvidenceError",
     "JobSummary",
+    "KnowledgeOverview",
+    "sql_knowledge_overview",
     "KnowledgeChunk",
     "KnowledgeDocument",
     "RetrievalMode",
@@ -77,6 +82,7 @@ __all__ = [
     "RetrievedChunk",
     "SessionUnitOfWork",
     "SourceDocument",
+    "RateLimitedError",
     "SourceFetchError",
     "SourceMetadata",
     "StructuredOutputError",
@@ -84,6 +90,7 @@ __all__ = [
     "TokenCounter",
     "TokenizerError",
     "UnitOfWork",
+    "acquire_knowledge",
     "acquisition_needed",
     "begin_acquisition",
     "begin_indexing",
@@ -93,9 +100,11 @@ __all__ = [
     "fail_indexing",
     "indexing_needed",
     "load_encoding",
+    "needs_acquisition",
     "reset_indexing",
     "run_resumable_item",
     "snapshot_scope",
+    "store_documents",
     "subject_metadata",
     "subject_query",
 ]

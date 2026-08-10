@@ -57,17 +57,25 @@ for doc in docs:
     print(doc.id, doc.metadata.title, len(doc.text))
 ```
 
-### `retrieve_openalex(query, *, api_key, user_agent, limit=10, metadata=None)`
+### `retrieve_openalex(query, *, api_key, user_agent, limit=10, exclude_work_ids=None, metadata=None)`
 
-Fetches OpenAlex works and returns `list[Document]` **in memory**.
+Fetches up to ``limit`` *new* OpenAlex works (relevance-ranked) with GROBID TEI
+full text and returns section `list[Document]` **in memory**. Pass
+``exclude_work_ids`` to skip papers already stored and top up toward a
+per-dinosaur target (see ``01_acquire_dinosaur_knowledge.py``). Titles are
+logged as papers are acquired.
+
+Search is limited to `has_content.grobid_xml:true`. Failed or empty TEI
+downloads are skipped — there is no abstract fallback. Each TEI download costs
+OpenAlex content credits (~$0.01).
 
 ```python
 from mesozoica_ai import retrieve_openalex
 
 papers = retrieve_openalex(
     "Triceratops",
-    api_key=os.environ["OPENALEX_API_KEY"],
     user_agent=os.environ["WIKIPEDIA_USER_AGENT"],
+    api_key=os.environ["OPENALEX_API_KEY"],
 )
 ```
 
@@ -108,14 +116,14 @@ config = AiConfig()
 docs = retrieve_wikipedia(
     "Triceratops",
     user_agent=os.environ["WIKIPEDIA_USER_AGENT"],
-    metadata={"namespace": "example", "subject_id": "animal:triceratops"},
-).documents
+    metadata={"namespace": "mesozoica", "subject_id": "animal:triceratops"},
+)
 
 ensure_index(config=config)
 result = sync_documents(
     docs,
     scope={
-        "namespace": "example",
+        "namespace": "mesozoica",
         "subject_id": "animal:triceratops",
         "source": "wikipedia",
     },
@@ -152,7 +160,7 @@ query = "What horns did Triceratops have?"
 chunks = retrieve_chunks(
     query,
     query_embedding=embed_query(query, config=config),
-    filters={"namespace": "example", "subject_id": "animal:triceratops"},
+    filters={"namespace": "mesozoica", "subject_id": "animal:triceratops"},
     config=config,
 )
 answer = prompt_rag(
@@ -189,26 +197,24 @@ print(quiz.model_dump_json(indent=2))
 
 ## Sources (`mesozoica_ai.sources`)
 
+One module per source, same public shape: `retrieve_*(query, *, user_agent, …)`.
+
 | Function | Role |
 |---|---|
 | `retrieve_wikipedia` | Fetch Wikipedia sections → `list[Document]` |
-| `retrieve_openalex` | Fetch OpenAlex abstracts → `list[Document]` |
-| `store_documents` | Upsert one subject/source row in Postgres |
-| `acquire_knowledge` | Loop: retrieve + store for many subjects |
+| `retrieve_openalex` | Fetch OpenAlex GROBID TEI sections → `list[Document]` |
+
+Helpers live beside them (`http.py`, `helpers.py`). Checkpoint helpers live in
+`mesozoica_ai.common` (`store_documents`, `acquire_knowledge`). The multi-subject
+SQL wiring is `app.features.ingestion.jobs.dinosaur_knowledge`; the rag script is
+only a CLI over that job.
 
 ```python
-from mesozoica_ai.sources import acquire_knowledge, retrieve_wikipedia, store_documents
+from mesozoica_ai.common import store_documents
+from mesozoica_ai.sources import retrieve_wikipedia
 
 docs = retrieve_wikipedia(title, user_agent=..., metadata=...)
 store_documents(session, DinosaurKnowledge, subject=subject, source="wikipedia", documents=docs)
-
-acquire_knowledge(
-    session,
-    DinosaurKnowledge,
-    subjects=subjects,
-    user_agent=...,
-    openalex_api_key=...,
-)
 ```
 
 ---
@@ -281,27 +287,32 @@ chunks = retrieve_chunks(q, query_embedding=embed_query(q, config=config), filte
 answer = prompt_rag(MyModel, query=q, evidence=chunks, config=config)
 ```
 
-### B. Production dinosaur knowledge (app cron)
+### B. Production dinosaur knowledge
 
 ```text
-acquire_knowledge  → Postgres dinosaur_knowledge
-index_knowledge    → Azure Search
+retrieve_* + store_documents  → Postgres dinosaur_knowledge
+index_knowledge               → Azure Search
 ```
 
-The app cron wires settings + the `DinosaurKnowledge` table; the library owns
-retrieve/store/index.
+Run via the script (all genera by default) or the app cron `dinosaur_knowledge`
+(same `run_knowledge_job`):
+
+```bash
+.venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py
+.venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Tyrannosaurus --sources wikipedia
+.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Tyrannosaurus
+python -m app.crons.runner --job dinosaur_knowledge --dinos Tyrannosaurus
+```
 
 ### C. Example scripts in this repo
 
 ```bash
 cd backend
-.venv/bin/python rag/scripts/01_retrieve_documents.py
-.venv/bin/python rag/scripts/02_build_knowledge_base.py
+.venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Triceratops
+.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Triceratops
 .venv/bin/python rag/scripts/03_generate_quiz.py
 .venv/bin/python rag/scripts/04_evaluate_retrieval.py
 ```
-
-Edit the `TITLE` / dataset constants in each script to try another subject.
 
 ---
 

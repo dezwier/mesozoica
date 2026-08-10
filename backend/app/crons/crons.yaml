@@ -4,11 +4,11 @@
 # job granularity below. Use "0 * * * *" on the platform for weekly jobs.
 
 jobs:
-  # Build dinosaur knowledge: acquire Wikipedia/OpenAlex snapshots, then index
-  # into Azure AI Search. Enable after configuring Azure + OpenAlex credentials.
+  # Build dinosaur knowledge: 01 acquire (SQL) then 02 index (Azure).
+  # Enable after configuring Azure + OpenAlex credentials.
   - id: dinosaur_knowledge
     enabled: false
-    schedule: "0 1 * * 0"
+    schedule: "0 1 * * *"
     params:
       dry_run: false
       overwrite: false

@@ -10,9 +10,9 @@ from collections.abc import Callable, Iterable
 from datetime import datetime
 from typing import Any, Protocol
 
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
-from azure.core.exceptions import HttpResponseError
 
 from mesozoica_ai.common.errors import BatchWriteError
 from mesozoica_ai.common.models import (
@@ -73,6 +73,14 @@ class KnowledgeStore(Protocol):
         """Read indexed hash state for safe synchronization."""
         ...
 
+    def get_chunk_states_by_ids(self, ids: list[str]) -> dict[str, ChunkState]:
+        """Read hash state for exact chunk keys."""
+        ...
+
+    def existing_ids(self, ids: list[str]) -> set[str]:
+        """Return the subset of ``ids`` that exist in Azure."""
+        ...
+
 
 class AzureSearchKnowledgeStore:
     """Read/write adapter for the generic Azure AI Search index."""
@@ -100,12 +108,16 @@ class AzureSearchKnowledgeStore:
 
     def upsert(self, chunks: list[EmbeddedChunk]) -> None:
         """Upload full documents and retry only transient per-document failures."""
+        if not chunks:
+            return
         write_client = self._require_write_client()
         documents = [self._to_search_document(chunk, include_embedding=True) for chunk in chunks]
-        self._write("upload", documents, write_client.upload_documents)
+        self._write("merge_or_upload", documents, write_client.merge_or_upload_documents)
 
     def merge_metadata(self, chunks: list[KnowledgeChunk]) -> None:
         """Merge changed stored text/metadata without recomputing or replacing vectors."""
+        if not chunks:
+            return
         write_client = self._require_write_client()
         documents = [self._to_search_document(chunk, include_embedding=False) for chunk in chunks]
         self._write("merge", documents, write_client.merge_documents)
@@ -165,6 +177,8 @@ class AzureSearchKnowledgeStore:
 
     def delete(self, ids: list[str]) -> None:
         """Delete exact chunk keys with transient partial retry."""
+        if not ids:
+            return
         write_client = self._require_write_client()
         self._write(
             "delete",
@@ -181,28 +195,122 @@ class AzureSearchKnowledgeStore:
             )
         return self.write_client
 
+    def inventory_rows(self) -> list[dict[str, Any]]:
+        """Return all indexed chunk identity fields for inventory summaries."""
+        return self._search_all(
+            {},
+            select=["id", "subject_id", "source", "source_id"],
+        )
+
     def list_ids(self, filters: dict[str, Any]) -> list[str]:
         """List chunk keys within an exact scope."""
-        results = self.query_client.search(
-            search_text="*", filter=build_filter(filters), select=["id"]
-        )
-        return [result["id"] for result in results]
+        return [
+            str(result["id"])
+            for result in self._search_all(
+                filters, select=["id"]
+            )
+        ]
 
     def get_chunk_states(self, filters: dict[str, Any]) -> dict[str, ChunkState]:
-        """Read only hashes needed to classify incremental writes."""
-        results = self.query_client.search(
-            search_text="*",
-            filter=build_filter(filters),
-            select=["id", "embedding_hash", "document_hash", "pipeline_fingerprint"],
-        )
+        """Read only hashes needed to classify incremental writes.
+
+        Pages through the full scope — Azure's default ``top`` is 50, which would
+        otherwise make already-indexed chunks look missing and trigger re-embeds.
+        """
         return {
-            result["id"]: ChunkState(
+            str(result["id"]): ChunkState(
                 embedding_hash=result.get("embedding_hash"),
                 document_hash=result.get("document_hash"),
                 pipeline_fingerprint=result.get("pipeline_fingerprint"),
             )
-            for result in results
+            for result in self._search_all(
+                filters,
+                select=[
+                    "id",
+                    "embedding_hash",
+                    "document_hash",
+                    "pipeline_fingerprint",
+                ],
+            )
         }
+
+    def get_chunk_states_by_ids(self, ids: list[str]) -> dict[str, ChunkState]:
+        """Look up chunk hashes by exact document key (avoids incomplete search=* scans)."""
+        states: dict[str, ChunkState] = {}
+        client = self.write_client or self.query_client
+        for identifier in ids:
+            try:
+                result = client.get_document(key=identifier)
+            except ResourceNotFoundError:
+                continue
+            except HttpResponseError as exc:
+                # Some service errors still mean "not found" for a key probe.
+                status = getattr(exc, "status_code", None) or getattr(
+                    getattr(exc, "response", None), "status_code", None
+                )
+                if status == 404:
+                    continue
+                raise
+            states[str(result["id"])] = ChunkState(
+                embedding_hash=result.get("embedding_hash"),
+                document_hash=result.get("document_hash"),
+                pipeline_fingerprint=result.get("pipeline_fingerprint"),
+            )
+        return states
+
+    def existing_ids(self, ids: list[str]) -> set[str]:
+        """Return the subset of ``ids`` that exist in Azure (key lookup)."""
+        return set(self.get_chunk_states_by_ids(ids))
+
+    def _search_all(
+        self,
+        filters: dict[str, Any],
+        *,
+        select: list[str],
+        page_size: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """Return every document in ``filters``.
+
+        This live index has no sortable fields, so Azure does not emit
+        continuation tokens for ``search=*``. Explicit ``skip`` paging is
+        required — a single ``top`` page silently truncates (e.g. 50 of 219).
+        Prefer ``existing_ids`` / ``get_chunk_states_by_ids`` when checking
+        known SQL chunk keys.
+        """
+        page_size = min(max(page_size, 1), 1000)
+        by_id: dict[str, dict[str, Any]] = {}
+        skip = 0
+        reported: int | None = None
+        # Azure caps skip+top at 100_000 for a single query sequence.
+        while skip < 100_000:
+            results = self.query_client.search(
+                search_text="*",
+                filter=build_filter(filters),
+                select=select,
+                top=page_size,
+                skip=skip,
+                include_total_count=True,
+            )
+            page = [dict(row) for row in results]
+            if reported is None:
+                reported = results.get_count()
+            if not page:
+                break
+            for row in page:
+                by_id[str(row["id"])] = row
+            skip += len(page)
+            if len(page) < page_size:
+                break
+            if reported is not None and len(by_id) >= reported:
+                break
+        if reported is not None and len(by_id) < reported:
+            logger.warning(
+                "Azure search returned %s docs but count=%s (filter=%s)",
+                len(by_id),
+                reported,
+                filters,
+            )
+        return list(by_id.values())
 
     def _write(
         self,
@@ -256,9 +364,7 @@ class AzureSearchKnowledgeStore:
                     )
                 pending = transient
                 self.sleeper(min(8.0, 0.5 * 2 ** (attempt - 1)) + self.jitter() * 0.25)
-            logger.info("rag.index.batch", extra={"rag": {
-                "operation": operation, "document_count": len(batch),
-            }})
+            logger.debug("Azure %s batch (%s docs)", operation, len(batch))
 
     @staticmethod
     def _to_search_document(

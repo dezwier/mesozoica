@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 from mesozoica_ai.common.errors import SourceFetchError
 from mesozoica_ai.common.models import Document as SourceDocument
-from mesozoica_ai.sources.documents import with_metadata
+from mesozoica_ai.sources.helpers import with_metadata
 from mesozoica_ai.sources.http import RetryingJsonClient
 
 API_URL = "https://en.wikipedia.org/w/api.php"
@@ -20,7 +20,7 @@ _SKIPPED_SECTIONS = {
 
 
 def retrieve_wikipedia(
-    title: str,
+    query: str,
     *,
     user_agent: str,
     timeout: float | None = None,
@@ -28,13 +28,13 @@ def retrieve_wikipedia(
 ) -> list[SourceDocument]:
     """Fetch Wikipedia page sections as documents."""
     return with_metadata(
-        retrieve_wikipedia_documents(title, user_agent=user_agent, timeout=timeout),
+        _retrieve_documents(query, user_agent=user_agent, timeout=timeout),
         metadata,
     )
 
 
-def retrieve_wikipedia_documents(
-    title: str, *, user_agent: str, timeout: float | None = None
+def _retrieve_documents(
+    query: str, *, user_agent: str, timeout: float | None = None
 ) -> list[SourceDocument]:
     """Retrieve one Wikipedia page as normalized hierarchical section documents."""
     if not user_agent.strip():
@@ -44,7 +44,7 @@ def retrieve_wikipedia_documents(
         "read_timeout_seconds": timeout,
     }
     with RetryingJsonClient(**client_options) as client:
-        return _retrieve(title, user_agent=user_agent, client=client)
+        return _retrieve(query, user_agent=user_agent, client=client)
 
 
 def _retrieve(

@@ -48,10 +48,16 @@ def build_store(
     config: KnowledgeConfig, *, write_enabled: bool
 ) -> AzureSearchKnowledgeStore:
     """Build a read-only or write-capable Azure Search store."""
+    query_key = config.search_query_key
+    if query_key is None or not query_key.get_secret_value().strip():
+        raise KnowledgeBaseConfigurationError(
+            "AZURE_SEARCH_QUERY_KEY is required "
+            "(or set AZURE_SEARCH_ADMIN_KEY / AZURE_SEARCH_API_KEY for local fallback)"
+        )
     query_client = SearchClient(
         endpoint=config.search_endpoint,
         index_name=config.search_index,
-        credential=AzureKeyCredential(config.search_query_key.get_secret_value()),
+        credential=AzureKeyCredential(query_key.get_secret_value()),
     )
     if write_enabled and config.search_admin_key is None:
         raise KnowledgeBaseConfigurationError(
