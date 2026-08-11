@@ -12,20 +12,28 @@ class AssistantAnswer {
       sources: raw
           .whereType<Map<String, dynamic>>()
           .map(SourceLink.fromJson)
-          .where((s) => s.title.isNotEmpty && s.url.isNotEmpty)
+          .where((s) => s.text.isNotEmpty || (s.title.isNotEmpty && s.url.isNotEmpty))
           .toList(),
     );
   }
 }
 
 class SourceLink {
-  const SourceLink({required this.title, required this.url, required this.kind});
+  const SourceLink({
+    required this.title,
+    required this.url,
+    required this.kind,
+    this.text = '',
+  });
 
   final String title;
   final String url;
 
   /// `wikipedia`, `openalex`, or other source kind from the API.
   final String kind;
+
+  /// Cited evidence chunk text (may be empty for legacy responses).
+  final String text;
 
   bool get isWikipedia => kind == 'wikipedia';
 
@@ -34,6 +42,7 @@ class SourceLink {
       title: (json['title'] as String? ?? '').trim(),
       url: (json['url'] as String? ?? '').trim(),
       kind: (json['kind'] as String? ?? '').trim(),
+      text: (json['text'] as String? ?? '').trim(),
     );
   }
 }

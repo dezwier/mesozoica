@@ -20,7 +20,15 @@ ANSWER_INSTRUCTIONS = (
     "Be concise and accurate. Cite every chunk that supports the answer."
 )
 
-_MAX_SOURCES = 3
+_SCOPED_INSTRUCTIONS = (
+    "The player selected a dinosaur in application_context.selected_dinosaur. "
+    "Treat that dinosaur as the subject of the question unless the question "
+    "clearly asks about something else. Prefer evidence about that dinosaur. "
+    "Answer using only the supplied evidence. Be concise and accurate. "
+    "Cite every chunk that supports the answer."
+)
+
+_MAX_REFERENCES = 5
 
 
 def _display_title(record: dict[str, Any]) -> str:
@@ -35,33 +43,76 @@ def _display_title(record: dict[str, Any]) -> str:
     return f"{title} — {section}"
 
 
-def select_sources(
-    chunk_records: list[dict[str, Any]], *, limit: int = _MAX_SOURCES
+def select_references(
+    chunk_records: list[dict[str, Any]],
+    *,
+    cited_ids: list[str] | None = None,
+    limit: int = _MAX_REFERENCES,
 ) -> list[SourceLink]:
-    """Pick up to ``limit`` unique top-ranked sources (wiki sections or papers)."""
-    picked: list[SourceLink] = []
-    seen: set[str] = set()
+    """Return cited evidence chunks (fallback: top retrieved) with source links."""
+    by_id = {
+        str(record.get("id") or "").strip(): record
+        for record in chunk_records
+        if str(record.get("id") or "").strip()
+    }
+    ordered: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for cid in cited_ids or []:
+        key = str(cid).strip()
+        record = by_id.get(key)
+        if record is None or key in seen_ids:
+            continue
+        ordered.append(record)
+        seen_ids.add(key)
+        if len(ordered) >= limit:
+            break
+    if not ordered:
+        for record in chunk_records:
+            key = str(record.get("id") or "").strip()
+            if not key or key in seen_ids:
+                continue
+            ordered.append(record)
+            seen_ids.add(key)
+            if len(ordered) >= limit:
+                break
 
-    for record in chunk_records:
+    refs: list[SourceLink] = []
+    for record in ordered:
         title = _display_title(record)
         url = (record.get("source_url") or "").strip()
-        if not title or not url:
+        text = (record.get("text") or "").strip()
+        if not text:
             continue
-        key = str(record.get("document_id") or url)
-        if key in seen:
-            continue
-        seen.add(key)
+        if not title:
+            title = "Source"
         kind = str(record.get("source") or "unknown")
-        picked.append(SourceLink(title=title, url=url, kind=kind))
-        if len(picked) >= limit:
-            break
-    return picked
+        refs.append(SourceLink(title=title, url=url, kind=kind, text=text))
+    return refs
+
+
+def _normalize_subject_id(subject_id: str) -> str:
+    """Catalog ids are bare PKs; Azure chunks use ``kind:id``."""
+    scoped = subject_id.strip()
+    if scoped and ":" not in scoped:
+        return f"{DEFAULT_SUBJECT_KIND}:{scoped}"
+    return scoped
+
+
+def _prompt_query(question: str, *, subject_name: str | None) -> str:
+    """Fold the selected dinosaur into the request text when helpful."""
+    name = (subject_name or "").strip()
+    if not name:
+        return question
+    if name.casefold() in question.casefold():
+        return question
+    return f"About {name}: {question}"
 
 
 def ask_question(
     question: str,
     *,
     subject_id: str | None = None,
+    subject_name: str | None = None,
     config: AiConfig | None = None,
 ) -> AskResponse:
     """Retrieve evidence, generate a grounded answer, and attach source links."""
@@ -71,25 +122,41 @@ def ask_question(
 
     cfg = config or AiConfig()
     filters: dict[str, str] = {"namespace": DEFAULT_NAMESPACE}
-    scoped = (subject_id or "").strip()
+    application_context: dict[str, str] | None = None
+    instructions = ANSWER_INSTRUCTIONS
+
+    scoped = _normalize_subject_id(subject_id or "")
+    name = (subject_name or "").strip() or None
     if scoped:
-        # Catalog ids are bare dinosaur PKs; Azure chunks use kind:id.
-        if ":" not in scoped:
-            scoped = f"{DEFAULT_SUBJECT_KIND}:{scoped}"
+        # Azure OData: subject_id eq 'dinosaur:<id>'
         filters["subject_id"] = scoped
+        if name:
+            application_context = {
+                "selected_dinosaur": name,
+                "subject_id": scoped,
+            }
+            instructions = _SCOPED_INSTRUCTIONS
+
+    prompt_query = _prompt_query(query, subject_name=name)
     chunks = retrieve_chunks(
-        query,
-        query_embedding=embed_query(query, config=cfg),
+        prompt_query,
+        query_embedding=embed_query(prompt_query, config=cfg),
         filters=filters,
         config=cfg,
     )
     answer = prompt_rag(
         GroundedAnswer,
-        query=query,
+        query=prompt_query,
         evidence=chunks,
-        application_context=None,
-        instructions=ANSWER_INSTRUCTIONS,
+        application_context=application_context,
+        instructions=instructions,
         config=cfg,
     )
     records = [retrieved_chunk_record(chunk) for chunk in chunks]
-    return AskResponse(answer=answer.answer, sources=select_sources(records))
+    return AskResponse(
+        answer=answer.answer,
+        sources=select_references(
+            records,
+            cited_ids=list(answer.source_chunk_ids),
+        ),
+    )

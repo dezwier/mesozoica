@@ -10,17 +10,28 @@ class AskRequest(BaseModel):
         max_length=64,
         description="Optional dinosaur id to scope retrieval",
     )
+    subject_name: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Optional dinosaur display name included in the prompt",
+    )
 
 
 class SourceLink(BaseModel):
     title: str
     url: str
     kind: str = Field(description="Source kind, e.g. wikipedia or openalex")
+    text: str = Field(
+        default="",
+        description="Cited evidence chunk text shown under the answer",
+    )
 
 
 class AskResponse(BaseModel):
     answer: str
-    sources: list[SourceLink]
+    sources: list[SourceLink] = Field(
+        description="Cited evidence chunks with source links",
+    )
 
 
 class KnowledgeSubject(BaseModel):

@@ -48,6 +48,209 @@ class FieldAssistantChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: FieldAssistantOverlay.toggle,
+        borderRadius: BorderRadius.circular(20),
+        child: const Padding(
+          padding: EdgeInsets.all(6),
+          child: Icon(
+            Icons.auto_awesome,
+            size: 22,
+            // Same amber as the clear-day sun in [WeatherDisplay.weatherIconColor].
+            color: Color(0xFFFFC107),
+            shadows: _textShadows,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Q&A panel over the map (full width minus padding), top-aligned under HUD.
+class FieldAssistantPanel extends StatefulWidget {
+  const FieldAssistantPanel({
+    super.key,
+    required this.topClearance,
+    AssistantRepository? repository,
+  }) : _repository = repository;
+
+  /// Bottom of the profile HUD — panel sits in the space below it.
+  final double topClearance;
+
+  final AssistantRepository? _repository;
+
+  @override
+  State<FieldAssistantPanel> createState() => _FieldAssistantPanelState();
+}
+
+class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
+  late final AssistantRepository _repository =
+      widget._repository ?? AssistantRepository();
+
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  final TextEditingController _subjectQuery = TextEditingController();
+
+  bool _loading = false;
+  String? _error;
+  AssistantAnswer? _answer;
+
+  List<KnowledgeSubject> _subjects = const [];
+  bool _subjectsLoading = true;
+  String? _subjectsError;
+  KnowledgeSubject? _selectedSubject;
+  KnowledgeSources? _selectedSources;
+  bool _sourcesLoading = false;
+  String? _sourcesError;
+
+  /// 0 = answer + references, 1 = selected dinosaur's catalog sources.
+  int _resultTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadSubjects());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    _subjectQuery.dispose();
+    super.dispose();
+  }
+
+  void _dismissKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  void _close() {
+    _dismissKeyboard();
+    FieldAssistantOverlay.close();
+  }
+
+  void _onScrimTap() {
+    if (FocusManager.instance.primaryFocus?.hasFocus == true) {
+      _dismissKeyboard();
+      return;
+    }
+    if (!_loading) _close();
+  }
+
+  Future<void> _loadSubjects() async {
+    setState(() {
+      _subjectsLoading = true;
+      _subjectsError = null;
+    });
+    try {
+      final subjects = await _repository.listSubjects();
+      if (!mounted) return;
+      setState(() {
+        _subjects = subjects;
+        _subjectsLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _subjectsError = e.message;
+        _subjectsLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _subjectsError = 'Could not load dinosaurs.';
+        _subjectsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _selectSubject(KnowledgeSubject subject) async {
+    if (_sourcesLoading && _selectedSubject?.id == subject.id) return;
+    _dismissKeyboard();
+    setState(() {
+      _selectedSubject = subject;
+      _subjectQuery.text = subject.name;
+      _sourcesLoading = true;
+      _sourcesError = null;
+      _selectedSources = null;
+      if (_answer == null) _resultTab = 1;
+    });
+    try {
+      final sources = await _repository.listSources(subject.id);
+      if (!mounted) return;
+      if (_selectedSubject?.id != subject.id) return;
+      setState(() {
+        _selectedSources = sources;
+        _sourcesLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (_selectedSubject?.id != subject.id) return;
+      setState(() {
+        _sourcesError = e.message;
+        _sourcesLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      if (_selectedSubject?.id != subject.id) return;
+      setState(() {
+        _sourcesError = 'Could not load sources.';
+        _sourcesLoading = false;
+      });
+    }
+  }
+
+  Future<void> _send() async {
+    final question = _controller.text.trim();
+    if (question.isEmpty || _loading) return;
+
+    _dismissKeyboard();
+    setState(() {
+      _loading = true;
+      _error = null;
+      _answer = null;
+      _resultTab = 0;
+    });
+
+    try {
+      final result = await _repository.ask(
+        question,
+        subjectId: _selectedSubject?.id,
+        subjectName: _selectedSubject?.name,
+      );
+      if (!mounted) return;
+      setState(() {
+        _answer = result;
+        _loading = false;
+        _resultTab = 0;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not reach the field assistant.';
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _mutatePanelState(VoidCallback fn) => setState(fn);
+
+  @override
+  Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final keyboardInset = media.viewInsets.bottom;
     final availableHeight =
@@ -58,6 +261,8 @@ class FieldAssistantChip extends StatelessWidget {
     final askHint = _selectedSubject == null
         ? 'Ask about dinosaurs…'
         : 'Ask about ${_selectedSubject!.name}…';
+    // With an answer, give the tab body room; otherwise hug content.
+    final expandBody = hasAnswer;
 
     return Positioned.fill(
       child: Stack(
@@ -90,7 +295,8 @@ class FieldAssistantChip extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 10, 10, 14),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisSize:
+                            expandBody ? MainAxisSize.max : MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Row(
@@ -258,7 +464,7 @@ class FieldAssistantChip extends StatelessWidget {
                               ),
                             ),
                           ],
-                          if (_sourcesError != null) ...[
+                          if (_sourcesError != null && !hasAnswer) ...[
                             const SizedBox(height: 8),
                             Text(
                               _sourcesError!,
@@ -271,66 +477,14 @@ class FieldAssistantChip extends StatelessWidget {
                           ],
                           if (hasBrowseBody) ...[
                             const SizedBox(height: 12),
-                            Flexible(
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (_sourcesLoading)
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                        child: Center(
-                                          child: SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: MapChromeTheme.cream,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    if (_selectedSources != null)
-                                      _buildSourceGroups(_selectedSources!),
-                                    if (hasAnswer) ...[
-                                      if (_selectedSources != null)
-                                        const SizedBox(height: 14),
-                                      Text(
-                                        _answer!.answer,
-                                        style: const TextStyle(
-                                          color: MapChromeTheme.cream,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      if (_answer!.sources.isNotEmpty) ...[
-                                        const SizedBox(height: 12),
-                                        const Text(
-                                          'Answer sources',
-                                          style: TextStyle(
-                                            color: MapChromeTheme.mutedGold,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        for (final source
-                                            in _answer!.sources)
-                                          _sourceLinkRow(
-                                            title: source.title,
-                                            url: source.url,
-                                            isWikipedia: source.isWikipedia,
-                                          ),
-                                      ],
-                                    ],
-                                  ],
+                            if (hasAnswer)
+                              Flexible(child: _buildAnswerTabs())
+                            else
+                              Flexible(
+                                child: SingleChildScrollView(
+                                  child: _buildCatalogBrowseBody(),
                                 ),
                               ),
-                            ),
                           ],
                         ],
                       ),

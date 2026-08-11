@@ -39,11 +39,11 @@ extension on _FieldAssistantPanelState {
       optionsBuilder: (textEditingValue) {
         final q = textEditingValue.text.trim().toLowerCase();
         if (q.isEmpty) {
-          return _subjects.take(40);
+          return _subjects.take(120);
         }
         return _subjects
             .where((s) => s.name.toLowerCase().contains(q))
-            .take(40);
+            .take(120);
       },
       onSelected: _selectSubject,
       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
@@ -91,6 +91,7 @@ extension on _FieldAssistantPanelState {
                     onPressed: () {
                       controller.clear();
                       _subjectQuery.clear();
+                      _dismissKeyboard();
                       _mutatePanelState(() {
                         _selectedSubject = null;
                         _selectedSources = null;
@@ -141,45 +142,62 @@ extension on _FieldAssistantPanelState {
               });
             }
           },
-          onSubmitted: (_) => onFieldSubmitted(),
+          onSubmitted: (_) {
+            _dismissKeyboard();
+            onFieldSubmitted();
+          },
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
         final opts = options.toList(growable: false);
+        final media = MediaQuery.of(context);
+        // Fill from the field down to the keyboard / screen bottom.
+        final maxHeight = (media.size.height -
+                media.viewInsets.bottom -
+                media.padding.top -
+                120)
+            .clamp(220.0, media.size.height);
+        final maxWidth = media.size.width - 48;
         return Align(
           alignment: Alignment.topLeft,
           child: Material(
             color: Colors.transparent,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 180, maxWidth: 360),
-              child: DecoratedBox(
-                decoration: MapChromeDecorations.leatherPanel(
-                  borderRadius: BorderRadius.circular(10),
-                  soft: true,
-                ),
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  shrinkWrap: true,
-                  itemCount: opts.length,
-                  itemBuilder: (context, index) {
-                    final subject = opts[index];
-                    return InkWell(
-                      onTap: () => onSelected(subject),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Text(
-                          subject.name,
-                          style: const TextStyle(
-                            color: MapChromeTheme.cream,
-                            fontSize: 13,
+              constraints: BoxConstraints(
+                maxHeight: maxHeight,
+                maxWidth: maxWidth,
+              ),
+              child: SizedBox(
+                width: maxWidth,
+                child: DecoratedBox(
+                  decoration: MapChromeDecorations.leatherPanel(
+                    borderRadius: BorderRadius.circular(10),
+                    soft: true,
+                  ),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    shrinkWrap: true,
+                    itemCount: opts.length,
+                    itemBuilder: (context, index) {
+                      final subject = opts[index];
+                      return InkWell(
+                        onTap: () => onSelected(subject),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            subject.name,
+                            style: const TextStyle(
+                              color: MapChromeTheme.cream,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -187,6 +205,235 @@ extension on _FieldAssistantPanelState {
         );
       },
     );
+  }
+
+  Widget _buildCatalogBrowseBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_sourcesLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: MapChromeTheme.cream,
+                ),
+              ),
+            ),
+          ),
+        if (_selectedSources != null) _buildSourceGroups(_selectedSources!),
+      ],
+    );
+  }
+
+  Widget _buildAnswerTabs() {
+    final answer = _answer!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildResultTabBar(),
+        const SizedBox(height: 10),
+        Expanded(
+          child: SingleChildScrollView(
+            child: _resultTab == 0
+                ? _buildAnswerBody(answer)
+                : _buildCatalogSourcesTab(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultTabBar() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: MapChromeTheme.leatherSoft,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: MapChromeTheme.brassRim.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(3),
+        child: Row(
+          children: [
+            Expanded(
+              child: _resultSegment(
+                label: 'Answer',
+                selected: _resultTab == 0,
+                onTap: () => _mutatePanelState(() => _resultTab = 0),
+              ),
+            ),
+            Expanded(
+              child: _resultSegment(
+                label: 'Sources',
+                selected: _resultTab == 1,
+                onTap: () => _mutatePanelState(() => _resultTab = 1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resultSegment({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected ? MapChromeTheme.leatherSoftMid : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected
+                  ? MapChromeTheme.cream
+                  : MapChromeTheme.mutedGold.withValues(alpha: 0.85),
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnswerBody(AssistantAnswer answer) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          answer.answer,
+          style: const TextStyle(
+            color: MapChromeTheme.cream,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        if (answer.sources.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text(
+            'References',
+            style: TextStyle(
+              color: MapChromeTheme.mutedGold,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final source in answer.sources) ...[
+            _referenceChunkCard(source),
+            const SizedBox(height: 10),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _referenceChunkCard(SourceLink source) {
+    final hasLink = source.url.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (source.text.isNotEmpty)
+          Text(
+            source.text,
+            style: TextStyle(
+              color: MapChromeTheme.cream.withValues(alpha: 0.92),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        if (source.title.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          InkWell(
+            onTap: hasLink ? () => _openUrl(source.url) : null,
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    source.isWikipedia
+                        ? Icons.menu_book_outlined
+                        : Icons.article_outlined,
+                    size: 13,
+                    color: MapChromeTheme.hudGold,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      source.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: MapChromeTheme.hudGold,
+                        fontSize: 12,
+                        height: 1.3,
+                        decoration: hasLink ? TextDecoration.underline : null,
+                        decorationColor: MapChromeTheme.hudGold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCatalogSourcesTab() {
+    if (_sourcesLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: MapChromeTheme.cream,
+            ),
+          ),
+        ),
+      );
+    }
+    if (_sourcesError != null) {
+      return Text(
+        _sourcesError!,
+        style: const TextStyle(
+          color: Color(0xFFE07060),
+          fontSize: 12,
+          height: 1.3,
+        ),
+      );
+    }
+    if (_selectedSources == null) {
+      return const Text(
+        'Select a dinosaur above to browse its sources.',
+        style: TextStyle(
+          color: MapChromeTheme.mutedGold,
+          fontSize: 13,
+          height: 1.35,
+        ),
+      );
+    }
+    return _buildSourceGroups(_selectedSources!);
   }
 
   Widget _buildSourceGroups(KnowledgeSources sources) {

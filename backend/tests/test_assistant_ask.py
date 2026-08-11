@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.features.assistant.application.ask import ask_question, select_sources
+from app.features.assistant.application.ask import ask_question, select_references
 from app.features.assistant.schemas import SourceLink
 from mesozoica_ai.common.metadata import SourceMetadata
 from mesozoica_ai.common.models import RetrievedChunk
@@ -38,81 +38,82 @@ def _chunk(
     )
 
 
-def test_select_sources_keeps_retrieval_order_mixed_wiki_and_papers() -> None:
+def test_select_references_prefers_cited_chunk_ids() -> None:
     records = [
         {
+            "id": "c1",
             "document_id": "wiki-1",
             "source": "wikipedia",
             "title": "Abrosaurus",
             "section": "Paleobiology",
             "source_url": "https://en.wikipedia.org/wiki/Abrosaurus#Paleobiology",
+            "text": "Chunk one about size.",
         },
         {
+            "id": "c2",
             "document_id": "oa-1",
             "source": "openalex",
             "title": "Paper A",
             "source_url": "https://doi.org/10.1/a",
+            "text": "Chunk two about diet.",
         },
         {
-            "document_id": "oa-1",
-            "source": "openalex",
-            "title": "Paper A again",
-            "source_url": "https://doi.org/10.1/a",
-        },
-        {
-            "document_id": "wiki-2",
-            "source": "wikipedia",
-            "title": "Abrosaurus",
-            "section": "Introduction",
-            "source_url": "https://en.wikipedia.org/wiki/Abrosaurus",
-        },
-        {
+            "id": "c3",
             "document_id": "oa-2",
             "source": "openalex",
             "title": "Paper B",
             "source_url": "https://doi.org/10.1/b",
-        },
-        {
-            "document_id": "oa-3",
-            "source": "openalex",
-            "title": "Paper C",
-            "source_url": "https://doi.org/10.1/c",
+            "text": "Chunk three unused.",
         },
     ]
-    sources = select_sources(records)
-    assert sources == [
+    refs = select_references(records, cited_ids=["c2", "c1"])
+    assert refs == [
+        SourceLink(
+            title="Paper A",
+            url="https://doi.org/10.1/a",
+            kind="openalex",
+            text="Chunk two about diet.",
+        ),
         SourceLink(
             title="Abrosaurus — Paleobiology",
             url="https://en.wikipedia.org/wiki/Abrosaurus#Paleobiology",
             kind="wikipedia",
-        ),
-        SourceLink(title="Paper A", url="https://doi.org/10.1/a", kind="openalex"),
-        SourceLink(
-            title="Abrosaurus",
-            url="https://en.wikipedia.org/wiki/Abrosaurus",
-            kind="wikipedia",
+            text="Chunk one about size.",
         ),
     ]
 
 
-def test_select_sources_skips_blank_titles() -> None:
+def test_select_references_falls_back_to_retrieval_order() -> None:
     records = [
         {
-            "document_id": "oa-1",
+            "id": "c1",
             "source": "openalex",
             "title": "Only Paper",
             "source_url": "https://doi.org/10.1/a",
+            "text": "Body.",
         },
         {
-            "document_id": "wiki-2",
+            "id": "c2",
             "source": "wikipedia",
             "title": "",
             "source_url": "https://en.wikipedia.org/wiki/Empty",
+            "text": "Wiki body.",
         },
     ]
-    sources = select_sources(records)
-    assert sources == [
-        SourceLink(title="Only Paper", url="https://doi.org/10.1/a", kind="openalex"),
+    refs = select_references(records, cited_ids=[])
+    assert refs == [
+        SourceLink(
+            title="Only Paper",
+            url="https://doi.org/10.1/a",
+            kind="openalex",
+            text="Body.",
+        ),
+        SourceLink(
+            title="Source",
+            url="https://en.wikipedia.org/wiki/Empty",
+            kind="wikipedia",
+            text="Wiki body.",
+        ),
     ]
 
 
@@ -125,6 +126,7 @@ def test_ask_question_happy_path() -> None:
             title="Abrosaurus",
             section="Diet",
             source_url="https://en.wikipedia.org/wiki/Abrosaurus#Diet",
+            text="Abrosaurus ate plants.",
         ),
         _chunk(
             chunk_id="c2",
@@ -132,6 +134,7 @@ def test_ask_question_happy_path() -> None:
             source="openalex",
             title="Diet of Abrosaurus",
             source_url="https://doi.org/10.1/diet",
+            text="Herbivore evidence.",
         ),
     ]
     grounded = GroundedAnswer(answer="Abrosaurus was a herbivore.", source_chunk_ids=["c1"])
@@ -163,11 +166,7 @@ def test_ask_question_happy_path() -> None:
             title="Abrosaurus — Diet",
             url="https://en.wikipedia.org/wiki/Abrosaurus#Diet",
             kind="wikipedia",
-        ),
-        SourceLink(
-            title="Diet of Abrosaurus",
-            url="https://doi.org/10.1/diet",
-            kind="openalex",
+            text="Abrosaurus ate plants.",
         ),
     ]
 
@@ -179,7 +178,7 @@ def test_ask_question_scopes_filters_when_subject_id_set() -> None:
         patch(
             "app.features.assistant.application.ask.embed_query",
             return_value=[0.1],
-        ),
+        ) as embed,
         patch(
             "app.features.assistant.application.ask.retrieve_chunks",
             return_value=[],
@@ -187,14 +186,27 @@ def test_ask_question_scopes_filters_when_subject_id_set() -> None:
         patch(
             "app.features.assistant.application.ask.prompt_rag",
             return_value=grounded,
-        ),
+        ) as prompt,
     ):
-        ask_question("How big?", subject_id="42", config=config)
+        ask_question(
+            "How big?",
+            subject_id="42",
+            subject_name="Abrosaurus",
+            config=config,
+        )
 
+    assert embed.call_args.args[0] == "About Abrosaurus: How big?"
     assert retrieve.call_args.kwargs["filters"] == {
         "namespace": "mesozoica",
         "subject_id": "dinosaur:42",
     }
+    assert retrieve.call_args.args[0] == "About Abrosaurus: How big?"
+    assert prompt.call_args.kwargs["query"] == "About Abrosaurus: How big?"
+    assert prompt.call_args.kwargs["application_context"] == {
+        "selected_dinosaur": "Abrosaurus",
+        "subject_id": "dinosaur:42",
+    }
+    assert "selected_dinosaur" in prompt.call_args.kwargs["instructions"]
 
 
 def test_ask_question_keeps_prefixed_subject_id() -> None:
@@ -217,6 +229,34 @@ def test_ask_question_keeps_prefixed_subject_id() -> None:
         ask_question("How big?", subject_id="dinosaur:7", config=config)
 
     assert retrieve.call_args.kwargs["filters"]["subject_id"] == "dinosaur:7"
+
+
+def test_ask_question_does_not_duplicate_name_in_query() -> None:
+    grounded = GroundedAnswer(answer="Scoped.", source_chunk_ids=["c1"])
+    config = MagicMock()
+    with (
+        patch(
+            "app.features.assistant.application.ask.embed_query",
+            return_value=[0.1],
+        ),
+        patch(
+            "app.features.assistant.application.ask.retrieve_chunks",
+            return_value=[],
+        ) as retrieve,
+        patch(
+            "app.features.assistant.application.ask.prompt_rag",
+            return_value=grounded,
+        ) as prompt,
+    ):
+        ask_question(
+            "How big was Abrosaurus?",
+            subject_id="42",
+            subject_name="Abrosaurus",
+            config=config,
+        )
+
+    assert retrieve.call_args.args[0] == "How big was Abrosaurus?"
+    assert prompt.call_args.kwargs["query"] == "How big was Abrosaurus?"
 
 
 def test_ask_question_rejects_blank() -> None:

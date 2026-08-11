@@ -30,7 +30,11 @@ async def ask(
     """Answer a natural-language paleontology question from indexed knowledge."""
     _ = current_user
     try:
-        return ask_question(body.question, subject_id=body.subject_id)
+        return ask_question(
+            body.question,
+            subject_id=body.subject_id,
+            subject_name=body.subject_name,
+        )
     except InsufficientEvidenceError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

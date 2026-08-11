@@ -10,11 +10,19 @@ class AssistantRepository {
 
   final ApiTransport _transport;
 
-  Future<AssistantAnswer> ask(String question, {String? subjectId}) async {
+  Future<AssistantAnswer> ask(
+    String question, {
+    String? subjectId,
+    String? subjectName,
+  }) async {
     final body = <String, dynamic>{'question': question};
     final scoped = subjectId?.trim();
     if (scoped != null && scoped.isNotEmpty) {
       body['subject_id'] = scoped;
+    }
+    final name = subjectName?.trim();
+    if (name != null && name.isNotEmpty) {
+      body['subject_name'] = name;
     }
     final data = await _transport.post('/api/v1/assistant/ask', body: body);
     return AssistantAnswer.fromJson(data);
