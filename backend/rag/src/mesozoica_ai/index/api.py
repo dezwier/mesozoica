@@ -27,6 +27,7 @@ from mesozoica_ai.common.models import (
     RetrievedChunk,
     SyncResult,
 )
+from .embeddings import Embedder
 from .runtime import build_chunker, build_embedder, build_index, build_store
 
 logger = logging.getLogger(__name__)
@@ -42,11 +43,15 @@ def chunk_documents(
 
 
 def embed_chunks(
-    chunks: Sequence[KnowledgeChunk | Mapping[str, Any]], *, config: KnowledgeConfig
+    chunks: Sequence[KnowledgeChunk | Mapping[str, Any]],
+    *,
+    config: KnowledgeConfig,
+    embedder: Embedder | None = None,
 ) -> list[EmbeddedChunk]:
     """Embed prepared chunks using their contextual embedding text."""
     normalized = [_validate_model(KnowledgeChunk, chunk) for chunk in chunks]
-    return build_embedder(config).embed(normalized)
+    active = embedder or build_embedder(config)
+    return active.embed(normalized)
 
 
 def prepare_embeddings(
@@ -54,11 +59,16 @@ def prepare_embeddings(
     *,
     config: KnowledgeConfig,
     existing: Sequence[EmbeddedChunk | Mapping[str, Any]] | None = None,
+    embedder: Embedder | None = None,
 ) -> PrepareEmbeddingsResult:
     """Chunk documents and embed only chunks whose vector content changed.
 
     ``existing`` is typically prior ``embedded_chunks`` from SQL. Matching
     ``id`` + ``embedding_hash`` + ``pipeline_fingerprint`` reuses vectors.
+
+    Pass a shared ``embedder`` from long batch jobs. Recreating the Azure
+    OpenAI client per dinosaur triggers intermittent ``unknown_model`` 400s
+    on Foundry ``/openai/v1`` endpoints.
     """
     normalized = _normalize_documents(documents)
     chunker = build_chunker(config)
@@ -87,7 +97,8 @@ def prepare_embeddings(
             )
         else:
             to_embed.append(chunk)
-    freshly_embedded = build_embedder(config).embed(to_embed) if to_embed else []
+    active = embedder or build_embedder(config)
+    freshly_embedded = active.embed(to_embed) if to_embed else []
     by_id = {chunk.id: chunk for chunk in (*reused, *freshly_embedded)}
     ordered = [by_id[chunk.id] for chunk in chunks]
     if to_embed:

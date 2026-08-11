@@ -108,10 +108,19 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.isActive) return;
-      context.read<LocationService>().setMapForeground(true);
+      // Soft freeze (field assistant): keep Mapbox markers warm, but stop
+      // high-rate GPS / heading so the camera does not keep turning.
+      context.read<LocationService>().setMapForeground(
+        widget.highPrecisionGps && !widget.freezeMotion,
+      );
       context.read<map_data.MapController>().load();
-      context.read<AerialSessionController>().startTracking();
-      _bindAerialProgressListener();
+      if (widget.freezeMotion) {
+        context.read<AerialSessionController>().stopTracking();
+        _unbindAerialProgressListener();
+      } else {
+        context.read<AerialSessionController>().startTracking();
+        _bindAerialProgressListener();
+      }
       _bindLocationListenable();
       _syncHeadingWanted();
       _consumePendingFocus();
@@ -126,6 +135,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
     final guidance = context.read<GuidanceSessionController>();
     final wanted =
         widget.isActive &&
+        !widget.freezeMotion &&
         (_rotateMap || (guidance.isActive && guidance.showNeedle));
     unawaited(context.read<LocationService>().setHeadingWanted(wanted));
   }

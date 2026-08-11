@@ -5,30 +5,99 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:mesozoica/core/networking/api_client.dart';
 import 'package:mesozoica/features/assistant/data/assistant_repository.dart';
 import 'package:mesozoica/features/assistant/domain/assistant_answer.dart';
-import 'package:mesozoica/widgets/map/vintage_guidance_compass.dart';
+import 'package:mesozoica/theme/map_chrome_decorations.dart';
+import 'package:mesozoica/theme/map_chrome_theme.dart';
 
-/// Compact map chrome: tap to expand an AI question field under the profile HUD.
-class FieldAssistantChip extends StatefulWidget {
-  const FieldAssistantChip({super.key, AssistantRepository? repository})
-    : _repository = repository;
+/// Lifecycle for the field-assistant panel (map freeze + chrome via [AppShell]).
+abstract final class FieldAssistantOverlay {
+  FieldAssistantOverlay._();
+
+  static final ValueNotifier<int> openCount = ValueNotifier<int>(0);
+
+  static bool get isOpen => openCount.value > 0;
+
+  static void open() {
+    if (openCount.value == 0) openCount.value = 1;
+  }
+
+  static void close() {
+    if (openCount.value > 0) openCount.value = 0;
+  }
+
+  static void toggle() {
+    if (isOpen) {
+      close();
+    } else {
+      open();
+    }
+  }
+}
+
+/// Subtle map-chrome icon that opens the field assistant.
+class FieldAssistantChip extends StatelessWidget {
+  const FieldAssistantChip({super.key});
+
+  static const _textShadows = <Shadow>[
+    Shadow(color: Color(0x66000000), blurRadius: 4, offset: Offset(0, 1)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: FieldAssistantOverlay.toggle,
+        borderRadius: BorderRadius.circular(20),
+        child: const Padding(
+          padding: EdgeInsets.all(6),
+          child: Icon(
+            Icons.auto_awesome,
+            size: 22,
+            // Same amber as the clear-day sun in [WeatherDisplay.weatherIconColor].
+            color: Color(0xFFFFC107),
+            shadows: _textShadows,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Centered Q&A panel over the frozen map (full width minus padding).
+class FieldAssistantPanel extends StatefulWidget {
+  const FieldAssistantPanel({
+    super.key,
+    required this.topClearance,
+    AssistantRepository? repository,
+  }) : _repository = repository;
+
+  /// Bottom of the profile HUD — panel centers in the space below it.
+  final double topClearance;
 
   final AssistantRepository? _repository;
 
   @override
-  State<FieldAssistantChip> createState() => _FieldAssistantChipState();
+  State<FieldAssistantPanel> createState() => _FieldAssistantPanelState();
 }
 
-class _FieldAssistantChipState extends State<FieldAssistantChip> {
+class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   late final AssistantRepository _repository =
       widget._repository ?? AssistantRepository();
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
-  bool _expanded = false;
   bool _loading = false;
   String? _error;
   AssistantAnswer? _answer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
 
   @override
   void dispose() {
@@ -37,19 +106,9 @@ class _FieldAssistantChipState extends State<FieldAssistantChip> {
     super.dispose();
   }
 
-  void _collapse() {
+  void _close() {
     _focusNode.unfocus();
-    setState(() {
-      _expanded = false;
-      _error = null;
-    });
-  }
-
-  void _expand() {
-    setState(() => _expanded = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _focusNode.requestFocus();
-    });
+    FieldAssistantOverlay.close();
   }
 
   Future<void> _send() async {
@@ -92,279 +151,319 @@ class _FieldAssistantChipState extends State<FieldAssistantChip> {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        alignment: Alignment.topLeft,
-        child: _expanded ? _buildExpanded() : _buildCollapsed(),
-      ),
-    );
-  }
+    final media = MediaQuery.of(context);
+    final keyboardInset = media.viewInsets.bottom;
+    final availableHeight =
+        media.size.height - widget.topClearance - keyboardInset - 32;
+    final hasAnswer = _answer != null;
+    // Compact when asking; grow to most of the visible area once answered.
+    final panelMaxHeight = availableHeight * (hasAnswer ? 0.78 : 0.42);
 
-  Widget _buildCollapsed() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _expand,
-        borderRadius: BorderRadius.circular(10),
-        child: DecoratedBox(
-          decoration: _chipDecoration,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.auto_awesome,
-                  size: 15,
-                  color: VintageInstrumentStyle.gold,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'Ask AI',
-                  style: TextStyle(
-                    color: VintageInstrumentStyle.brassText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    height: 1,
-                  ),
-                ),
-              ],
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          // Full-screen dim (including under the profile HUD) so removing
+          // MapTopFade does not leave a bright/white band at the top.
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _loading ? null : _close,
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.45),
+              ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExpanded() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 320),
-      child: DecoratedBox(
-        decoration: _chipDecoration,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 8, 10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.auto_awesome,
-                    size: 15,
-                    color: VintageInstrumentStyle.gold,
-                  ),
-                  const SizedBox(width: 6),
-                  const Expanded(
-                    child: Text(
-                      'Field assistant',
-                      style: TextStyle(
-                        color: VintageInstrumentStyle.brassText,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                    onPressed: _loading ? null : _collapse,
-                    icon: const Icon(
-                      Icons.close,
-                      size: 16,
-                      color: VintageInstrumentStyle.brassMuted,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      enabled: !_loading,
-                      minLines: 1,
-                      maxLines: 3,
-                      maxLength: 500,
-                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      style: const TextStyle(
-                        color: Color(0xFFF8F4EC),
-                        fontSize: 13,
-                        height: 1.3,
-                      ),
-                      cursorColor: VintageInstrumentStyle.gold,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        counterText: '',
-                        hintText: 'Ask about dinosaurs…',
-                        hintStyle: TextStyle(
-                          color: VintageInstrumentStyle.brassMuted.withValues(
-                            alpha: 0.85,
-                          ),
-                          fontSize: 13,
-                        ),
-                        filled: true,
-                        fillColor: VintageInstrumentStyle.dialFace,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: VintageInstrumentStyle.brassRim,
-                            width: 1,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: VintageInstrumentStyle.brassRim.withValues(
-                              alpha: 0.7,
+          Padding(
+            // Sit below the profile HUD; shrink above the keyboard when open.
+            padding: EdgeInsets.only(
+              top: widget.topClearance + 16,
+              bottom: keyboardInset + 16,
+              left: 16,
+              right: 16,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: panelMaxHeight),
+                child: Material(
+                  color: Colors.transparent,
+                  child: DecoratedBox(
+                    decoration: _panelDecoration,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 10, 14),
+                      child: Column(
+                        mainAxisSize: hasAnswer
+                            ? MainAxisSize.max
+                            : MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.auto_awesome,
+                                  size: 16,
+                                  color: MapChromeTheme.hudGold,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Field assistant',
+                                    style: TextStyle(
+                                      color: MapChromeTheme.cream,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  onPressed: _loading ? null : _close,
+                                  icon: Icon(
+                                    Icons.close,
+                                    size: 18,
+                                    color: MapChromeTheme.mutedGold.withValues(
+                                      alpha: 0.85,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: VintageInstrumentStyle.gold,
-                            width: 1.2,
-                          ),
-                        ),
-                      ),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  IconButton(
-                    onPressed: _loading ? null : _send,
-                    style: IconButton.styleFrom(
-                      backgroundColor: VintageInstrumentStyle.brassMid,
-                      foregroundColor: VintageInstrumentStyle.gold,
-                      disabledForegroundColor: VintageInstrumentStyle.brassMuted,
-                      minimumSize: const Size(36, 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                    icon: _loading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: VintageInstrumentStyle.gold,
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _controller,
+                                    focusNode: _focusNode,
+                                    enabled: !_loading,
+                                    minLines: 1,
+                                    maxLines: 4,
+                                    maxLength: 500,
+                                    maxLengthEnforcement:
+                                        MaxLengthEnforcement.enforced,
+                                    style: const TextStyle(
+                                      color: MapChromeTheme.cream,
+                                      fontSize: 14,
+                                      height: 1.3,
+                                    ),
+                                    cursorColor: MapChromeTheme.mutedGold,
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      counterText: '',
+                                      hintText: 'Ask about dinosaurs…',
+                                      hintStyle: TextStyle(
+                                        color: MapChromeTheme.mutedGold
+                                            .withValues(alpha: 0.7),
+                                        fontSize: 14,
+                                      ),
+                                      filled: true,
+                                      fillColor: MapChromeTheme.leatherSoft,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                          color: MapChromeTheme.chromeBorder,
+                                          width:
+                                              MapChromeTheme.chromeBorderWidth,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                          color: MapChromeTheme.brassRim
+                                              .withValues(alpha: 0.35),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                          color: MapChromeTheme.brassMid
+                                              .withValues(alpha: 0.7),
+                                          width: 1.1,
+                                        ),
+                                      ),
+                                    ),
+                                    textInputAction: TextInputAction.send,
+                                    onSubmitted: (_) => _send(),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 40,
+                                  height: 40,
+                                  child: Material(
+                                    color: MapChromeTheme.leatherSoftMid,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      side: BorderSide(
+                                        color: MapChromeTheme.chromeBorder,
+                                      ),
+                                    ),
+                                    child: InkWell(
+                                      onTap: _loading ? null : _send,
+                                      customBorder: const CircleBorder(),
+                                      child: Center(
+                                        child: _loading
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color:
+                                                          MapChromeTheme.cream,
+                                                    ),
+                                              )
+                                            : const Icon(
+                                                Icons.send,
+                                                size: 18,
+                                                color: MapChromeTheme.cream,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          )
-                        : const Icon(Icons.send, size: 16),
-                  ),
-                ],
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  style: const TextStyle(
-                    color: VintageInstrumentStyle.stop,
-                    fontSize: 12,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-              if (_answer != null) ...[
-                const SizedBox(height: 10),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 160),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      _answer!.answer,
-                      style: const TextStyle(
-                        color: Color(0xFFF8F4EC),
-                        fontSize: 13,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ),
-                if (_answer!.sources.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Sources',
-                    style: TextStyle(
-                      color: VintageInstrumentStyle.brassMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  for (final source in _answer!.sources)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: InkWell(
-                        onTap: () => _openSource(source),
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Icon(
-                                  source.isWikipedia
-                                      ? Icons.menu_book_outlined
-                                      : Icons.article_outlined,
-                                  size: 12,
-                                  color: VintageInstrumentStyle.gold,
+                            if (_error != null) ...[
+                              const SizedBox(height: 10),
+                              Text(
+                                _error!,
+                                style: const TextStyle(
+                                  color: Color(0xFFE07060),
+                                  fontSize: 13,
+                                  height: 1.3,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                            ],
+                            if (hasAnswer) ...[
+                              const SizedBox(height: 12),
                               Expanded(
-                                child: Text(
-                                  source.title,
-                                  style: const TextStyle(
-                                    color: VintageInstrumentStyle.gold,
-                                    fontSize: 12,
-                                    height: 1.3,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: VintageInstrumentStyle.gold,
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        _answer!.answer,
+                                        style: const TextStyle(
+                                          color: MapChromeTheme.cream,
+                                          fontSize: 14,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                      if (_answer!.sources.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        const Text(
+                                          'Sources',
+                                          style: TextStyle(
+                                            color: MapChromeTheme.mutedGold,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        for (final source
+                                            in _answer!.sources)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 2,
+                                            ),
+                                            child: InkWell(
+                                              onTap: () =>
+                                                  _openSource(source),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3,
+                                                    ),
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            top: 2,
+                                                          ),
+                                                      child: Icon(
+                                                        source.isWikipedia
+                                                            ? Icons
+                                                                  .menu_book_outlined
+                                                            : Icons
+                                                                  .article_outlined,
+                                                        size: 13,
+                                                        color: MapChromeTheme
+                                                            .hudGold,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Expanded(
+                                                      child: Text(
+                                                        source.title,
+                                                        style:
+                                                            const TextStyle(
+                                                              color:
+                                                                  MapChromeTheme
+                                                                      .hudGold,
+                                                              fontSize: 13,
+                                                              height: 1.3,
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .underline,
+                                                              decorationColor:
+                                                                  MapChromeTheme
+                                                                      .hudGold,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ),
                             ],
-                          ),
+                          ],
                         ),
                       ),
                     ),
-                ],
-              ],
-            ],
-          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
     );
   }
 
-  static final BoxDecoration _chipDecoration = BoxDecoration(
-    color: VintageInstrumentStyle.dialFace.withValues(alpha: 0.78),
-    borderRadius: BorderRadius.circular(10),
-    border: Border.all(color: VintageInstrumentStyle.brassRim, width: 1.2),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.35),
-        blurRadius: 8,
-        offset: const Offset(0, 2),
-      ),
-    ],
-  );
+  static final BoxDecoration _panelDecoration =
+      MapChromeDecorations.leatherPanel(
+        borderRadius: BorderRadius.circular(14),
+        soft: true,
+      ).copyWith(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      );
 }

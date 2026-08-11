@@ -30,6 +30,7 @@ import '../controllers/walk_distance_controller.dart';
 import '../controllers/weather_controller.dart';
 import '../controllers/site_exploration_controller.dart';
 import '../controllers/xp_award_controller.dart';
+import '../features/assistant/assistant.dart';
 import '../features/notifications/notifications.dart';
 import '../models/fossil.dart';
 import '../models/site.dart';
@@ -48,6 +49,7 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/site/site_screen.dart';
 import '../screens/tool/tool_screen.dart';
 import 'map_bottom_chrome.dart';
+import 'map_chrome_insets.dart';
 import 'map_top_chrome.dart';
 import 'shell_overlay_panel.dart';
 
@@ -94,12 +96,15 @@ class _AppShellState extends State<AppShell>
 
   bool get _anyCatalogOpen => _sitesOpen || _fossilsOpen || _dinosaursOpen;
   bool get _weatherOpen => WeatherDetailSheet.isOpen;
+  bool get _assistantOpen => FieldAssistantOverlay.isOpen;
   bool get _anyOverlayOpen =>
       _profileOpen || _anyCatalogOpen || _toolsOpen || _weatherOpen;
   bool get _cardDetailOpen => CardDetailSheet.isOpen;
 
   /// Bottom / top chrome hide while any overlay / card dialog is open (or aerial draw).
+  /// Field assistant keeps top chrome; bottom bar + FABs hide separately.
   bool get _hideChrome => _anyOverlayOpen || _aerialDrawMode || _cardDetailOpen;
+  bool get _hideBottomChrome => _hideChrome || _assistantOpen;
 
   void _clearOverlayFlags() {
     _profileOpen = false;
@@ -115,6 +120,7 @@ class _AppShellState extends State<AppShell>
     WidgetsBinding.instance.addObserver(this);
     CardDetailSheet.openCount.addListener(_onCardDetailOverlayChanged);
     WeatherDetailSheet.openCount.addListener(_onWeatherOverlayChanged);
+    FieldAssistantOverlay.openCount.addListener(_onAssistantOverlayChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AuthController>().bindXpAwards(
@@ -439,10 +445,17 @@ class _AppShellState extends State<AppShell>
 
   void _onCardDetailOverlayChanged() {
     if (!mounted) return;
+    if (_cardDetailOpen) FieldAssistantOverlay.close();
     setState(() {});
   }
 
   void _onWeatherOverlayChanged() {
+    if (!mounted) return;
+    if (_weatherOpen) FieldAssistantOverlay.close();
+    setState(() {});
+  }
+
+  void _onAssistantOverlayChanged() {
     if (!mounted) return;
     setState(() {});
   }
@@ -479,6 +492,7 @@ class _AppShellState extends State<AppShell>
     // must not setState or they re-trigger startTracking → fetch loops.
     final drawMode = aerial.isDrawMode;
     if (drawMode != _aerialDrawMode) {
+      if (drawMode) FieldAssistantOverlay.close();
       setState(() => _aerialDrawMode = drawMode);
     }
   }
@@ -605,6 +619,7 @@ class _AppShellState extends State<AppShell>
   void dispose() {
     CardDetailSheet.openCount.removeListener(_onCardDetailOverlayChanged);
     WeatherDetailSheet.openCount.removeListener(_onWeatherOverlayChanged);
+    FieldAssistantOverlay.openCount.removeListener(_onAssistantOverlayChanged);
     _discoveryCoordinator?.removeListener(_onDiscoveryChanged);
     _explorationController?.removeListener(_onExplorationChanged);
     _notificationController?.removeListener(_onNotificationsChanged);
@@ -794,6 +809,7 @@ class _AppShellState extends State<AppShell>
   }
 
   void _openProfile() {
+    FieldAssistantOverlay.close();
     setState(() {
       _clearOverlayFlags();
       _profileOpen = true;
@@ -805,6 +821,7 @@ class _AppShellState extends State<AppShell>
       _siteScreenKey.currentState?.scrollToTop();
       return;
     }
+    FieldAssistantOverlay.close();
     setState(() {
       _clearOverlayFlags();
       _sitesOpen = true;
@@ -816,6 +833,7 @@ class _AppShellState extends State<AppShell>
       _fossilScreenKey.currentState?.scrollToTop();
       return;
     }
+    FieldAssistantOverlay.close();
     setState(() {
       _clearOverlayFlags();
       _fossilsOpen = true;
@@ -827,6 +845,7 @@ class _AppShellState extends State<AppShell>
       _dinoScreenKey.currentState?.scrollToTop();
       return;
     }
+    FieldAssistantOverlay.close();
     setState(() {
       _clearOverlayFlags();
       _dinosaursOpen = true;
@@ -838,6 +857,7 @@ class _AppShellState extends State<AppShell>
       _toolScreenKey.currentState?.scrollToTop();
       return;
     }
+    FieldAssistantOverlay.close();
     setState(() {
       _clearOverlayFlags();
       _toolsOpen = true;
@@ -845,6 +865,10 @@ class _AppShellState extends State<AppShell>
   }
 
   void _closeOverlays() {
+    if (_assistantOpen) {
+      FieldAssistantOverlay.close();
+      return;
+    }
     if (!_anyOverlayOpen) return;
     setState(_clearOverlayFlags);
   }
@@ -905,7 +929,7 @@ class _AppShellState extends State<AppShell>
         });
 
         return PopScope(
-          canPop: !_anyOverlayOpen,
+          canPop: !_anyOverlayOpen && !_assistantOpen,
           onPopInvokedWithResult: (didPop, _) {
             if (didPop) return;
             _closeOverlays();
@@ -917,16 +941,28 @@ class _AppShellState extends State<AppShell>
                       : SystemUiOverlayStyle.dark)
                 : SystemUiOverlayStyle.light,
             child: Scaffold(
+              // Panel handles keyboard inset itself; Scaffold resize leaves a
+              // bright/white band above the profile HUD when the assistant opens.
+              resizeToAvoidBottomInset: false,
+              backgroundColor: Colors.black,
               body: Stack(
                 fit: StackFit.expand,
                 children: [
                   MapScreen(
+                    // Keep Mapbox active while the field assistant is open so
+                    // site-marker images stay in cache (full freeze tears them
+                    // down via reduceMemoryUse / overlay clear).
                     isActive: !_anyOverlayOpen && !_cardDetailOpen,
+                    // Soft-freeze heading/follow/GPS while assistant is open.
+                    freezeMotion: _assistantOpen,
                     // Site cards freeze map chrome/Mapbox, but keep high GPS so
                     // documentation progress on the card back stays live.
-                    highPrecisionGps: !_anyOverlayOpen,
+                    highPrecisionGps: !_anyOverlayOpen && !_assistantOpen,
                     showControls:
-                        !_anyCatalogOpen && !_toolsOpen && !_cardDetailOpen,
+                        !_anyCatalogOpen &&
+                        !_toolsOpen &&
+                        !_cardDetailOpen &&
+                        !_assistantOpen,
                   ),
                   Offstage(
                     offstage: !_sitesOpen,
@@ -998,18 +1034,24 @@ class _AppShellState extends State<AppShell>
                       ),
                     ),
                   ),
+                  if (_assistantOpen && !_hideChrome)
+                    FieldAssistantPanel(
+                      topClearance: MapChromeInsets.profileHudBottom(context),
+                    ),
                   if (!_hideChrome) ...[
                     MapTopChrome(
                       showNotifications: auth.isLoggedIn,
                       onTapNotification: _onNotificationTap,
                       onOpenProfile: _openProfile,
+                      assistantOpen: _assistantOpen,
                     ),
-                    MapBottomChrome(
-                      onOpenSites: _openSites,
-                      onOpenFossils: _openFossils,
-                      onOpenDinosaurs: _openDinosaurs,
-                      onOpenTools: _openTools,
-                    ),
+                    if (!_hideBottomChrome)
+                      MapBottomChrome(
+                        onOpenSites: _openSites,
+                        onOpenFossils: _openFossils,
+                        onOpenDinosaurs: _openDinosaurs,
+                        onOpenTools: _openTools,
+                      ),
                   ],
                   if (!splashHold.isInitialPageReady)
                     const Positioned.fill(child: AppSplashScreen()),

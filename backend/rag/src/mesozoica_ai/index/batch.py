@@ -34,7 +34,7 @@ from mesozoica_ai.index.api import (
     recreate_index as recreate_search_index,
     sync_embedded_chunks,
 )
-from mesozoica_ai.index.runtime import build_store
+from mesozoica_ai.index.runtime import build_embedder, build_store
 
 SUPPORTED_SOURCES = ("wikipedia", "openalex")
 logger = logging.getLogger(__name__)
@@ -122,6 +122,9 @@ def embed_knowledge(
     summary = JobSummary(candidates=len(snapshots))
     summary.skipped = already_embedded
     work_unit: UnitOfWork = _RepoUnitOfWork(repo)
+    # One Azure OpenAI client for the whole run. Recreating per dinosaur races
+    # Foundry routing and surfaces intermittent unknown_model 400s.
+    embedder = build_embedder(active)
 
     for snapshot in pending:
         label = f"{snapshot.subject_name}/{snapshot.source}"
@@ -133,6 +136,7 @@ def embed_knowledge(
                 repo.list_documents(row),
                 config=active,
                 existing=existing,
+                embedder=embedder,
             )
             _result["prepared"] = prepared
             _result["previous_inventory"] = embedding_inventory_hash(existing)

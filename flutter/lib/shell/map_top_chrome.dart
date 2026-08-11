@@ -56,11 +56,15 @@ class MapTopChrome extends StatelessWidget {
     required this.showNotifications,
     required this.onTapNotification,
     required this.onOpenProfile,
+    this.assistantOpen = false,
   });
 
   final bool showNotifications;
   final void Function(UserNotificationItem item) onTapNotification;
   final VoidCallback onOpenProfile;
+
+  /// When true, keep only the profile HUD — hide mode toggle, weather, AI chip.
+  final bool assistantOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -87,36 +91,31 @@ class MapTopChrome extends StatelessWidget {
                         child: MapUserHud(onTap: onOpenProfile),
                       ),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CatalogModeToggle(),
-                        if (showNotifications) ...[
-                          const SizedBox(width: 8),
-                          NotificationIconButton(
-                            onTapNotification: onTapNotification,
-                          ),
+                    if (!assistantOpen)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CatalogModeToggle(),
+                          if (showNotifications) ...[
+                            const SizedBox(width: 8),
+                            NotificationIconButton(
+                              onTapNotification: onTapNotification,
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
+                      ),
                   ],
                 ),
               ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (showNotifications)
-                    const Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: FieldAssistantChip(),
-                      ),
-                    )
-                  else
+              if (!assistantOpen)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (showNotifications) const FieldAssistantChip(),
                     const Spacer(),
-                  const MapWeatherChip(),
-                ],
-              ),
+                    const MapWeatherChip(),
+                  ],
+                ),
             ],
           ),
         ),

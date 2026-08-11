@@ -63,6 +63,7 @@ class MapScreen extends StatefulWidget {
     this.isActive = false,
     this.showControls = true,
     this.highPrecisionGps = false,
+    this.freezeMotion = false,
   });
 
   final bool isActive;
@@ -75,6 +76,10 @@ class MapScreen extends StatefulWidget {
   /// Used while a site card is open over the map so documentation progress on the
   /// card back update as often as they do on the live map.
   final bool highPrecisionGps;
+
+  /// Pause heading / follow / high-rate GPS without tearing down Mapbox markers
+  /// (field assistant). Unlike [isActive]=false, does not call reduceMemoryUse.
+  final bool freezeMotion;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -105,7 +110,8 @@ class _MapScreenState extends State<MapScreen>
     // react when map foreground / GPS preference actually changes — otherwise
     // startTracking would refetch /api/.../sessions/active on every notify.
     if (oldWidget.isActive != widget.isActive ||
-        oldWidget.highPrecisionGps != widget.highPrecisionGps) {
+        oldWidget.highPrecisionGps != widget.highPrecisionGps ||
+        oldWidget.freezeMotion != widget.freezeMotion) {
       _activateIfNeeded();
     }
   }
@@ -240,7 +246,9 @@ class _MapScreenState extends State<MapScreen>
                   enabled: widget.isActive,
                   child: MapboxFieldMap(
                     camera: _mapboxCamera,
-                    rotateWithHeading: aerialDrawMode ? false : _rotateMap,
+                    rotateWithHeading: aerialDrawMode || widget.freezeMotion
+                        ? false
+                        : _rotateMap,
                     mapActive: widget.isActive,
                     sites: mapData.filteredGeoSites,
                     selectedSite: mapData.selectedSite,
@@ -251,7 +259,7 @@ class _MapScreenState extends State<MapScreen>
                     locationListenable: locationService.locationListenable,
                     headingDeg: locationService.headingDeg,
                     headingListenable: locationService.headingListenable,
-                    followUser: aerialDrawMode
+                    followUser: aerialDrawMode || widget.freezeMotion
                         ? false
                         : (_followUser || _rotateMap),
                     initialCenter: startCenter,
