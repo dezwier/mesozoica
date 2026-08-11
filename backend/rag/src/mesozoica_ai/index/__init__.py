@@ -120,7 +120,6 @@ def retrieve_chunks(
 from .batch import (
     embed_knowledge,
     index_knowledge,
-    index_snapshots,
     ingest_knowledge,
     list_knowledge_rows,
     require_full_recreate_scope,
@@ -146,7 +145,6 @@ __all__ = [
     "ensure_index",
     "index_chunks",
     "index_knowledge",
-    "index_snapshots",
     "ingest_knowledge",
     "list_knowledge_rows",
     "pipeline_fingerprint",

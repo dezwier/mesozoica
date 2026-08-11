@@ -201,8 +201,8 @@ def test_http_get_text_decompresses_raw_gzip_bodies():
 
 def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
     checkpoint = SimpleNamespace(
-        documents=[], source_version=None, source_hash=None, content_hash=None,
-        embedded_chunks=[{"id": "old"}], embedded_hash="old",
+        source_version=None, source_hash=None, content_hash=None,
+        embedded_hash="old",
         embedded_pipeline_fingerprint="pipeline",
         indexed_hash="old", indexed_pipeline_fingerprint="pipeline",
         acquisition_status="pending", embed_status="succeeded",
@@ -220,22 +220,15 @@ def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
         content_hash="a" * 64,
         source_hash="b" * 64,
         source_version=None,
-        serialized_documents=[{
-            "id": "doc",
-            "text": "text",
-            "metadata": {"source": "wikipedia", "source_id": "1", "title": "T"},
-        }],
     )
     assert complete_acquisition(checkpoint, first) is True
     assert checkpoint.embed_status == "pending"
     assert checkpoint.index_status == "pending"
-    assert checkpoint.embedded_chunks == []
     assert acquisition_needed(checkpoint) is False
 
     checkpoint.embed_status = "succeeded"
     checkpoint.embedded_hash = checkpoint.content_hash
     checkpoint.embedded_pipeline_fingerprint = "pipeline"
-    checkpoint.embedded_chunks = [{"id": "c"}]
     checkpoint.index_status = "succeeded"
     checkpoint.indexed_hash = checkpoint.content_hash
     checkpoint.indexed_pipeline_fingerprint = "pipeline"

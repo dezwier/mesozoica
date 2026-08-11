@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 from mesozoica_ai.common.batch import DEFAULT_SUBJECT_KIND
+from mesozoica_ai.common.knowledge_repo import KnowledgeRepository
 from mesozoica_ai.sources.openalex import paper_inventory
-
-StageFilter = Literal["acquired", "embedded"]
 
 
 @dataclass(frozen=True)
@@ -73,39 +72,85 @@ def overview_drift_lines(
 
 
 def sql_knowledge_overview(
-    session: Any,
-    model: type[Any],
+    repo: KnowledgeRepository,
     *,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
-    succeeded_only: bool = True,
 ) -> KnowledgeOverview:
-    """Summarize acquired ``dinosaur_knowledge`` rows (units = documents/sections)."""
-    from sqlmodel import select
+    """Summarize acquired documents across succeeded sources."""
+    subjects: set[str] = set()
+    wiki_subjects: set[str] = set()
+    openalex_subjects: set[str] = set()
+    wiki_sections = 0
+    openalex_sections = 0
+    openalex_papers = 0
 
-    statement = select(model).where(model.subject_kind == subject_kind)
-    if succeeded_only:
-        statement = statement.where(model.acquisition_status == "succeeded")
-    return knowledge_overview_from_sql_rows(list(session.exec(statement).all()))
+    for source_row in repo.list_sources(
+        subject_kind=subject_kind, acquisition_succeeded_only=True
+    ):
+        subjects.add(str(source_row.subject_id))
+        docs = repo.list_documents(source_row)
+        if source_row.source == "wikipedia":
+            wiki_subjects.add(str(source_row.subject_id))
+            wiki_sections += len(docs)
+        elif source_row.source == "openalex":
+            openalex_subjects.add(str(source_row.subject_id))
+            openalex_sections += len(docs)
+            openalex_papers += len(paper_inventory(docs))
+
+    return KnowledgeOverview(
+        dinosaurs=len(subjects),
+        wikipedia_dinos=len(wiki_subjects),
+        wikipedia_units=wiki_sections,
+        openalex_dinos=len(openalex_subjects),
+        openalex_papers=openalex_papers,
+        openalex_units=openalex_sections,
+        unit_label="sections",
+    )
 
 
 def sql_embedded_overview(
-    session: Any,
-    model: type[Any],
+    repo: KnowledgeRepository,
     *,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> KnowledgeOverview:
-    """Summarize successfully embedded rows (units = embedded chunks)."""
-    from sqlmodel import select
+    """Summarize successfully embedded chunk rows."""
+    subjects: set[str] = set()
+    wiki_subjects: set[str] = set()
+    openalex_subjects: set[str] = set()
+    papers: set[tuple[str, str]] = set()
+    wiki_chunks = 0
+    openalex_chunks = 0
 
-    statement = select(model).where(
-        model.subject_kind == subject_kind,
-        model.embed_status == "succeeded",
+    for source_row in repo.list_sources(subject_kind=subject_kind):
+        if source_row.embed_status != "succeeded":
+            continue
+        subject = str(source_row.subject_id)
+        chunks = repo.list_chunks(source_row)
+        subjects.add(subject)
+        if source_row.source == "wikipedia":
+            wiki_subjects.add(subject)
+            wiki_chunks += len(chunks)
+        elif source_row.source == "openalex":
+            openalex_subjects.add(subject)
+            openalex_chunks += len(chunks)
+            for chunk in chunks:
+                source_id = str(chunk.metadata.source_id or "").strip()
+                if subject and source_id:
+                    papers.add((subject, source_id))
+
+    return KnowledgeOverview(
+        dinosaurs=len(subjects),
+        wikipedia_dinos=len(wiki_subjects),
+        wikipedia_units=wiki_chunks,
+        openalex_dinos=len(openalex_subjects),
+        openalex_papers=len(papers),
+        openalex_units=openalex_chunks,
+        unit_label="chunks",
     )
-    return knowledge_overview_from_embedded_rows(list(session.exec(statement).all()))
 
 
 def knowledge_overview_from_sql_rows(rows: list[Any]) -> KnowledgeOverview:
-    """Build a SQL acquisition overview from checkpoint rows."""
+    """Compatibility helper for tests using fake document-bearing rows."""
     subjects: set[str] = set()
     wiki_subjects: set[str] = set()
     openalex_subjects: set[str] = set()
@@ -115,7 +160,7 @@ def knowledge_overview_from_sql_rows(rows: list[Any]) -> KnowledgeOverview:
 
     for row in rows:
         subjects.add(str(row.subject_id))
-        docs = list(row.documents or [])
+        docs = list(getattr(row, "documents", None) or [])
         if row.source == "wikipedia":
             wiki_subjects.add(str(row.subject_id))
             wiki_sections += len(docs)
@@ -136,7 +181,7 @@ def knowledge_overview_from_sql_rows(rows: list[Any]) -> KnowledgeOverview:
 
 
 def knowledge_overview_from_embedded_rows(rows: list[Any]) -> KnowledgeOverview:
-    """Build an overview from rows with successful ``embedded_chunks``."""
+    """Compatibility helper for tests using fake embedded_chunks rows."""
     subjects: set[str] = set()
     wiki_subjects: set[str] = set()
     openalex_subjects: set[str] = set()
@@ -147,7 +192,7 @@ def knowledge_overview_from_embedded_rows(rows: list[Any]) -> KnowledgeOverview:
     for row in rows:
         subject = str(row.subject_id)
         source = str(row.source or "").casefold()
-        chunks = list(row.embedded_chunks or [])
+        chunks = list(getattr(row, "embedded_chunks", None) or [])
         subjects.add(subject)
         if source == "wikipedia":
             wiki_subjects.add(subject)

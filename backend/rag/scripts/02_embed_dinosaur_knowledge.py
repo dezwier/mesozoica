@@ -1,10 +1,8 @@
-"""Chunk + embed dinosaur_knowledge SQL rows; persist vectors in SQL.
+"""Chunk + embed dinosaur_knowledge_doc rows into dinosaur_knowledge_chunk.
 
-Only processes acquired rows that are not yet embedded (or whose
+Only processes acquired sources that are not yet embedded (or whose
 content/pipeline hash changed). Does not upload to Azure Search — use
 03_ingest_dinosaur_knowledge.py for that.
-
-Does not fetch Wikipedia/OpenAlex — use 01_acquire_dinosaur_knowledge.py for that.
 
   cd backend
   .venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py
@@ -46,7 +44,9 @@ logger = logging.getLogger("embed")
 from sqlmodel import Session
 
 from app.core.database import engine
-from app.features.ingestion.models.dinosaur_knowledge import DinosaurKnowledge
+from app.features.ingestion.application.dinosaur_knowledge.repository import (
+    dinosaur_knowledge_repo,
+)
 from app.features.ingestion.public import parse_dino_names
 from mesozoica_ai.common import sql_embedded_overview, sql_knowledge_overview
 from mesozoica_ai.index import embed_knowledge
@@ -62,7 +62,7 @@ def run(
 ) -> int:
     sources = sources or ["wikipedia", "openalex"]
     logger.info(
-        "Embed dinosaur_knowledge → SQL (name_filter=%s sources=%s "
+        "Embed dinosaur_knowledge → SQL chunks (name_filter=%s sources=%s "
         "dry_run=%s overwrite=%s)",
         ",".join(dinos) if dinos else "(none)",
         ",".join(sources),
@@ -70,17 +70,17 @@ def run(
         overwrite,
     )
     with Session(engine) as session:
+        repo = dinosaur_knowledge_repo(session)
         summary = embed_knowledge(
-            session=session,
-            model=DinosaurKnowledge,
+            repo=repo,
             names=dinos,
             sources=sources,
             max_items=max_items,
             overwrite=overwrite,
             dry_run=dry_run,
         )
-        acquired = sql_knowledge_overview(session, DinosaurKnowledge)
-        embedded = sql_embedded_overview(session, DinosaurKnowledge)
+        acquired = sql_knowledge_overview(repo)
+        embedded = sql_embedded_overview(repo)
         logger.info(
             "Done: succeeded=%s skipped=%s failed=%s",
             summary.succeeded,

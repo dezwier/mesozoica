@@ -75,8 +75,7 @@ def evaluate_against_index(
 
 def evaluate_knowledge(
     *,
-    session: Any,
-    model: type[Any],
+    repo: Any,
     dataset_path: str | Any,
     config: AiConfig | None = None,
     mode: str = "semantic_hybrid",
@@ -91,7 +90,7 @@ def evaluate_knowledge(
     retrieval_mode = mode if isinstance(mode, str) else getattr(mode, "value", str(mode))
     cases = prepare_retrieval_cases(
         load_retrieval_cases(dataset_path),
-        list_knowledge_rows(session, model, succeeded_only=True),
+        list_knowledge_rows(repo, succeeded_only=True),
     )
     return evaluate_against_index(
         cases,

@@ -10,8 +10,9 @@ Three durable stages, one retrieval path:
 | Stage | Lives in |
 |---|---|
 | Wikipedia text (from `dinosaur_type_revision`) / OpenAlex | Memory only (`Document` objects) |
-| Durable raw sources | PostgreSQL `dinosaur_knowledge.documents` |
-| Chunked embeddings | PostgreSQL `dinosaur_knowledge.embedded_chunks` |
+| Job tracking (acquire/embed/index) | PostgreSQL `dinosaur_knowledge_source` |
+| Durable raw sections | PostgreSQL `dinosaur_knowledge_doc` |
+| Chunked embeddings | PostgreSQL `dinosaur_knowledge_chunk` |
 | Searchable vectors | Azure AI Search |
 | Model answers | Memory only (your Pydantic type) |
 
@@ -19,10 +20,10 @@ Three durable stages, one retrieval path:
 dinosaur_type_revision / retrieve_openalex
         │
         ▼
-   store_documents → Postgres dinosaur_knowledge.documents
+   store_documents → Postgres dinosaur_knowledge_source + dinosaur_knowledge_doc
         │
         ▼
-   prepare_embeddings → Postgres dinosaur_knowledge.embedded_chunks
+   prepare_embeddings → Postgres dinosaur_knowledge_chunk
         │
         ▼
 ensure_index  →  sync_embedded_chunks   (or ad-hoc sync_documents)
@@ -86,7 +87,7 @@ Embeds chunk text with the configured Azure embedding deployment.
 ### `prepare_embeddings(documents, *, config, existing=None)`
 
 Chunks documents and embeds only chunks whose vector identity changed.
-Pass prior SQL `embedded_chunks` as ``existing`` to reuse vectors after a
+Pass prior SQL chunk rows as ``existing`` to reuse vectors after a
 failed Azure ingest (or any re-run with unchanged content).
 
 ### `index_chunks(embedded_chunks, *, config)`
@@ -240,43 +241,47 @@ SQL wiring is `app.features.ingestion.jobs.dinosaur_knowledge`; the rag script i
 only a CLI over that job.
 
 ```python
+from app.features.ingestion import dinosaur_knowledge_repo
 from mesozoica_ai.common import store_documents
 from mesozoica_ai.sources import retrieve_openalex
 
 docs = retrieve_openalex(query, api_key=..., user_agent=..., metadata=...)
-store_documents(session, DinosaurKnowledge, subject=subject, source="openalex", documents=docs)
+repo = dinosaur_knowledge_repo(session)
+store_documents(repo, subject=subject, source="openalex", documents=docs)
 ```
 
 ---
 
 ## Batch index (`mesozoica_ai.index`)
 
-### `embed_knowledge(*, session, model, names=None, sources=None, ...)`
+### `embed_knowledge(*, repo, names=None, sources=None, ...)`
 
-For each acquired Postgres row eligible for embedding:
+For each acquired `dinosaur_knowledge_source` eligible for embedding:
 
-1. `prepare_embeddings` (reuse prior SQL vectors when hashes match)
-2. write `embedded_chunks` + embed checkpoint fields
+1. `prepare_embeddings` (reuse prior `dinosaur_knowledge_chunk` vectors when hashes match)
+2. `replace_chunks` + embed checkpoint fields on the source
 
-### `ingest_knowledge(*, session, model, names=None, sources=None, ...)`
+### `ingest_knowledge(*, repo, names=None, sources=None, ...)`
 
-For each successfully embedded row eligible for Azure ingest:
+For each successfully embedded source eligible for Azure ingest:
 
 1. optionally recreate the Azure index (`recreate_index=True`, full scope only)
 2. `ensure_index` unless just recreated
-3. `sync_embedded_chunks` from SQL (no embedding API)
-4. record pipeline fingerprint on the index checkpoint
+3. `sync_embedded_chunks` from SQL chunks (no embedding API)
+4. record pipeline fingerprint on the source index checkpoint
 
-### `index_knowledge(*, session, model, names=None, sources=None, ...)`
+### `index_knowledge(*, repo, names=None, sources=None, ...)`
 
 Compat convenience: `embed_knowledge` then `ingest_knowledge`.
 
 ```python
+from app.features.ingestion import dinosaur_knowledge_repo
 from mesozoica_ai.index import embed_knowledge, ingest_knowledge
 
 with Session(engine) as session:
-    embed_knowledge(session=session, model=DinosaurKnowledge, names=["Triceratops"])
-    ingest_knowledge(session=session, model=DinosaurKnowledge, names=["Triceratops"])
+    repo = dinosaur_knowledge_repo(session)
+    embed_knowledge(repo=repo, names=["Triceratops"])
+    ingest_knowledge(repo=repo, names=["Triceratops"])
 ```
 
 ### `recreate_index(*, config)` / `pipeline_fingerprint(*, config)`
@@ -298,11 +303,11 @@ filters. Raises if labels are missing or stale.
 Runs local precision / recall / hit-rate / MRR / nDCG against the live Azure
 index. Optionally writes a report and compares a baseline.
 
-### `evaluate_knowledge(*, session, model, dataset_path, ...)`
+### `evaluate_knowledge(*, repo, dataset_path, ...)`
 
 `prepare_retrieval_cases` + `evaluate_against_index` for table-backed snapshots.
 
-### `knowledge_status(session, model, *, names=None, ...)`
+### `knowledge_status(repo, *, names=None, ...)`
 
 Prints a human-readable acquire/index status table for checkpoint rows.
 
@@ -328,8 +333,8 @@ answer = prompt_rag(MyModel, query=q, evidence=chunks, config=config)
 ### B. Production dinosaur knowledge
 
 ```text
-dinosaur_type_revision / retrieve_openalex + store_documents  → Postgres documents
-embed_knowledge                                               → Postgres embedded_chunks
+dinosaur_type_revision / retrieve_openalex + store_documents  → source + doc tables
+embed_knowledge                                               → chunk table (vectors in SQL)
 ingest_knowledge                                              → Azure Search
 ```
 

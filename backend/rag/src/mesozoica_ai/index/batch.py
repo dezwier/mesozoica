@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Sequence
-from typing import Any, TypeVar
+from collections.abc import Sequence
+from typing import Any
 
 from mesozoica_ai.common.batch import (
-    DEFAULT_NAMESPACE,
     DEFAULT_SUBJECT_KIND,
     JobSummary,
     snapshot_scope,
@@ -17,6 +16,7 @@ from mesozoica_ai.common.checkpoints import (
     begin_indexing,
     complete_embedding,
     complete_indexing,
+    embedding_inventory_hash,
     embedding_needed,
     fail_embedding,
     fail_indexing,
@@ -24,6 +24,7 @@ from mesozoica_ai.common.checkpoints import (
     reset_indexing,
 )
 from mesozoica_ai.common.config import AiConfig
+from mesozoica_ai.common.knowledge_repo import KnowledgeRepository
 from mesozoica_ai.common.resume import UnitOfWork, run_resumable_item
 from mesozoica_ai.common.store import SessionUnitOfWork
 from mesozoica_ai.index.api import (
@@ -35,7 +36,6 @@ from mesozoica_ai.index.api import (
 )
 from mesozoica_ai.index.runtime import build_store
 
-CheckpointT = TypeVar("CheckpointT")
 SUPPORTED_SOURCES = ("wikipedia", "openalex")
 logger = logging.getLogger(__name__)
 
@@ -60,28 +60,50 @@ def require_full_recreate_scope(
     return selected
 
 
-def embed_snapshots(
+class _RepoUnitOfWork:
+    def __init__(self, repo: KnowledgeRepository) -> None:
+        self._repo = repo
+
+    def save(self, item: object) -> None:
+        self._repo.save_source(item)
+
+    def commit(self) -> None:
+        self._repo.commit()
+
+    def rollback(self) -> None:
+        session = getattr(self._repo, "session", None)
+        if session is not None:
+            session.rollback()
+
+
+def embed_knowledge(
     *,
-    config: AiConfig,
-    snapshots: Sequence[CheckpointT],
-    work_unit: UnitOfWork,
-    reload: Callable[[CheckpointT], CheckpointT],
-    documents_for: Callable[[CheckpointT], Any] | None = None,
-    embedded_for: Callable[[CheckpointT], Any] | None = None,
-    label_for: Callable[[CheckpointT], str] | None = None,
+    repo: KnowledgeRepository,
+    config: AiConfig | None = None,
+    names: list[str] | None = None,
+    sources: list[str] | None = None,
+    max_items: int | None = None,
     overwrite: bool = False,
     dry_run: bool = False,
+    subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> JobSummary:
-    """Chunk and embed checkpointed document snapshots into SQL."""
-    resolve_documents = documents_for or (lambda row: row.documents)
-    resolve_embedded = embedded_for or (lambda row: row.embedded_chunks or [])
+    """Chunk/embed acquired sources into ``dinosaur_knowledge_chunk`` rows."""
+    active = config or AiConfig()
+    selected = _normalize_sources(sources)
+    snapshots = repo.list_sources(
+        subject_kind=subject_kind,
+        names=names,
+        sources=selected,
+        acquisition_succeeded_only=True,
+        max_items=max_items,
+    )
     if dry_run:
         summary = JobSummary(candidates=len(snapshots))
         summary.skipped = len(snapshots)
         return summary
 
-    fingerprint = pipeline_fingerprint(config=config)
-    pending: list[CheckpointT] = []
+    fingerprint = pipeline_fingerprint(config=active)
+    pending = []
     already_embedded = 0
     for snapshot in snapshots:
         if embedding_needed(
@@ -99,23 +121,42 @@ def embed_snapshots(
     )
     summary = JobSummary(candidates=len(snapshots))
     summary.skipped = already_embedded
-    if not pending:
-        return summary
+    work_unit: UnitOfWork = _RepoUnitOfWork(repo)
 
     for snapshot in pending:
+        label = f"{snapshot.subject_name}/{snapshot.source}"
         prepare_result: dict[str, Any] = {}
-        label = (
-            label_for(snapshot)
-            if label_for
-            else f"{snapshot.subject_name}/{snapshot.source}"
-        )
 
-        def work(row: CheckpointT, *, _result=prepare_result) -> None:
-            _result["result"] = prepare_embeddings(
-                resolve_documents(row),
-                config=config,
-                existing=resolve_embedded(row),
+        def work(row: Any, *, _result=prepare_result) -> None:
+            existing = repo.list_chunks(row)
+            prepared = prepare_embeddings(
+                repo.list_documents(row),
+                config=active,
+                existing=existing,
             )
+            _result["prepared"] = prepared
+            _result["previous_inventory"] = embedding_inventory_hash(existing)
+            _result["new_inventory"] = embedding_inventory_hash(prepared.chunks)
+            repo.replace_chunks(row, prepared.chunks)
+
+        def complete(row: Any, *, _result=prepare_result) -> None:
+            prepared = _result["prepared"]
+            complete_embedding(
+                row,
+                pipeline_fingerprint=prepared.pipeline_fingerprint,
+                previous_inventory_hash=_result["previous_inventory"],
+                new_inventory_hash=_result["new_inventory"],
+            )
+
+        def reload(row: Any) -> Any:
+            loaded = repo.get_source(
+                subject_kind=row.subject_kind,
+                subject_id=row.subject_id,
+                source=row.source,
+            )
+            if loaded is None:
+                raise RuntimeError(f"Missing knowledge source after failure: {row.id}")
+            return loaded
 
         logger.info("%s: embedding", label)
         outcome = run_resumable_item(
@@ -124,27 +165,21 @@ def embed_snapshots(
             should_run=lambda row: True,
             begin=begin_embedding,
             work=work,
-            complete=lambda row, _result=prepare_result: complete_embedding(
-                row,
-                embedded_chunks=_result["result"].chunks,
-                pipeline_fingerprint=_result["result"].pipeline_fingerprint,
-            ),
+            complete=complete,
             fail=fail_embedding,
             reload=reload,
             label=label,
         )
         if outcome == "succeeded":
-            result = prepare_result.get("result")
-            if result is not None:
+            prepared = prepare_result.get("prepared")
+            if prepared is not None:
                 logger.info(
                     "%s: done embed=%s reuse=%s chunks=%s",
                     label,
-                    getattr(result, "embedded_count", "?"),
-                    getattr(result, "reused_count", "?"),
-                    getattr(result, "chunk_count", "?"),
+                    prepared.embedded_count,
+                    prepared.reused_count,
+                    prepared.chunk_count,
                 )
-            else:
-                logger.info("%s: done", label)
         elif outcome == "failed":
             logger.error("%s: failed", label)
         elif outcome == "skipped":
@@ -154,82 +189,85 @@ def embed_snapshots(
     return summary
 
 
-def ingest_snapshots(
+def ingest_knowledge(
     *,
-    config: AiConfig,
-    snapshots: Sequence[CheckpointT],
-    work_unit: UnitOfWork,
-    reload: Callable[[CheckpointT], CheckpointT],
-    scope_for: Callable[[CheckpointT], dict[str, Any]] | None = None,
-    embedded_for: Callable[[CheckpointT], Any] | None = None,
-    label_for: Callable[[CheckpointT], str] | None = None,
+    repo: KnowledgeRepository,
+    config: AiConfig | None = None,
+    names: list[str] | None = None,
+    sources: list[str] | None = None,
+    max_items: int | None = None,
     overwrite: bool = False,
     dry_run: bool = False,
-    prepare_index: bool = True,
     recreate_index: bool = False,
-    snapshots_to_reset: Sequence[CheckpointT] | None = None,
-    namespace: str = DEFAULT_NAMESPACE,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> JobSummary:
-    """Upload SQL-cached embeddings into Azure Search."""
-    resolve_scope = scope_for or (
-        lambda row: snapshot_scope(row, namespace=namespace, subject_kind=subject_kind)
+    """Ingest SQL chunks into Azure Search."""
+    active = config or AiConfig()
+    if recreate_index:
+        require_full_recreate_scope(names=names, sources=sources, max_items=max_items)
+
+    selected = _normalize_sources(sources)
+    snapshots = repo.list_sources(
+        subject_kind=subject_kind,
+        names=names,
+        sources=selected,
+        acquisition_succeeded_only=True,
+        max_items=max_items,
     )
-    resolve_embedded = embedded_for or (lambda row: row.embedded_chunks or [])
     if dry_run:
         summary = JobSummary(candidates=len(snapshots))
         summary.skipped = len(snapshots)
         return summary
-    if recreate_index:
-        logger.warning(
-            "Recreating Azure index and resetting index checkpoints",
-        )
-        recreate_search_index(config=config)
-        for snapshot in snapshots_to_reset or ():
-            reset_indexing(snapshot)
-            work_unit.save(snapshot)
-        work_unit.commit()
-        snapshots = [reload(snapshot) for snapshot in snapshots]
-        prepare_index = False
-    if prepare_index:
-        ensure_index(config=config)
-        index_name = getattr(config, "search_index", None) or "?"
-        logger.info("Azure index ready (%s)", index_name)
 
-    fingerprint = pipeline_fingerprint(config=config)
-    store = build_store(config, write_enabled=False)
-    pending: list[CheckpointT] = []
+    work_unit: UnitOfWork = _RepoUnitOfWork(repo)
+    if recreate_index:
+        logger.warning("Recreating Azure index and resetting index checkpoints")
+        recreate_search_index(config=active)
+        for snapshot in repo.list_sources(
+            subject_kind=subject_kind, acquisition_succeeded_only=True
+        ):
+            reset_indexing(snapshot)
+            repo.save_source(snapshot)
+        repo.commit()
+        snapshots = [
+            repo.get_source(
+                subject_kind=row.subject_kind,
+                subject_id=row.subject_id,
+                source=row.source,
+            )
+            or row
+            for row in snapshots
+        ]
+    else:
+        ensure_index(config=active)
+        logger.info("Azure index ready (%s)", getattr(active, "search_index", None) or "?")
+
+    fingerprint = pipeline_fingerprint(config=active)
+    store = build_store(active, write_enabled=False)
+    pending = []
     already_indexed = 0
     drift_resets = 0
     for snapshot in snapshots:
-        label = (
-            label_for(snapshot)
-            if label_for
-            else f"{snapshot.subject_name}/{snapshot.source}"
-        )
-        if getattr(snapshot, "embed_status", None) != "succeeded":
-            logger.info("%s: skip ingest (embed_status=%s)", label, getattr(snapshot, "embed_status", None))
+        label = f"{snapshot.subject_name}/{snapshot.source}"
+        if snapshot.embed_status != "succeeded":
+            logger.info("%s: skip ingest (embed_status=%s)", label, snapshot.embed_status)
             continue
-        embedded = list(resolve_embedded(snapshot) or [])
-        if not embedded:
-            logger.info("%s: skip ingest (no embedded_chunks)", label)
+        chunks = repo.list_chunks(snapshot)
+        if not chunks:
+            logger.info("%s: skip ingest (no chunks)", label)
             continue
         if indexing_needed(
             snapshot, pipeline_fingerprint=fingerprint, overwrite=overwrite
         ):
             pending.append(snapshot)
             continue
-        chunk_ids = {
-            str(chunk.get("id") or "")
-            for chunk in embedded
-            if chunk.get("id")
-        }
+        chunk_ids = {chunk.id for chunk in chunks}
         try:
             azure_ids = store.existing_ids(sorted(chunk_ids))
         except Exception as exc:
             logger.warning("%s: Azure verify failed (%s); re-syncing", label, exc)
             reset_indexing(snapshot)
-            work_unit.save(snapshot)
+            repo.save_source(snapshot)
             pending.append(snapshot)
             drift_resets += 1
             continue
@@ -243,17 +281,16 @@ def ingest_snapshots(
             len(azure_ids),
         )
         reset_indexing(snapshot)
-        work_unit.save(snapshot)
+        repo.save_source(snapshot)
         pending.append(snapshot)
         drift_resets += 1
     if drift_resets:
-        work_unit.commit()
+        repo.commit()
 
     eligible = [
         snapshot
         for snapshot in snapshots
-        if getattr(snapshot, "embed_status", None) == "succeeded"
-        and list(resolve_embedded(snapshot) or [])
+        if snapshot.embed_status == "succeeded" and repo.list_chunks(snapshot)
     ]
     logger.info(
         "dinosaur_knowledge ingest: %s embedded row(s); %s pending, %s already indexed%s",
@@ -264,23 +301,27 @@ def ingest_snapshots(
     )
     summary = JobSummary(candidates=len(eligible))
     summary.skipped = already_indexed + (len(snapshots) - len(eligible))
-    if not pending:
-        return summary
 
     for snapshot in pending:
+        label = f"{snapshot.subject_name}/{snapshot.source}"
         sync_result: dict[str, Any] = {}
-        label = (
-            label_for(snapshot)
-            if label_for
-            else f"{snapshot.subject_name}/{snapshot.source}"
-        )
 
-        def work(row: CheckpointT, *, _result=sync_result) -> None:
+        def work(row: Any, *, _result=sync_result) -> None:
             _result["result"] = sync_embedded_chunks(
-                resolve_embedded(row),
-                scope=resolve_scope(row),
-                config=config,
+                repo.list_chunks(row),
+                scope=snapshot_scope(row),
+                config=active,
             )
+
+        def reload(row: Any) -> Any:
+            loaded = repo.get_source(
+                subject_kind=row.subject_kind,
+                subject_id=row.subject_id,
+                source=row.source,
+            )
+            if loaded is None:
+                raise RuntimeError(f"Missing knowledge source after failure: {row.id}")
+            return loaded
 
         logger.info("%s: ingesting", label)
         outcome = run_resumable_item(
@@ -302,13 +343,11 @@ def ingest_snapshots(
                 logger.info(
                     "%s: done upsert=%s skip=%s meta=%s delete=%s",
                     label,
-                    getattr(result, "embedded_count", "?"),
-                    getattr(result, "skipped_count", "?"),
-                    getattr(result, "metadata_updated_count", "?"),
-                    getattr(result, "deleted_count", "?"),
+                    result.embedded_count,
+                    result.skipped_count,
+                    result.metadata_updated_count,
+                    result.deleted_count,
                 )
-            else:
-                logger.info("%s: done", label)
         elif outcome == "failed":
             logger.error("%s: failed", label)
         elif outcome == "skipped":
@@ -318,51 +357,42 @@ def ingest_snapshots(
     return summary
 
 
-def index_snapshots(
+def index_knowledge(
     *,
-    config: AiConfig,
-    snapshots: Sequence[CheckpointT],
-    work_unit: UnitOfWork,
-    reload: Callable[[CheckpointT], CheckpointT],
-    scope_for: Callable[[CheckpointT], dict[str, Any]] | None = None,
-    documents_for: Callable[[CheckpointT], Any] | None = None,
-    label_for: Callable[[CheckpointT], str] | None = None,
+    repo: KnowledgeRepository,
+    config: AiConfig | None = None,
+    names: list[str] | None = None,
+    sources: list[str] | None = None,
+    max_items: int | None = None,
     overwrite: bool = False,
     dry_run: bool = False,
-    prepare_index: bool = True,
     recreate_index: bool = False,
-    snapshots_to_reset: Sequence[CheckpointT] | None = None,
-    namespace: str = DEFAULT_NAMESPACE,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> JobSummary:
-    """Embed then ingest checkpointed snapshots (compat convenience)."""
-    embed_summary = embed_snapshots(
+    """Embed then ingest (compat convenience)."""
+    if recreate_index:
+        require_full_recreate_scope(names=names, sources=sources, max_items=max_items)
+    embed_summary = embed_knowledge(
+        repo=repo,
         config=config,
-        snapshots=snapshots,
-        work_unit=work_unit,
-        reload=reload,
-        documents_for=documents_for,
-        label_for=label_for,
+        names=names,
+        sources=sources,
+        max_items=max_items,
         overwrite=overwrite,
         dry_run=dry_run,
+        subject_kind=subject_kind,
     )
     if dry_run:
         return embed_summary
-    # Reload after embed so ingest sees persisted vectors / statuses.
-    snapshots = [reload(snapshot) for snapshot in snapshots]
-    ingest_summary = ingest_snapshots(
+    ingest_summary = ingest_knowledge(
+        repo=repo,
         config=config,
-        snapshots=snapshots,
-        work_unit=work_unit,
-        reload=reload,
-        scope_for=scope_for,
-        label_for=label_for,
+        names=names,
+        sources=sources,
+        max_items=max_items,
         overwrite=overwrite,
         dry_run=False,
-        prepare_index=prepare_index,
         recreate_index=recreate_index,
-        snapshots_to_reset=snapshots_to_reset,
-        namespace=namespace,
         subject_kind=subject_kind,
     )
     return JobSummary(
@@ -373,192 +403,18 @@ def index_snapshots(
     )
 
 
-def embed_knowledge(
-    *,
-    session: Any,
-    model: type[Any],
-    config: AiConfig | None = None,
-    names: list[str] | None = None,
-    sources: list[str] | None = None,
-    max_items: int | None = None,
-    overwrite: bool = False,
-    dry_run: bool = False,
-    subject_kind: str = DEFAULT_SUBJECT_KIND,
-) -> JobSummary:
-    """Chunk/embed acquired checkpoint rows into ``embedded_chunks`` SQL."""
-    active = config or AiConfig()
-
-    def reload(row: Any) -> Any:
-        loaded = session.get(model, row.id)
-        if loaded is None:  # pragma: no cover - defensive
-            raise RuntimeError(f"Missing knowledge snapshot after failure: {row.id}")
-        return loaded
-
-    return embed_snapshots(
-        config=active,
-        snapshots=_list_indexable(
-            session,
-            model,
-            names=names,
-            sources=sources,
-            max_items=max_items,
-            subject_kind=subject_kind,
-        ),
-        work_unit=SessionUnitOfWork(session),
-        reload=reload,
-        overwrite=overwrite,
-        dry_run=dry_run,
-    )
-
-
-def ingest_knowledge(
-    *,
-    session: Any,
-    model: type[Any],
-    config: AiConfig | None = None,
-    names: list[str] | None = None,
-    sources: list[str] | None = None,
-    max_items: int | None = None,
-    overwrite: bool = False,
-    dry_run: bool = False,
-    recreate_index: bool = False,
-    subject_kind: str = DEFAULT_SUBJECT_KIND,
-) -> JobSummary:
-    """Ingest SQL-cached embeddings from ``model`` into Azure Search."""
-    active = config or AiConfig()
-    if recreate_index:
-        require_full_recreate_scope(names=names, sources=sources, max_items=max_items)
-
-    def reload(row: Any) -> Any:
-        loaded = session.get(model, row.id)
-        if loaded is None:  # pragma: no cover - defensive
-            raise RuntimeError(f"Missing knowledge snapshot after failure: {row.id}")
-        return loaded
-
-    return ingest_snapshots(
-        config=active,
-        snapshots=_list_indexable(
-            session,
-            model,
-            names=names,
-            sources=sources,
-            max_items=max_items,
-            subject_kind=subject_kind,
-        ),
-        work_unit=SessionUnitOfWork(session),
-        reload=reload,
-        overwrite=overwrite,
-        dry_run=dry_run,
-        recreate_index=recreate_index,
-        snapshots_to_reset=(
-            _list_succeeded(session, model, subject_kind=subject_kind)
-            if recreate_index
-            else None
-        ),
-        subject_kind=subject_kind,
-    )
-
-
-def index_knowledge(
-    *,
-    session: Any,
-    model: type[Any],
-    config: AiConfig | None = None,
-    names: list[str] | None = None,
-    sources: list[str] | None = None,
-    max_items: int | None = None,
-    overwrite: bool = False,
-    dry_run: bool = False,
-    recreate_index: bool = False,
-    subject_kind: str = DEFAULT_SUBJECT_KIND,
-) -> JobSummary:
-    """Embed then ingest acquired checkpoint rows (compat convenience)."""
-    active = config or AiConfig()
-    if recreate_index:
-        require_full_recreate_scope(names=names, sources=sources, max_items=max_items)
-
-    def reload(row: Any) -> Any:
-        loaded = session.get(model, row.id)
-        if loaded is None:  # pragma: no cover - defensive
-            raise RuntimeError(f"Missing knowledge snapshot after failure: {row.id}")
-        return loaded
-
-    snapshots = _list_indexable(
-        session,
-        model,
-        names=names,
-        sources=sources,
-        max_items=max_items,
-        subject_kind=subject_kind,
-    )
-    return index_snapshots(
-        config=active,
-        snapshots=snapshots,
-        work_unit=SessionUnitOfWork(session),
-        reload=reload,
-        overwrite=overwrite,
-        dry_run=dry_run,
-        recreate_index=recreate_index,
-        snapshots_to_reset=(
-            _list_succeeded(session, model, subject_kind=subject_kind)
-            if recreate_index
-            else None
-        ),
-        subject_kind=subject_kind,
-    )
-
-
 def list_knowledge_rows(
-    session: Any,
-    model: type[Any],
+    repo: KnowledgeRepository,
     *,
     names: list[str] | None = None,
     succeeded_only: bool = False,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> list[Any]:
-    """List checkpoint rows for status or evaluation."""
-    from sqlmodel import col, select
-
-    statement = (
-        select(model)
-        .where(model.subject_kind == subject_kind)
-        .order_by(col(model.subject_name), col(model.source))
-    )
-    if succeeded_only:
-        statement = statement.where(model.acquisition_status == "succeeded")
-    rows = list(session.exec(statement).all())
-    return _filter_names(rows, names)
-
-
-def _list_indexable(
-    session: Any,
-    model: type[Any],
-    *,
-    names: list[str] | None,
-    sources: list[str] | None,
-    max_items: int | None,
-    subject_kind: str,
-) -> list[Any]:
-    from sqlmodel import col, select
-
-    selected = _normalize_sources(sources)
-    statement = (
-        select(model)
-        .where(
-            model.subject_kind == subject_kind,
-            model.acquisition_status == "succeeded",
-            col(model.source).in_(selected),
-        )
-        .order_by(col(model.subject_name), col(model.source))
-    )
-    return _filter_names(list(session.exec(statement).all()), names, max_items=max_items)
-
-
-def _list_succeeded(
-    session: Any, model: type[Any], *, subject_kind: str
-) -> list[Any]:
-    return list_knowledge_rows(
-        session, model, succeeded_only=True, subject_kind=subject_kind
+    """List source rows for status or evaluation."""
+    return repo.list_sources(
+        subject_kind=subject_kind,
+        names=names,
+        acquisition_succeeded_only=succeeded_only,
     )
 
 
@@ -569,17 +425,3 @@ def _normalize_sources(sources: Sequence[str] | None) -> list[str]:
     if unknown:
         raise ValueError(f"Unsupported knowledge sources: {', '.join(unknown)}")
     return list(dict.fromkeys(normalized))
-
-
-def _filter_names(
-    rows: list[Any],
-    names: list[str] | None,
-    *,
-    max_items: int | None = None,
-) -> list[Any]:
-    if names:
-        wanted = {name.strip().casefold() for name in names if name.strip()}
-        rows = [row for row in rows if row.subject_name.casefold() in wanted]
-    if max_items is not None:
-        rows = rows[:max_items]
-    return rows

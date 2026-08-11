@@ -60,6 +60,6 @@ cd backend
 .venv/bin/python -m pytest rag/tests -q
 ```
 
-1. **Acquire** — latest `dinosaur_type_revision` Wikipedia article + OpenAlex → Postgres `documents`
-2. **Embed** — SQL documents → chunk / embed → Postgres `embedded_chunks`
+1. **Acquire** — latest `dinosaur_type_revision` Wikipedia article + OpenAlex → `dinosaur_knowledge_source` + `dinosaur_knowledge_doc`
+2. **Embed** — docs → chunk / embed → `dinosaur_knowledge_chunk`
 3. **Ingest** — SQL embeddings → Azure Search

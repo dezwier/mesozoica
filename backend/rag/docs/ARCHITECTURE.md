@@ -15,8 +15,8 @@ the rest:
 
 ```text
 dinosaur_type_revision (Wikipedia) / retrieve_openalex
-  -> store_documents (Postgres documents; acquire script)
-  -> prepare_embeddings / embed_knowledge (Postgres embedded_chunks)
+  -> store_documents (dinosaur_knowledge_source + dinosaur_knowledge_doc)
+  -> prepare_embeddings / embed_knowledge (dinosaur_knowledge_chunk)
   -> sync_embedded_chunks / ingest_knowledge (Azure Search)
 
 embed_query

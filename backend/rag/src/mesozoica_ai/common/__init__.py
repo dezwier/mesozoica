@@ -17,6 +17,7 @@ from mesozoica_ai.common.checkpoints import (
     complete_acquisition,
     complete_embedding,
     complete_indexing,
+    embedding_inventory_hash,
     embedding_needed,
     fail_acquisition,
     fail_embedding,
@@ -40,6 +41,10 @@ from mesozoica_ai.common.inventory import (
     KnowledgeOverview,
     sql_embedded_overview,
     sql_knowledge_overview,
+)
+from mesozoica_ai.common.knowledge_repo import (
+    KnowledgeRepository,
+    SqlModelKnowledgeRepository,
 )
 from mesozoica_ai.common.metadata import SourceMetadata
 from mesozoica_ai.common.models import (
@@ -84,6 +89,8 @@ __all__ = [
     "InsufficientEvidenceError",
     "JobSummary",
     "KnowledgeOverview",
+    "KnowledgeRepository",
+    "SqlModelKnowledgeRepository",
     "sql_embedded_overview",
     "sql_knowledge_overview",
     "KnowledgeChunk",
@@ -110,6 +117,7 @@ __all__ = [
     "complete_acquisition",
     "complete_embedding",
     "complete_indexing",
+    "embedding_inventory_hash",
     "embedding_needed",
     "fail_acquisition",
     "fail_embedding",

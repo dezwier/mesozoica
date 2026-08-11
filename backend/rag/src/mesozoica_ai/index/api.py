@@ -258,30 +258,22 @@ def _wait_for_keys(
 def azure_knowledge_overview(
     *,
     config: KnowledgeConfig,
-    session: Any | None = None,
-    model: type[Any] | None = None,
+    repo: Any | None = None,
 ):
     """Summarize dinosaurs / wiki / papers / chunks currently in Azure Search.
 
-    When ``session``/``model`` are provided, expected chunk IDs are derived from
-    SQL documents and probed with key lookup (not search=*), which is reliable
-    on indexes where wildcard scope scans under-count.
+    When ``repo`` is provided, expected chunk IDs come from SQL chunk rows and are
+    probed with key lookup (not search=*), which is reliable on indexes where
+    wildcard scope scans under-count.
     """
-    from mesozoica_ai.common.batch import DEFAULT_SUBJECT_KIND, snapshot_scope
+    from mesozoica_ai.common.batch import snapshot_scope
     from mesozoica_ai.common.inventory import KnowledgeOverview
-    from sqlmodel import select
 
     store = build_store(config, write_enabled=False)
-    if session is None or model is None:
+    if repo is None:
         from mesozoica_ai.common.inventory import azure_knowledge_overview_from_rows
 
         return azure_knowledge_overview_from_rows(store.inventory_rows())
-
-    statement = select(model).where(
-        model.subject_kind == DEFAULT_SUBJECT_KIND,
-        model.acquisition_status == "succeeded",
-    )
-    sql_rows = list(session.exec(statement).all())
 
     subjects: set[str] = set()
     wiki_subjects: set[str] = set()
@@ -290,27 +282,18 @@ def azure_knowledge_overview(
     wiki_chunks = 0
     openalex_chunks = 0
 
-    for row in sql_rows:
+    for row in repo.list_sources(acquisition_succeeded_only=True):
         scope = snapshot_scope(row)
         subject = str(scope.get("subject_id") or "")
         source = str(row.source or "").casefold()
-        if getattr(row, "embedded_chunks", None):
-            chunk_ids = [
-                str(chunk.get("id") or "")
-                for chunk in row.embedded_chunks
-                if chunk.get("id")
-            ]
-            chunks_by_id = {
-                str(chunk.get("id")): chunk
-                for chunk in row.embedded_chunks
-                if chunk.get("id")
-            }
+        chunks = repo.list_chunks(row)
+        if not chunks:
+            chunks_from_docs = chunk_documents(repo.list_documents(row), config=config)
+            chunk_ids = [chunk.id for chunk in chunks_from_docs]
+            chunks_by_id = {chunk.id: chunk for chunk in chunks_from_docs}
         else:
-            chunks = chunk_documents(list(row.documents or []), config=config)
             chunk_ids = [chunk.id for chunk in chunks]
-            chunks_by_id = {
-                chunk.id: chunk.model_dump(mode="json") for chunk in chunks
-            }
+            chunks_by_id = {chunk.id: chunk for chunk in chunks}
         found_ids = store.existing_ids(chunk_ids)
         if not found_ids:
             continue
@@ -322,9 +305,10 @@ def azure_knowledge_overview(
             openalex_subjects.add(subject)
             openalex_chunks += len(found_ids)
             for chunk_id in found_ids:
-                chunk = chunks_by_id.get(chunk_id) or {}
-                metadata = chunk.get("metadata") or {}
-                source_id = str(metadata.get("source_id") or "").strip()
+                chunk = chunks_by_id.get(chunk_id)
+                if chunk is None:
+                    continue
+                source_id = str(chunk.metadata.source_id or "").strip()
                 if subject and source_id:
                     papers.add((subject, source_id))
 

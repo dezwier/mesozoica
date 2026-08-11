@@ -7,24 +7,33 @@ from sqlmodel import select
 
 from app.crons.config import load_cron_config
 from app.features.ingestion import runner as ingestion_runner
-from app.features.ingestion.models.dinosaur_knowledge import (
+from app.features.ingestion.application.dinosaur_knowledge.repository import (
+    dinosaur_knowledge_repo,
+)
+from app.features.ingestion.models import (
     KNOWLEDGE_STATUS_FAILED,
     KNOWLEDGE_STATUS_PENDING,
     KNOWLEDGE_STATUS_SUCCEEDED,
-    DinosaurKnowledge,
+    DinosaurKnowledgeSource,
 )
 from app.features.specimens.public import DinosaurKnowledgeSubject
 from mesozoica_ai.common import (
     Document,
+    EmbeddedChunk,
+    SourceMetadata,
     acquire_knowledge,
 )
 from mesozoica_ai.evaluate import RetrievalCase, load_retrieval_cases, prepare_retrieval_cases
 from mesozoica_ai.evaluate import format_checkpoint_status
 from mesozoica_ai.generate import QuizQuestion
-from mesozoica_ai.index import index_knowledge, list_knowledge_rows
+from mesozoica_ai.index import embed_knowledge, index_knowledge, ingest_knowledge, list_knowledge_rows
 
 
 SUBJECT = DinosaurKnowledgeSubject(id=7, name="Example", wikipedia_title="Example")
+
+
+def _repo(session):
+    return dinosaur_knowledge_repo(session)
 
 
 def acquire_dinosaur_knowledge(
@@ -44,8 +53,7 @@ def acquire_dinosaur_knowledge(
         return retrievers[source](query, metadata=metadata)
 
     return acquire_knowledge(
-        session,
-        DinosaurKnowledge,
+        _repo(session),
         subjects=subjects,
         retrieve=retrieve,
         sources=sources,
@@ -57,8 +65,7 @@ def acquire_dinosaur_knowledge(
 
 def index_dinosaur_knowledge(session, *, config, dinosaur_names=None, **kwargs):
     return index_knowledge(
-        session=session,
-        model=DinosaurKnowledge,
+        repo=_repo(session),
         config=config,
         names=dinosaur_names,
         **kwargs,
@@ -68,7 +75,7 @@ def index_dinosaur_knowledge(session, *, config, dinosaur_names=None, **kwargs):
 def format_knowledge_status(session, **kwargs):
     return format_checkpoint_status(
         list_knowledge_rows(
-            session, DinosaurKnowledge, names=kwargs.pop("dinosaur_names", None)
+            _repo(session), names=kwargs.pop("dinosaur_names", None)
         ),
         subject_header="DINOSAUR",
         **kwargs,
@@ -156,7 +163,7 @@ def test_acquisition_persists_independent_source_states_and_resumes(session):
         subjects=[SUBJECT],
         retrievers=_retrievers(wikipedia=wiki, openalex=FailingOpenAlex()),
     )
-    rows = list(session.exec(select(DinosaurKnowledge)).all())
+    rows = list(session.exec(select(DinosaurKnowledgeSource)).all())
     by_source = {row.source: row for row in rows}
 
     assert summary.succeeded == 1
@@ -164,7 +171,8 @@ def test_acquisition_persists_independent_source_states_and_resumes(session):
     assert by_source["wikipedia"].acquisition_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert by_source["wikipedia"].index_status == KNOWLEDGE_STATUS_PENDING
     assert by_source["openalex"].acquisition_status == KNOWLEDGE_STATUS_FAILED
-    assert by_source["wikipedia"].documents[0]["metadata"]["subject_id"] == "dinosaur:7"
+    docs = _repo(session).list_documents(by_source["wikipedia"])
+    assert docs[0].metadata.subject_id == "dinosaur:7"
 
     resumed = acquire_dinosaur_knowledge(
         session,
@@ -184,7 +192,7 @@ def test_changed_overwrite_marks_snapshot_for_reindex(session):
         retrievers=_retrievers(wikipedia=first),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot = session.exec(select(DinosaurKnowledgeSource)).one()
     snapshot.index_status = KNOWLEDGE_STATUS_SUCCEEDED
     snapshot.indexed_hash = snapshot.content_hash
     session.add(snapshot)
@@ -198,7 +206,7 @@ def test_changed_overwrite_marks_snapshot_for_reindex(session):
         overwrite=True,
     )
     session.expire_all()
-    changed = session.exec(select(DinosaurKnowledge)).one()
+    changed = session.exec(select(DinosaurKnowledgeSource)).one()
     assert changed.index_status == KNOWLEDGE_STATUS_PENDING
     assert changed.indexed_hash is None
 
@@ -210,7 +218,7 @@ def test_unchanged_overwrite_preserves_index_checkpoint_and_records_source_hash(
         retrievers=_retrievers(wikipedia=FakeWikipedia("same")),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot = session.exec(select(DinosaurKnowledgeSource)).one()
     snapshot.index_status = KNOWLEDGE_STATUS_SUCCEEDED
     snapshot.indexed_hash = snapshot.content_hash
     session.add(snapshot)
@@ -224,7 +232,7 @@ def test_unchanged_overwrite_preserves_index_checkpoint_and_records_source_hash(
         overwrite=True,
     )
     session.expire_all()
-    unchanged = session.exec(select(DinosaurKnowledge)).one()
+    unchanged = session.exec(select(DinosaurKnowledgeSource)).one()
     assert unchanged.source_hash
     assert unchanged.index_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert unchanged.indexed_hash == unchanged.content_hash
@@ -237,7 +245,7 @@ def test_running_acquisition_is_retried_after_interruption(session):
         retrievers=_retrievers(wikipedia=FakeWikipedia()),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot = session.exec(select(DinosaurKnowledgeSource)).one()
     snapshot.acquisition_status = "running"
     session.add(snapshot)
     session.commit()
@@ -264,7 +272,7 @@ def test_acquisition_dry_run_does_not_create_checkpoints(session):
 
     assert summary.candidates == 2
     assert summary.skipped == 2
-    assert list(session.exec(select(DinosaurKnowledge)).all()) == []
+    assert list(session.exec(select(DinosaurKnowledgeSource)).all()) == []
 
 
 def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None):
@@ -280,22 +288,23 @@ def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None)
 
     def prepare(documents, *, config, existing=None):
         calls["prepare"].append((documents, existing))
+        chunk = EmbeddedChunk(
+            id="chunk-1",
+            document_id="doc-1",
+            text="t",
+            embedding_text="t",
+            metadata=SourceMetadata(
+                source="wikipedia", source_id="1", title="T"
+            ),
+            chunk_index=0,
+            start_index=0,
+            embedding_hash="eh",
+            document_hash="dh",
+            pipeline_fingerprint=fingerprint,
+            embedding=[0.0, 1.0],
+        )
         return SimpleNamespace(
-            chunks=[
-                {
-                    "id": "chunk-1",
-                    "document_id": "doc-1",
-                    "text": "t",
-                    "embedding_text": "t",
-                    "metadata": {"source": "wikipedia", "source_id": "1", "title": "T"},
-                    "chunk_index": 0,
-                    "start_index": 0,
-                    "embedding_hash": "eh",
-                    "document_hash": "dh",
-                    "pipeline_fingerprint": fingerprint,
-                    "embedding": [0.0, 1.0],
-                }
-            ],
+            chunks=[chunk],
             embedded_count=1 if not existing else 0,
             reused_count=1 if existing else 0,
             chunk_count=1,
@@ -306,7 +315,13 @@ def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None)
         calls["sync"].append((embedded_chunks, scope))
         if scope["source"] == fail_source:
             raise RuntimeError("azure unavailable")
-        return SimpleNamespace(pipeline_fingerprint=fingerprint)
+        return SimpleNamespace(
+            pipeline_fingerprint=fingerprint,
+            embedded_count=len(embedded_chunks),
+            skipped_count=0,
+            metadata_updated_count=0,
+            deleted_count=0,
+        )
 
     class FakeStore:
         def existing_ids(self, ids):
@@ -343,7 +358,7 @@ def test_indexing_uses_source_scope_and_recreate_resets_checkpoints(session, mon
         config=SimpleNamespace(),
         recreate_index=True,
     )
-    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot = session.exec(select(DinosaurKnowledgeSource)).one()
 
     assert summary.succeeded == 1
     assert calls["recreate"] == 1
@@ -378,7 +393,7 @@ def test_indexing_continues_after_one_source_fails(session, monkeypatch):
         session,
         config=SimpleNamespace(),
     )
-    rows = list(session.exec(select(DinosaurKnowledge)).all())
+    rows = list(session.exec(select(DinosaurKnowledgeSource)).all())
     by_source = {row.source: row for row in rows}
 
     assert summary.failed == 1
@@ -402,7 +417,7 @@ def test_pipeline_change_reindexes_unchanged_content(session, monkeypatch):
     summary = index_dinosaur_knowledge(
         session, config=SimpleNamespace(), sources=["wikipedia"]
     )
-    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot = session.exec(select(DinosaurKnowledgeSource)).one()
     assert summary.succeeded == 1
     assert len(calls["prepare"]) == 1
     assert len(calls["sync"]) == 1
@@ -410,8 +425,6 @@ def test_pipeline_change_reindexes_unchanged_content(session, monkeypatch):
 
 
 def test_ingest_retries_without_reembedding_after_azure_failure(session, monkeypatch):
-    from mesozoica_ai.index import embed_knowledge, ingest_knowledge
-
     acquire_dinosaur_knowledge(
         session,
         subjects=[SUBJECT],
@@ -420,19 +433,17 @@ def test_ingest_retries_without_reembedding_after_azure_failure(session, monkeyp
     )
     calls = _patch_indexing(monkeypatch, fingerprint="pipeline-v2", fail_source="wikipedia")
     embed_knowledge(
-        session=session,
-        model=DinosaurKnowledge,
+        repo=_repo(session),
         config=SimpleNamespace(),
         sources=["wikipedia"],
     )
     assert len(calls["prepare"]) == 1
-    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot = session.exec(select(DinosaurKnowledgeSource)).one()
     assert snapshot.embed_status == KNOWLEDGE_STATUS_SUCCEEDED
-    assert snapshot.embedded_chunks
+    assert _repo(session).list_chunks(snapshot)
 
     failed = ingest_knowledge(
-        session=session,
-        model=DinosaurKnowledge,
+        repo=_repo(session),
         config=SimpleNamespace(),
         sources=["wikipedia"],
     )
@@ -443,8 +454,7 @@ def test_ingest_retries_without_reembedding_after_azure_failure(session, monkeyp
 
     calls2 = _patch_indexing(monkeypatch, fingerprint="pipeline-v2")
     retry = ingest_knowledge(
-        session=session,
-        model=DinosaurKnowledge,
+        repo=_repo(session),
         config=SimpleNamespace(),
         sources=["wikipedia"],
     )
@@ -511,18 +521,18 @@ def test_golden_case_refuses_changed_snapshot_hash(session):
         session, subjects=[SUBJECT], retrievers=_retrievers(wikipedia=FakeWikipedia()),
         sources=["wikipedia"],
     )
-    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    snapshot = session.exec(select(DinosaurKnowledgeSource)).one()
     case = RetrievalCase(
         id="case", subject_name="Example", query="q",
         relevant_document_ids={"wiki:1:intro": 3},
         snapshot_hashes={"wikipedia": snapshot.source_hash},
     )
-    prepared = prepare_retrieval_cases([case], session.exec(select(DinosaurKnowledge)).all())
+    prepared = prepare_retrieval_cases([case], session.exec(select(DinosaurKnowledgeSource)).all())
     assert prepared[0].filters["subject_id"] == "dinosaur:7"
     with pytest.raises(ValueError, match="stale"):
         prepare_retrieval_cases(
             [case.model_copy(update={"snapshot_hashes": {"wikipedia": "changed"}})],
-            session.exec(select(DinosaurKnowledge)).all(),
+            session.exec(select(DinosaurKnowledgeSource)).all(),
         )
 
 

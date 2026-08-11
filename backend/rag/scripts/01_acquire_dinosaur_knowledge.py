@@ -1,4 +1,4 @@
-"""Acquire Wikipedia revisions + OpenAlex into the dinosaur_knowledge SQL table.
+"""Acquire Wikipedia revisions + OpenAlex into dinosaur_knowledge_source/doc.
 
 Does not touch Azure Search — use 02_embed_dinosaur_knowledge.py then
 03_ingest_dinosaur_knowledge.py for that.
@@ -40,24 +40,26 @@ for _noisy in ("httpx", "httpcore"):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
 logger = logging.getLogger("acquire")
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.database import engine
+from app.features.ingestion.application.dinosaur_knowledge.repository import (
+    dinosaur_knowledge_repo,
+)
 from app.features.ingestion.application.dinosaur_knowledge.wikipedia_documents import (
     wikipedia_documents_from_article,
 )
-from app.features.ingestion.models.dinosaur_knowledge import DinosaurKnowledge
 from app.features.ingestion.public import parse_dino_names
 from app.features.specimens.public import (
     get_latest_dinosaur_wikipedia_article,
     list_dinosaur_knowledge_subjects,
 )
 from mesozoica_ai.common import (
-    DEFAULT_SUBJECT_KIND,
     Document,
     JobSummary,
     RateLimitedError,
+    SqlModelKnowledgeRepository,
     needs_acquisition,
     sql_knowledge_overview,
     store_documents,
@@ -82,6 +84,7 @@ def run(
         raise RuntimeError("OPENALEX_API_KEY is required for OpenAlex acquisition")
 
     with Session(engine) as session:
+        repo = dinosaur_knowledge_repo(session)
         subjects = list_dinosaur_knowledge_subjects(session, names=dinos)
         if max_items is not None:
             subjects = subjects[:max_items]
@@ -99,6 +102,7 @@ def run(
             if "wikipedia" in sources:
                 _acquire_wikipedia(
                     session,
+                    repo=repo,
                     subject=subject,
                     summary=summary,
                     dry_run=dry_run,
@@ -107,7 +111,7 @@ def run(
             if "openalex" in sources:
                 try:
                     _acquire_openalex(
-                        session,
+                        repo=repo,
                         subject=subject,
                         summary=summary,
                         dry_run=dry_run,
@@ -123,13 +127,13 @@ def run(
                     summary.failed += 1
                     break
 
-        overview = sql_knowledge_overview(session, DinosaurKnowledge)
         logger.info(
             "Done: succeeded=%s skipped=%s failed=%s",
             summary.succeeded,
             summary.skipped,
             summary.failed,
         )
+        overview = sql_knowledge_overview(repo)
         for line in overview.log_lines(title="Acquired (SQL documents)"):
             logger.info("%s", line)
 
@@ -140,6 +144,7 @@ def run(
 def _acquire_wikipedia(
     session: Session,
     *,
+    repo: SqlModelKnowledgeRepository,
     subject,
     summary: JobSummary,
     dry_run: bool,
@@ -150,9 +155,7 @@ def _acquire_wikipedia(
         logger.info("%s: dry-run skip", label)
         summary.skipped += 1
         return
-    if not needs_acquisition(
-        session, DinosaurKnowledge, subject, "wikipedia", overwrite=overwrite
-    ):
+    if not needs_acquisition(repo, subject, "wikipedia", overwrite=overwrite):
         logger.info("%s: already saved, skip", label)
         summary.skipped += 1
         return
@@ -180,8 +183,7 @@ def _acquire_wikipedia(
             metadata=subject_metadata(subject, "wikipedia"),
         )
         outcome = store_documents(
-            session,
-            DinosaurKnowledge,
+            repo,
             subject=subject,
             source="wikipedia",
             documents=documents,
@@ -197,8 +199,7 @@ def _acquire_wikipedia(
     except Exception as exc:
         logger.exception("%s: failed (%s)", label, exc)
         outcome = store_documents(
-            session,
-            DinosaurKnowledge,
+            repo,
             subject=subject,
             source="wikipedia",
             error=exc,
@@ -208,8 +209,8 @@ def _acquire_wikipedia(
 
 
 def _acquire_openalex(
-    session: Session,
     *,
+    repo: SqlModelKnowledgeRepository,
     subject,
     summary: JobSummary,
     dry_run: bool,
@@ -218,14 +219,14 @@ def _acquire_openalex(
     paper_target: int,
 ) -> None:
     label = f"{subject.name}/openalex"
-    row = session.exec(
-        select(DinosaurKnowledge).where(
-            DinosaurKnowledge.subject_kind == DEFAULT_SUBJECT_KIND,
-            DinosaurKnowledge.subject_id == str(subject.id),
-            DinosaurKnowledge.source == "openalex",
-        )
-    ).first()
-    existing_docs = [] if overwrite or row is None else list(row.documents or [])
+    row = repo.get_source(
+        subject_kind="dinosaur",
+        subject_id=str(subject.id),
+        source="openalex",
+    )
+    existing_docs = (
+        [] if overwrite or row is None else repo.list_documents(row)
+    )
     have = paper_inventory(existing_docs)
     have_ids = {work_id for work_id, _ in have}
 
@@ -260,7 +261,7 @@ def _acquire_openalex(
             summary.skipped += 1
             return
         _store_openalex_merge(
-            session,
+            repo,
             subject=subject,
             summary=summary,
             label=label,
@@ -276,7 +277,7 @@ def _acquire_openalex(
                 len(paper_inventory(exc.partial_documents)),
             )
             _store_openalex_merge(
-                session,
+                repo,
                 subject=subject,
                 summary=summary,
                 label=label,
@@ -294,8 +295,7 @@ def _acquire_openalex(
             summary.failed += 1
             return
         outcome = store_documents(
-            session,
-            DinosaurKnowledge,
+            repo,
             subject=subject,
             source="openalex",
             error=exc,
@@ -305,7 +305,7 @@ def _acquire_openalex(
 
 
 def _store_openalex_merge(
-    session: Session,
+    repo: SqlModelKnowledgeRepository,
     *,
     subject,
     summary: JobSummary,
@@ -315,12 +315,14 @@ def _store_openalex_merge(
     paper_target: int,
 ) -> None:
     merged = [
-        *[Document.model_validate(item) for item in existing_docs],
+        *[
+            item if isinstance(item, Document) else Document.model_validate(item)
+            for item in existing_docs
+        ],
         *new_documents,
     ]
     outcome = store_documents(
-        session,
-        DinosaurKnowledge,
+        repo,
         subject=subject,
         source="openalex",
         documents=merged,

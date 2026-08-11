@@ -176,7 +176,7 @@ make run-dinosaur-knowledge CRON_EXTRA='--dinos Tyrannosaurus --sources wikipedi
 .venv/bin/python rag/scripts/03_ingest_dinosaur_knowledge.py --dinos Tyrannosaurus
 ```
 
-Each dinosaur/source is committed independently in `dinosaur_knowledge`. Successful unchanged acquisitions are skipped, failed/running states retry, content changes reset that source's embed and index checkpoints, and a pipeline fingerprint change also makes a row eligible for re-embed/ingest without `--overwrite`. Embeddings are stored in SQL first so a failed Azure ingest can be retried without re-embedding. Status/quiz/eval helpers live in the `mesozoica_ai` library (see [`../../rag/docs/USAGE.md`](../../rag/docs/USAGE.md)), not as app crons.
+Each dinosaur/source is committed independently as `dinosaur_knowledge_source` with child docs/chunks. Successful unchanged acquisitions are skipped, failed/running states retry, content changes replace docs, delete chunks, and reset that source's embed/index checkpoints, and a pipeline fingerprint change also makes a source eligible for re-embed/ingest without `--overwrite`. Embeddings are stored in `dinosaur_knowledge_chunk` first so a failed Azure ingest can be retried without re-embedding. Status/quiz/eval helpers live in the `mesozoica_ai` library (see [`../../rag/docs/USAGE.md`](../../rag/docs/USAGE.md)), not as app crons.
 
 Normal ingest validates the existing schema and vector dimensions and never deletes the index. `--recreate-index` is intentionally destructive for the configured index; it is the only workflow path that recreates it and causes all successfully embedded rows to be re-ingested from SQL.
 

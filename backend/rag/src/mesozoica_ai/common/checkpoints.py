@@ -9,22 +9,19 @@ from typing import Any, Protocol, Sequence
 
 
 class AcquiredDocuments(Protocol):
-    """Duck-typed acquisition payload stored on a checkpoint."""
+    """Duck-typed acquisition payload hashes for a source checkpoint."""
 
     content_hash: str
     source_hash: str
     source_version: str | None
-    serialized_documents: list[dict[str, Any]]
 
 
 class AcquisitionCheckpoint(Protocol):
     """Mutable fields required by the acquisition state machine."""
 
-    documents: list[dict[str, Any]]
     source_version: str | None
     source_hash: str | None
     content_hash: str | None
-    embedded_chunks: list[dict[str, Any]]
     embedded_hash: str | None
     embedded_pipeline_fingerprint: str | None
     indexed_hash: str | None
@@ -45,7 +42,6 @@ class EmbeddingCheckpoint(Protocol):
     """Mutable fields required by the embedding state machine."""
 
     content_hash: str | None
-    embedded_chunks: list[dict[str, Any]]
     embedded_hash: str | None
     embedded_pipeline_fingerprint: str | None
     indexed_hash: str | None
@@ -100,9 +96,8 @@ def complete_acquisition(
     *,
     now: datetime | None = None,
 ) -> bool:
-    """Store a successful result and invalidate embed/index only when content changed."""
+    """Record successful acquisition hashes; caller persists docs via repository."""
     changed = checkpoint.content_hash != result.content_hash
-    checkpoint.documents = result.serialized_documents
     checkpoint.content_hash = result.content_hash
     checkpoint.source_hash = result.source_hash
     checkpoint.source_version = result.source_version
@@ -161,20 +156,14 @@ def begin_embedding(
 def complete_embedding(
     checkpoint: EmbeddingCheckpoint,
     *,
-    embedded_chunks: Sequence[Any],
     pipeline_fingerprint: str,
+    previous_inventory_hash: str | None,
+    new_inventory_hash: str,
     now: datetime | None = None,
 ) -> bool:
-    """Persist embedded chunks and invalidate Azure ingest when vectors changed."""
-    serialized = [
-        chunk.model_dump(mode="json") if hasattr(chunk, "model_dump") else dict(chunk)
-        for chunk in embedded_chunks
-    ]
-    inventory = _embedding_inventory_hash(serialized)
-    previous = _embedding_inventory_hash(checkpoint.embedded_chunks or [])
-    vectors_changed = inventory != previous
+    """Record successful embedding; caller persists chunks via repository."""
+    vectors_changed = previous_inventory_hash != new_inventory_hash
     timestamp = now or _utc_now()
-    checkpoint.embedded_chunks = serialized
     checkpoint.embed_status = "succeeded"
     checkpoint.embedded_hash = checkpoint.content_hash
     checkpoint.embedded_pipeline_fingerprint = pipeline_fingerprint
@@ -274,32 +263,42 @@ def reset_indexing(
     checkpoint.updated_at = now or _utc_now()
 
 
+def embedding_inventory_hash(chunks: Sequence[Any]) -> str:
+    """Stable hash of chunk vector identities for change detection."""
+    inventory = sorted(
+        (
+            str(_chunk_field(chunk, "id") or ""),
+            str(_chunk_field(chunk, "embedding_hash") or ""),
+            str(_chunk_field(chunk, "pipeline_fingerprint") or ""),
+        )
+        for chunk in chunks
+    )
+    payload = json.dumps(inventory, ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def _invalidate_embedding(checkpoint: AcquisitionCheckpoint | EmbeddingCheckpoint) -> None:
     checkpoint.embed_status = "pending"
-    checkpoint.embedded_chunks = []
     checkpoint.embedded_hash = None
     checkpoint.embedded_pipeline_fingerprint = None
     checkpoint.embed_error = None
 
 
-def _invalidate_indexing(checkpoint: AcquisitionCheckpoint | EmbeddingCheckpoint | IndexCheckpoint) -> None:
+def _invalidate_indexing(
+    checkpoint: AcquisitionCheckpoint | EmbeddingCheckpoint | IndexCheckpoint,
+) -> None:
     checkpoint.index_status = "pending"
     checkpoint.indexed_hash = None
     checkpoint.indexed_pipeline_fingerprint = None
     checkpoint.index_error = None
 
 
-def _embedding_inventory_hash(chunks: Sequence[dict[str, Any]]) -> str:
-    inventory = sorted(
-        (
-            str(chunk.get("id") or ""),
-            str(chunk.get("embedding_hash") or ""),
-            str(chunk.get("pipeline_fingerprint") or ""),
-        )
-        for chunk in chunks
-    )
-    payload = json.dumps(inventory, ensure_ascii=False).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+def _chunk_field(chunk: Any, name: str) -> Any:
+    if hasattr(chunk, name):
+        return getattr(chunk, name)
+    if isinstance(chunk, dict):
+        return chunk.get(name)
+    return None
 
 
 def _utc_now() -> datetime:

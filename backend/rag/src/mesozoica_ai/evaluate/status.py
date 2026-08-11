@@ -51,19 +51,18 @@ def format_checkpoint_status(
 
 
 def knowledge_status(
-    session: Any,
-    model: type[Any],
+    repo: Any,
     *,
     config: AiConfig | None = None,
     names: list[str] | None = None,
     subject_header: str = "SUBJECT",
 ) -> str:
-    """Format status for every checkpoint row in ``model``."""
+    """Format status for every source checkpoint row."""
     from mesozoica_ai.index import list_knowledge_rows
 
     active = config or AiConfig()
     return format_checkpoint_status(
-        list_knowledge_rows(session, model, names=names),
+        list_knowledge_rows(repo, names=names),
         current_pipeline_fingerprint=pipeline_fingerprint(config=active),
         subject_header=subject_header,
     )

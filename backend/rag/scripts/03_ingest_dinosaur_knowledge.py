@@ -1,8 +1,7 @@
-"""Ingest SQL-cached embeddings from dinosaur_knowledge into Azure Search.
+"""Ingest SQL-cached embeddings from dinosaur_knowledge_chunk into Azure Search.
 
-Requires rows that already succeeded embedding (02_embed_dinosaur_knowledge.py).
-Does not call the embedding API — failed Azure uploads can be retried without
-re-embedding.
+Requires sources that already succeeded embedding (02_embed_dinosaur_knowledge.py).
+Does not call the embedding API.
 
   cd backend
   .venv/bin/python rag/scripts/03_ingest_dinosaur_knowledge.py
@@ -45,7 +44,9 @@ logger = logging.getLogger("ingest")
 from sqlmodel import Session
 
 from app.core.database import engine
-from app.features.ingestion.models.dinosaur_knowledge import DinosaurKnowledge
+from app.features.ingestion.application.dinosaur_knowledge.repository import (
+    dinosaur_knowledge_repo,
+)
 from app.features.ingestion.public import parse_dino_names
 from mesozoica_ai.common import AiConfig, sql_embedded_overview
 from mesozoica_ai.common.inventory import overview_drift_lines
@@ -72,9 +73,9 @@ def run(
         recreate_index,
     )
     with Session(engine) as session:
+        repo = dinosaur_knowledge_repo(session)
         summary = ingest_knowledge(
-            session=session,
-            model=DinosaurKnowledge,
+            repo=repo,
             names=dinos,
             sources=sources,
             max_items=max_items,
@@ -82,7 +83,7 @@ def run(
             dry_run=dry_run,
             recreate_index=recreate_index,
         )
-        embedded = sql_embedded_overview(session, DinosaurKnowledge)
+        embedded = sql_embedded_overview(repo)
         logger.info(
             "Done: succeeded=%s skipped=%s failed=%s",
             summary.succeeded,
@@ -98,8 +99,7 @@ def run(
                 time.sleep(2)
                 azure_overview = azure_knowledge_overview(
                     config=AiConfig(),
-                    session=session,
-                    model=DinosaurKnowledge,
+                    repo=repo,
                 )
                 for line in azure_overview.log_lines(title="In Azure Search"):
                     logger.info("%s", line)

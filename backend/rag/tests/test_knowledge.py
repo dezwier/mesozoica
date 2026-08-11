@@ -183,7 +183,6 @@ def test_pipeline_fingerprint_changes_with_chunking_or_embedding_configuration()
 def test_index_checkpoint_helpers_explain_resume_and_pipeline_changes():
     checkpoint = SimpleNamespace(
         content_hash="content",
-        embedded_chunks=[],
         embedded_hash=None,
         embedded_pipeline_fingerprint=None,
         indexed_hash=None,
@@ -203,21 +202,11 @@ def test_index_checkpoint_helpers_explain_resume_and_pipeline_changes():
     assert embedding_needed(checkpoint, pipeline_fingerprint="v1") is True
     begin_embedding(checkpoint)
     assert checkpoint.embed_status == "running" and checkpoint.embed_attempts == 1
-    chunk = EmbeddedChunk(
-        id="c1",
-        document_id="d1",
-        text="hello",
-        embedding_text="hello",
-        metadata={"source": "test", "source_id": "1", "title": "T"},
-        chunk_index=0,
-        start_index=0,
-        embedding_hash="eh",
-        document_hash="dh",
-        pipeline_fingerprint="v1",
-        embedding=[0.0, 1.0],
-    )
     assert complete_embedding(
-        checkpoint, embedded_chunks=[chunk], pipeline_fingerprint="v1"
+        checkpoint,
+        pipeline_fingerprint="v1",
+        previous_inventory_hash=None,
+        new_inventory_hash="new",
     ) is True
     assert checkpoint.embed_status == "succeeded"
     assert checkpoint.index_status == "pending"
@@ -237,7 +226,7 @@ def test_index_checkpoint_helpers_explain_resume_and_pipeline_changes():
     fail_embedding(checkpoint, RuntimeError("embed failed"))
     assert checkpoint.embed_status == "failed"
     reset_embedding(checkpoint)
-    assert checkpoint.embed_status == "pending" and checkpoint.embedded_chunks == []
+    assert checkpoint.embed_status == "pending" and checkpoint.embedded_hash is None
 
 
 def test_prepare_embeddings_reuses_matching_sql_vectors(monkeypatch):

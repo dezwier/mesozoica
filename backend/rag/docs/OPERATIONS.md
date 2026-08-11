@@ -20,7 +20,7 @@ Changed-only vectors, metadata-only merges, bounded batches, ten OpenAlex works,
 
 ## Fingerprints and resume behavior
 
-Each dinosaur/source is committed independently in `dinosaur_knowledge`. A row is current only when both `indexed_hash == content_hash` and `indexed_pipeline_fingerprint` equals the active pipeline. Changing schema, chunking, tokenizer, embedding deployment, or dimensions therefore makes successful snapshots eligible for indexing without `--overwrite`.
+Each dinosaur/source is committed independently as a `dinosaur_knowledge_source` row (with child `dinosaur_knowledge_doc` and `dinosaur_knowledge_chunk` rows). A source is current only when both `indexed_hash == content_hash` and `indexed_pipeline_fingerprint` equals the active pipeline. Changing schema, chunking, tokenizer, embedding deployment, or dimensions therefore makes successful sources eligible for indexing without `--overwrite`. Embeddings live on chunk rows so Azure ingest can retry without re-embedding.
 
 Status shows abbreviated content/pipeline fingerprints and one reason: acquisition missing, content changed, pipeline changed, failed/running/pending, or current. Source acquisition failures and index failures remain visible and retry independently.
 

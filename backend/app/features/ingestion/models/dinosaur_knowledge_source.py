@@ -1,11 +1,10 @@
-"""Durable acquisition and indexing checkpoint for dinosaur knowledge sources."""
+"""Job-tracking checkpoint for one dinosaur × knowledge source."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
 
-from sqlalchemy import Column, DateTime, JSON, Text, UniqueConstraint, text
+from sqlalchemy import Column, DateTime, Text, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
 KNOWLEDGE_STATUS_PENDING = "pending"
@@ -24,14 +23,14 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class DinosaurKnowledge(SQLModel, table=True):
-    __tablename__ = "dinosaur_knowledge"
+class DinosaurKnowledgeSource(SQLModel, table=True):
+    __tablename__ = "dinosaur_knowledge_source"
     __table_args__ = (
         UniqueConstraint(
             "subject_kind",
             "subject_id",
             "source",
-            name="uq_dinosaur_knowledge_subject_source",
+            name="uq_dinosaur_knowledge_source_subject_source",
         ),
     )
 
@@ -40,12 +39,6 @@ class DinosaurKnowledge(SQLModel, table=True):
     subject_id: str = Field(index=True, max_length=64)
     subject_name: str = Field(index=True, max_length=255)
     source: str = Field(index=True, max_length=32)
-    documents: list[dict[str, Any]] = Field(
-        default_factory=list, sa_column=Column(JSON, nullable=False)
-    )
-    embedded_chunks: list[dict[str, Any]] = Field(
-        default_factory=list, sa_column=Column(JSON, nullable=False)
-    )
     source_version: str | None = Field(default=None, max_length=255)
     source_hash: str | None = Field(default=None, max_length=64)
     content_hash: str | None = Field(default=None, max_length=64, index=True)
@@ -59,7 +52,9 @@ class DinosaurKnowledge(SQLModel, table=True):
     embed_status: str = Field(
         default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16
     )
-    index_status: str = Field(default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16)
+    index_status: str = Field(
+        default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16
+    )
     acquisition_attempts: int = Field(default=0)
     embed_attempts: int = Field(default=0)
     index_attempts: int = Field(default=0)
@@ -87,12 +82,20 @@ class DinosaurKnowledge(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(
-            DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("CURRENT_TIMESTAMP"),
         ),
     )
     updated_at: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(
-            DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("CURRENT_TIMESTAMP"),
         ),
     )
+
+
+# Backward-compatible name used by a few call sites during the cutover.
+DinosaurKnowledge = DinosaurKnowledgeSource

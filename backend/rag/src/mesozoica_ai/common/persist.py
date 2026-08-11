@@ -1,4 +1,4 @@
-"""Persist retrieved documents into a SQLModel checkpoint table."""
+"""Persist retrieved documents into normalized knowledge tables."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from mesozoica_ai.common.checkpoints import (
     complete_acquisition,
     fail_acquisition,
 )
+from mesozoica_ai.common.knowledge_repo import KnowledgeRepository
 from mesozoica_ai.common.models import Document
 
 SUPPORTED_SOURCES = ("wikipedia", "openalex")
@@ -25,8 +26,7 @@ RetrieveFn = Callable[[Any, str, dict[str, Any]], Sequence[Document]]
 
 
 def needs_acquisition(
-    session: Any,
-    model: type[Any],
+    repo: KnowledgeRepository,
     subject: Any,
     source: str,
     *,
@@ -34,21 +34,16 @@ def needs_acquisition(
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> bool:
     """True when this subject/source is missing or not yet successfully stored."""
-    from sqlmodel import select
-
-    row = session.exec(
-        select(model).where(
-            model.subject_kind == subject_kind,
-            model.subject_id == str(subject.id),
-            model.source == source,
-        )
-    ).first()
+    row = repo.get_source(
+        subject_kind=subject_kind,
+        subject_id=str(subject.id),
+        source=source,
+    )
     return row is None or acquisition_needed(row, overwrite=overwrite)
 
 
 def acquire_knowledge(
-    session: Any,
-    model: type[Any],
+    repo: KnowledgeRepository,
     *,
     subjects: Sequence[Any],
     retrieve: RetrieveFn,
@@ -58,10 +53,7 @@ def acquire_knowledge(
     dry_run: bool = False,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> JobSummary:
-    """Retrieve and store documents for each subject/source pair.
-
-    ``retrieve(subject, source, metadata)`` must return documents or raise.
-    """
+    """Retrieve and store documents for each subject/source pair."""
     selected = _normalize_sources(sources)
     selected_subjects = list(subjects[:max_items] if max_items is not None else subjects)
     summary = JobSummary(candidates=len(selected_subjects) * len(selected))
@@ -71,8 +63,7 @@ def acquire_knowledge(
                 summary.skipped += 1
                 continue
             if not needs_acquisition(
-                session,
-                model,
+                repo,
                 subject,
                 source,
                 overwrite=overwrite,
@@ -84,8 +75,7 @@ def acquire_knowledge(
             try:
                 documents = retrieve(subject, source, metadata)
                 outcome = store_documents(
-                    session,
-                    model,
+                    repo,
                     subject=subject,
                     source=source,
                     documents=documents,
@@ -94,8 +84,7 @@ def acquire_knowledge(
                 )
             except Exception as exc:
                 outcome = store_documents(
-                    session,
-                    model,
+                    repo,
                     subject=subject,
                     source=source,
                     error=exc,
@@ -107,8 +96,7 @@ def acquire_knowledge(
 
 
 def store_documents(
-    session: Any,
-    model: type[Any],
+    repo: KnowledgeRepository,
     *,
     subject: Any,
     source: str,
@@ -117,34 +105,36 @@ def store_documents(
     overwrite: bool = False,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> Literal["succeeded", "skipped", "failed"]:
-    """Upsert one subject/source row.
-
-    Pass ``documents`` after a successful retrieve, or ``error`` after a failed
-    retrieve. Already-succeeded rows are skipped unless ``overwrite`` is set.
-    """
+    """Upsert one subject/source and replace its documents."""
     if (documents is None) == (error is None):
         raise ValueError("Provide exactly one of documents or error")
 
-    row = _get_or_create(
-        session, model, subject=subject, source=source, subject_kind=subject_kind
+    row = repo.get_or_create_source(
+        subject=subject, source=source, subject_kind=subject_kind
     )
     if error is None and not acquisition_needed(row, overwrite=overwrite):
         return "skipped"
 
     begin_acquisition(row)
-    session.add(row)
-    session.commit()
+    repo.save_source(row)
+    repo.commit()
 
     if error is not None:
         fail_acquisition(row, error)
-        session.add(row)
-        session.commit()
+        repo.save_source(row)
+        repo.commit()
         return "failed"
 
-    complete_acquisition(row, _fingerprinted(documents or ()))
-    session.add(row)
-    session.commit()
-    session.refresh(row)
+    fingerprinted = _fingerprinted(documents or ())
+    changed = complete_acquisition(row, fingerprinted)
+    repo.replace_documents(
+        row,
+        documents or (),
+        clear_chunks=changed,
+    )
+    repo.save_source(row)
+    repo.commit()
+    repo.refresh(row)
     return "succeeded"
 
 
@@ -157,38 +147,6 @@ def _normalize_sources(sources: Sequence[str] | None) -> list[str]:
     return list(dict.fromkeys(normalized))
 
 
-def _get_or_create(
-    session: Any,
-    model: type[Any],
-    *,
-    subject: Any,
-    source: str,
-    subject_kind: str,
-) -> Any:
-    from sqlmodel import select
-
-    row = session.exec(
-        select(model).where(
-            model.subject_kind == subject_kind,
-            model.subject_id == str(subject.id),
-            model.source == source,
-        )
-    ).first()
-    if row is None:
-        row = model(
-            subject_kind=subject_kind,
-            subject_id=str(subject.id),
-            subject_name=subject.name,
-            source=source,
-        )
-        session.add(row)
-        session.commit()
-        session.refresh(row)
-    elif row.subject_name != subject.name:
-        row.subject_name = subject.name
-    return row
-
-
 class _Fingerprinted:
     def __init__(
         self,
@@ -196,12 +154,10 @@ class _Fingerprinted:
         content_hash: str,
         source_hash: str,
         source_version: str | None,
-        serialized_documents: list[dict[str, Any]],
     ) -> None:
         self.content_hash = content_hash
         self.source_hash = source_hash
         self.source_version = source_version
-        self.serialized_documents = serialized_documents
 
 
 def _fingerprinted(documents: Sequence[Document]) -> _Fingerprinted:
@@ -228,7 +184,6 @@ def _fingerprinted(documents: Sequence[Document]) -> _Fingerprinted:
         content_hash=_hash_json(serialized),
         source_hash=_hash_json(provenance),
         source_version=",".join(versions)[:255] or None,
-        serialized_documents=serialized,
     )
 
 
