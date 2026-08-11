@@ -47,6 +47,8 @@ class KnowledgeRepository(Protocol):
 
     def commit(self) -> None: ...
 
+    def rollback(self) -> None: ...
+
     def refresh(self, source_row: Any) -> Any: ...
 
     def list_documents(self, source_row: Any) -> list[Document]: ...
@@ -186,6 +188,9 @@ class SqlModelKnowledgeRepository:
     def commit(self) -> None:
         self.session.commit()
 
+    def rollback(self) -> None:
+        self.session.rollback()
+
     def refresh(self, source_row: Any) -> Any:
         self.session.refresh(source_row)
         return source_row
@@ -313,6 +318,14 @@ class SqlModelKnowledgeRepository:
         return rows
 
 
+def _clip(value: str | None, max_len: int) -> str | None:
+    if value is None:
+        return None
+    if len(value) <= max_len:
+        return value
+    return value[:max_len]
+
+
 def _document_to_doc_row(
     doc_model: type[Any], source_pk: int, document: Document, *, now: datetime
 ) -> Any:
@@ -335,20 +348,20 @@ def _document_to_doc_row(
     extra = {key: value for key, value in dumped.items() if key not in known}
     return doc_model(
         source_id=source_pk,
-        document_id=document.id,
+        document_id=_clip(document.id, 512) or document.id[:512],
         text=document.text,
-        doc_source=metadata.source,
-        provenance_source_id=metadata.source_id,
-        title=metadata.title,
-        section=metadata.section,
+        doc_source=_clip(metadata.source, 32) or "unknown",
+        provenance_source_id=_clip(metadata.source_id, 255) or "",
+        title=_clip(metadata.title, 1024) or "",
+        section=_clip(metadata.section, 1024),
         section_path=list(metadata.section_path or []),
         section_depth=metadata.section_depth,
         section_ordinal=metadata.section_ordinal,
-        source_url=metadata.source_url,
+        source_url=_clip(metadata.source_url, 2048),
         published_at=metadata.published_at,
         updated_at_source=metadata.updated_at,
-        namespace=metadata.namespace,
-        subject_id=metadata.subject_id,
+        namespace=_clip(metadata.namespace, 64),
+        subject_id=_clip(metadata.subject_id, 64),
         extra_metadata=extra,
         created_at=now,
         updated_at=now,

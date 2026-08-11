@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import logging
 import re
@@ -225,10 +226,9 @@ def _retrieve(
         )
         collected.add(work_id)
     if not documents:
-        if exclude_work_ids:
-            return []
-        raise SourceFetchError(
-            f"OpenAlex returned no usable GROBID TEI for query {query!r}"
+        logger.info(
+            "OpenAlex: no usable GROBID TEI for query %r (candidates checked)",
+            query,
         )
     return documents
 
@@ -260,7 +260,7 @@ def _section_documents(
         if not text.strip():
             continue
         documents.append(SourceDocument(
-            id=f"openalex:{work_id}:section:{ordinal}:{_slug(heading)}",
+            id=_section_document_id(work_id, ordinal, heading),
             text=text,
             metadata={
                 **base_metadata,
@@ -273,6 +273,23 @@ def _section_documents(
             },
         ))
     return documents
+
+
+_DOCUMENT_ID_MAX_LEN = 512
+
+
+def _section_document_id(work_id: str, ordinal: int, heading: str) -> str:
+    """Build a stable section id that fits dinosaur_knowledge_doc.document_id."""
+    slug = _slug(heading)
+    base = f"openalex:{work_id}:section:{ordinal}:"
+    budget = _DOCUMENT_ID_MAX_LEN - len(base)
+    if budget <= 0:
+        return f"openalex:{work_id}:section:{ordinal}"[:_DOCUMENT_ID_MAX_LEN]
+    if len(slug) <= budget:
+        return base + slug
+    digest = hashlib.sha256(slug.encode()).hexdigest()[:10]
+    keep = max(0, budget - len(digest) - 1)
+    return f"{base}{slug[:keep]}-{digest}"
 
 
 def _work_metadata(work: dict[str, Any], *, work_id: str, title: str) -> dict[str, Any]:

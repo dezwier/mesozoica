@@ -137,15 +137,15 @@ def test_openalex_fulltext_failure_skips_work():
             ]
         }
     )
-    with pytest.raises(SourceFetchError, match="no usable GROBID TEI"):
-        retrieve_openalex_with_client(
-            "Example",
-            api_key="key",
-            user_agent="test@example.com",
-            limit=5,
-            exclude_work_ids=set(),
-            client=client,
-        )
+    documents = retrieve_openalex_with_client(
+        "Example",
+        api_key="key",
+        user_agent="test@example.com",
+        limit=5,
+        exclude_work_ids=set(),
+        client=client,
+    )
+    assert documents == []
     assert len(client.text_calls) == 1
 
 

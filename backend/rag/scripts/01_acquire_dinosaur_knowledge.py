@@ -6,6 +6,9 @@ Does not touch Azure Search — use 02_embed_dinosaur_knowledge.py then
 Wikipedia text comes from the latest ``dinosaur_type_revision`` row (no live
 Wikipedia fetch). OpenAlex keeps up to OPENALEX_MAX_WORKS (default 10) unique
 papers per dinosaur: already-stored works are skipped and gaps are topped up.
+When OpenAlex is enabled, dinosaurs never tried for OpenAlex are acquired
+first, then partial sets are topped up toward the target. Dinosaurs already
+tried with zero usable papers are recorded and skipped unless ``--overwrite``.
 
   cd backend
   .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py
@@ -22,6 +25,7 @@ import logging
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 if str(_BACKEND_ROOT) not in sys.path:
@@ -59,6 +63,7 @@ from mesozoica_ai.common import (
     Document,
     JobSummary,
     RateLimitedError,
+    SourceFetchError,
     SqlModelKnowledgeRepository,
     needs_acquisition,
     sql_knowledge_overview,
@@ -86,6 +91,10 @@ def run(
     with Session(engine) as session:
         repo = dinosaur_knowledge_repo(session)
         subjects = list_dinosaur_knowledge_subjects(session, names=dinos)
+        if "openalex" in sources and not overwrite:
+            subjects = _subjects_preferring_new_openalex(
+                repo, subjects, paper_target=paper_target
+            )
         if max_items is not None:
             subjects = subjects[:max_items]
         logger.info(
@@ -139,6 +148,51 @@ def run(
 
     print(json.dumps(summary.model_dump(), indent=2, default=str))
     return summary.exit_code
+
+
+def _openalex_state(
+    repo: SqlModelKnowledgeRepository, subject
+) -> tuple[Any | None, int]:
+    row = repo.get_source(
+        subject_kind="dinosaur",
+        subject_id=str(subject.id),
+        source="openalex",
+    )
+    if row is None:
+        return None, 0
+    return row, len(paper_inventory(repo.list_documents(row)))
+
+
+def _subjects_preferring_new_openalex(
+    repo: SqlModelKnowledgeRepository,
+    subjects: list,
+    *,
+    paper_target: int,
+) -> list:
+    """Never-tried first, then partial top-ups, then tried-empty / complete."""
+    never: list = []
+    partial: list = []
+    tried_empty: list = []
+    complete: list = []
+    for subject in subjects:
+        row, count = _openalex_state(repo, subject)
+        if row is None:
+            never.append(subject)
+        elif count >= paper_target:
+            complete.append(subject)
+        elif count == 0:
+            tried_empty.append(subject)
+        else:
+            partial.append(subject)
+    logger.info(
+        "OpenAlex order: %s never tried, %s partial top-up, "
+        "%s tried-empty, %s already at target",
+        len(never),
+        len(partial),
+        len(tried_empty),
+        len(complete),
+    )
+    return [*never, *partial, *tried_empty, *complete]
 
 
 def _acquire_wikipedia(
@@ -219,11 +273,7 @@ def _acquire_openalex(
     paper_target: int,
 ) -> None:
     label = f"{subject.name}/openalex"
-    row = repo.get_source(
-        subject_kind="dinosaur",
-        subject_id=str(subject.id),
-        source="openalex",
-    )
+    row, _paper_count = _openalex_state(repo, subject)
     existing_docs = (
         [] if overwrite or row is None else repo.list_documents(row)
     )
@@ -232,6 +282,11 @@ def _acquire_openalex(
 
     if dry_run:
         logger.info("%s: dry-run (%s/%s papers)", label, len(have), paper_target)
+        summary.skipped += 1
+        return
+
+    if not overwrite and row is not None and len(have) == 0:
+        logger.info("%s: skip (already tried, 0 papers)", label)
         summary.skipped += 1
         return
 
@@ -254,21 +309,6 @@ def _acquire_openalex(
             exclude_work_ids=have_ids,
             metadata=subject_metadata(subject, "openalex"),
         )
-        if not new_documents:
-            logger.warning(
-                "%s: no new papers; still %s/%s", label, len(have), paper_target
-            )
-            summary.skipped += 1
-            return
-        _store_openalex_merge(
-            repo,
-            subject=subject,
-            summary=summary,
-            label=label,
-            existing_docs=existing_docs,
-            new_documents=new_documents,
-            paper_target=paper_target,
-        )
     except RateLimitedError as exc:
         if exc.partial_documents:
             logger.warning(
@@ -287,21 +327,99 @@ def _acquire_openalex(
             )
         raise
     except Exception as exc:
-        logger.exception("%s: failed (%s)", label, exc)
+        _record_openalex_failure(
+            repo,
+            subject=subject,
+            summary=summary,
+            label=label,
+            have=have,
+            error=exc,
+        )
+        return
+
+    if not new_documents:
         if have:
-            logger.warning(
-                "%s: top-up failed; keeping %s/%s", label, len(have), paper_target
-            )
-            summary.failed += 1
+            logger.info("%s: no new papers; still %s/%s", label, len(have), paper_target)
+            summary.skipped += 1
             return
+        logger.info("%s: no usable OpenAlex papers (recording empty try)", label)
+        try:
+            outcome = store_documents(
+                repo,
+                subject=subject,
+                source="openalex",
+                documents=[],
+                overwrite=True,
+            )
+        except Exception as exc:
+            _record_openalex_failure(
+                repo,
+                subject=subject,
+                summary=summary,
+                label=label,
+                have=have,
+                error=exc,
+            )
+            return
+        summary.record(outcome)
+        return
+
+    try:
+        _store_openalex_merge(
+            repo,
+            subject=subject,
+            summary=summary,
+            label=label,
+            existing_docs=existing_docs,
+            new_documents=new_documents,
+            paper_target=paper_target,
+        )
+    except Exception as exc:
+        _record_openalex_failure(
+            repo,
+            subject=subject,
+            summary=summary,
+            label=label,
+            have=have,
+            error=exc,
+        )
+
+
+def _record_openalex_failure(
+    repo: SqlModelKnowledgeRepository,
+    *,
+    subject,
+    summary: JobSummary,
+    label: str,
+    have: list[tuple[str, str]],
+    error: BaseException,
+) -> None:
+    """Log without traceback for expected fetch misses; always keep the session usable."""
+    repo.rollback()
+    if isinstance(error, SourceFetchError):
+        logger.warning("%s: %s", label, error)
+    else:
+        logger.exception("%s: failed (%s)", label, error)
+    if have:
+        logger.warning(
+            "%s: top-up failed; keeping %s existing paper(s)", label, len(have)
+        )
+        summary.failed += 1
+        return
+    try:
         outcome = store_documents(
             repo,
             subject=subject,
             source="openalex",
-            error=exc,
+            error=error,
             overwrite=True,
         )
-        summary.record(outcome)
+    except Exception as store_exc:
+        repo.rollback()
+        logger.exception("%s: could not record failure (%s)", label, store_exc)
+        summary.failed += 1
+        return
+    summary.record(outcome)
 
 
 def _store_openalex_merge(

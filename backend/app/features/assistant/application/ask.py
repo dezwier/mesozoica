@@ -19,7 +19,9 @@ from app.features.assistant.schemas import AskResponse, SourceLink
 
 ANSWER_INSTRUCTIONS = (
     "Answer the question using only the supplied evidence. "
-    "Be concise and accurate. Cite every chunk that supports the answer."
+    "Be concise and accurate. Cite every chunk that supports the answer. "
+    "Write plain prose only: no markdown, bold markers, italics markers, "
+    "headings, or bullet symbols."
 )
 
 _SCOPED_INSTRUCTIONS = (
@@ -27,7 +29,9 @@ _SCOPED_INSTRUCTIONS = (
     "Treat that dinosaur as the subject of the question unless the question "
     "clearly asks about something else. Prefer evidence about that dinosaur. "
     "Answer using only the supplied evidence. Be concise and accurate. "
-    "Cite every chunk that supports the answer."
+    "Cite every chunk that supports the answer. "
+    "Write plain prose only: no markdown, bold markers, italics markers, "
+    "headings, or bullet symbols."
 )
 
 _MAX_REFERENCES = 5

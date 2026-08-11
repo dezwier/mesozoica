@@ -2,34 +2,17 @@ part of 'field_assistant_chip.dart';
 
 extension on _FieldAssistantPanelState {
   Widget _buildSubjectPicker() {
-    if (_subjectsLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 6),
+    if (_subjectsError != null && _subjects.isEmpty && !_subjectsLoading) {
+      return _subjectPickerShell(
         child: Text(
-          'Loading dinosaurs…',
-          style: TextStyle(
-            color: MapChromeTheme.mutedGold,
-            fontSize: 12,
+          _subjectsError!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFFE07060),
+            fontSize: 14,
+            height: 1.25,
           ),
-        ),
-      );
-    }
-    if (_subjectsError != null) {
-      return Text(
-        _subjectsError!,
-        style: const TextStyle(
-          color: Color(0xFFE07060),
-          fontSize: 12,
-          height: 1.3,
-        ),
-      );
-    }
-    if (_subjects.isEmpty) {
-      return const Text(
-        'No indexed dinosaurs yet.',
-        style: TextStyle(
-          color: MapChromeTheme.mutedGold,
-          fontSize: 12,
         ),
       );
     }
@@ -37,6 +20,9 @@ extension on _FieldAssistantPanelState {
     return Autocomplete<KnowledgeSubject>(
       displayStringForOption: (subject) => subject.name,
       optionsBuilder: (textEditingValue) {
+        if (_subjectsLoading || _subjects.isEmpty) {
+          return const Iterable<KnowledgeSubject>.empty();
+        }
         final q = textEditingValue.text.trim().toLowerCase();
         if (q.isEmpty) {
           return _subjects.take(120);
@@ -55,7 +41,7 @@ extension on _FieldAssistantPanelState {
           controller.text = _subjectQuery.text;
         }
         return SizedBox(
-          height: _fieldHeight,
+          height: _kFieldHeight,
           child: TextField(
           controller: controller,
           focusNode: focusNode,
@@ -64,7 +50,7 @@ extension on _FieldAssistantPanelState {
           showCursor: true,
           enableInteractiveSelection: _subjectKeyboardEnabled,
           keyboardType: TextInputType.text,
-          style: _fieldTextStyle,
+          style: _kFieldTextStyle,
           cursorColor: MapChromeTheme.mutedGold,
           onTap: () {
             // Focusing opens the dropdown; keyboard stays off until toggled.
@@ -87,9 +73,21 @@ extension on _FieldAssistantPanelState {
             ),
             prefixIconConstraints: const BoxConstraints(
               minWidth: 40,
-              minHeight: _fieldHeight,
+              minHeight: _kFieldHeight,
             ),
-            suffixIcon: _selectedSubject == null
+            suffixIcon: _subjectsLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: MapChromeTheme.mutedGold,
+                      ),
+                    ),
+                  )
+                : _selectedSubject == null
                 ? null
                 : IconButton(
                     tooltip: 'Clear dinosaur',
@@ -97,7 +95,7 @@ extension on _FieldAssistantPanelState {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
                       minWidth: 40,
-                      minHeight: _fieldHeight,
+                      minHeight: _kFieldHeight,
                     ),
                     onPressed: () {
                       controller.clear();
@@ -118,7 +116,7 @@ extension on _FieldAssistantPanelState {
                   ),
             filled: true,
             fillColor: MapChromeTheme.leatherSoft,
-            contentPadding: _fieldContentPadding,
+            contentPadding: _kFieldContentPadding,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
@@ -215,6 +213,29 @@ extension on _FieldAssistantPanelState {
           ),
         );
       },
+    );
+  }
+
+  /// Same footprint as the dino TextField so error states do not jump.
+  Widget _subjectPickerShell({required Widget child}) {
+    return SizedBox(
+      height: _kFieldHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: MapChromeTheme.leatherSoft,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: MapChromeTheme.brassRim.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 
@@ -322,15 +343,18 @@ extension on _FieldAssistantPanelState {
   }
 
   Widget _buildAnswerBody(AssistantAnswer answer) {
+    const answerStyle = TextStyle(
+      color: MapChromeTheme.cream,
+      fontSize: 14,
+      height: 1.4,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          answer.answer,
-          style: const TextStyle(
-            color: MapChromeTheme.cream,
-            fontSize: 14,
-            height: 1.4,
+        Text.rich(
+          TextSpan(
+            style: answerStyle,
+            children: _inlineMarkdownSpans(answer.answer, answerStyle),
           ),
         ),
         if (answer.sources.isNotEmpty) ...[
@@ -352,6 +376,38 @@ extension on _FieldAssistantPanelState {
         ],
       ],
     );
+  }
+
+  /// Renders light markdown emphasis (``**bold**``, ``*italic*``) in answers.
+  List<InlineSpan> _inlineMarkdownSpans(String raw, TextStyle style) {
+    final bold = style.copyWith(fontWeight: FontWeight.w700);
+    final italic = style.copyWith(fontStyle: FontStyle.italic);
+    final pattern = RegExp(
+      r'\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_',
+      dotAll: true,
+    );
+    final spans = <InlineSpan>[];
+    var start = 0;
+    for (final match in pattern.allMatches(raw)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: raw.substring(start, match.start)));
+      }
+      if (match.group(1) != null) {
+        spans.add(TextSpan(text: match.group(1), style: bold));
+      } else if (match.group(2) != null) {
+        spans.add(TextSpan(text: match.group(2), style: italic));
+      } else if (match.group(3) != null) {
+        spans.add(TextSpan(text: match.group(3), style: italic));
+      }
+      start = match.end;
+    }
+    if (start < raw.length) {
+      spans.add(TextSpan(text: raw.substring(start)));
+    }
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: raw));
+    }
+    return spans;
   }
 
   Widget _referenceChunkCard(SourceLink source) {

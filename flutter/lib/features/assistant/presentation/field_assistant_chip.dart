@@ -13,6 +13,17 @@ import 'package:mesozoica/theme/map_chrome_theme.dart';
 
 part 'field_assistant_panel_catalog.dart';
 
+const double _kFieldHeight = 48;
+const EdgeInsets _kFieldContentPadding = EdgeInsets.symmetric(
+  horizontal: 12,
+  vertical: 14,
+);
+const TextStyle _kFieldTextStyle = TextStyle(
+  color: MapChromeTheme.cream,
+  fontSize: 14,
+  height: 1.25,
+);
+
 /// Lifecycle for the field-assistant panel (map freeze + chrome via [AppShell]).
 abstract final class FieldAssistantOverlay {
   FieldAssistantOverlay._();
@@ -88,18 +99,6 @@ class FieldAssistantPanel extends StatefulWidget {
 class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   late final AssistantRepository _repository =
       widget._repository ?? AssistantRepository();
-
-  /// Shared resting height for dino + ask fields (and send button).
-  static const double _fieldHeight = 48;
-  static const EdgeInsets _fieldContentPadding = EdgeInsets.symmetric(
-    horizontal: 12,
-    vertical: 14,
-  );
-  static const TextStyle _fieldTextStyle = TextStyle(
-    color: MapChromeTheme.cream,
-    fontSize: 14,
-    height: 1.25,
-  );
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -454,7 +453,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                             children: [
                               Expanded(
                                 child: SizedBox(
-                                  height: _fieldHeight,
+                                  height: _kFieldHeight,
                                   child: TextField(
                                   controller: _controller,
                                   focusNode: _focusNode,
@@ -464,7 +463,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                   maxLength: 500,
                                   maxLengthEnforcement:
                                       MaxLengthEnforcement.enforced,
-                                  style: _fieldTextStyle,
+                                  style: _kFieldTextStyle,
                                   cursorColor: MapChromeTheme.mutedGold,
                                   decoration: InputDecoration(
                                     isDense: true,
@@ -478,7 +477,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                     ),
                                     filled: true,
                                     fillColor: MapChromeTheme.leatherSoft,
-                                    contentPadding: _fieldContentPadding,
+                                    contentPadding: _kFieldContentPadding,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
                                       borderSide: BorderSide(
@@ -510,13 +509,13 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                               ),
                               const SizedBox(width: 8),
                               SizedBox(
-                                width: _fieldHeight,
-                                height: _fieldHeight,
+                                width: _kFieldHeight,
+                                height: _kFieldHeight,
                                 child: Material(
                                   color: MapChromeTheme.leatherSoftMid,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
-                                      _fieldHeight / 2,
+                                      _kFieldHeight / 2,
                                     ),
                                     side: BorderSide(
                                       color: MapChromeTheme.chromeBorder,
