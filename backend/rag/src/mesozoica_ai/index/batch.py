@@ -251,6 +251,20 @@ def ingest_knowledge(
     pending = []
     already_indexed = 0
     drift_resets = 0
+    verify_total = sum(
+        1
+        for snapshot in snapshots
+        if snapshot.embed_status == "succeeded"
+        and not indexing_needed(
+            snapshot, pipeline_fingerprint=fingerprint, overwrite=overwrite
+        )
+    )
+    verify_done = 0
+    if verify_total:
+        logger.info(
+            "Verifying Azure keys for %s already-indexed source(s)…",
+            verify_total,
+        )
     for snapshot in snapshots:
         label = f"{snapshot.subject_name}/{snapshot.source}"
         if snapshot.embed_status != "succeeded":
@@ -266,8 +280,18 @@ def ingest_knowledge(
             pending.append(snapshot)
             continue
         chunk_ids = {chunk.id for chunk in chunks}
+        verify_done += 1
+        if verify_done == 1 or verify_done % 50 == 0 or verify_done == verify_total:
+            logger.info(
+                "Azure verify progress %s/%s (latest %s, %s chunks)",
+                verify_done,
+                verify_total,
+                label,
+                len(chunk_ids),
+            )
         try:
-            azure_ids = store.existing_ids(sorted(chunk_ids))
+            # Scoped search (one query per dino) instead of N get_document calls.
+            azure_ids = set(store.get_chunk_states(snapshot_scope(snapshot)))
         except Exception as exc:
             logger.warning("%s: Azure verify failed (%s); re-syncing", label, exc)
             reset_indexing(snapshot)

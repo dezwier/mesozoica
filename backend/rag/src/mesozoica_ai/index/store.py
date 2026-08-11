@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from datetime import datetime
 from typing import Any, Protocol
 
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+from azure.core.exceptions import HttpResponseError
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 
@@ -235,31 +235,39 @@ class AzureSearchKnowledgeStore:
         }
 
     def get_chunk_states_by_ids(self, ids: list[str]) -> dict[str, ChunkState]:
-        """Look up chunk hashes by exact document key (avoids incomplete search=* scans)."""
+        """Look up chunk hashes by exact document keys.
+
+        Uses batched ``search.in`` filters. One ``get_document`` per id was
+        effectively hanging full ingest (thousands of sequential HTTP calls).
+        """
+        unique = list(dict.fromkeys(str(identifier) for identifier in ids if str(identifier)))
+        if not unique:
+            return {}
+        select = [
+            "id",
+            "embedding_hash",
+            "document_hash",
+            "pipeline_fingerprint",
+        ]
         states: dict[str, ChunkState] = {}
-        client = self.write_client or self.query_client
-        for identifier in ids:
-            try:
-                result = client.get_document(key=identifier)
-            except ResourceNotFoundError:
-                continue
-            except HttpResponseError as exc:
-                # Some service errors still mean "not found" for a key probe.
-                status = getattr(exc, "status_code", None) or getattr(
-                    getattr(exc, "response", None), "status_code", None
-                )
-                if status == 404:
-                    continue
-                raise
-            states[str(result["id"])] = ChunkState(
-                embedding_hash=result.get("embedding_hash"),
-                document_hash=result.get("document_hash"),
-                pipeline_fingerprint=result.get("pipeline_fingerprint"),
+        for batch in _id_lookup_batches(unique):
+            escaped = ",".join(identifier.replace("'", "''") for identifier in batch)
+            results = self.query_client.search(
+                search_text="*",
+                filter=f"search.in(id, '{escaped}', ',')",
+                select=select,
+                top=len(batch),
             )
+            for result in results:
+                states[str(result["id"])] = ChunkState(
+                    embedding_hash=result.get("embedding_hash"),
+                    document_hash=result.get("document_hash"),
+                    pipeline_fingerprint=result.get("pipeline_fingerprint"),
+                )
         return states
 
     def existing_ids(self, ids: list[str]) -> set[str]:
-        """Return the subset of ``ids`` that exist in Azure (key lookup)."""
+        """Return the subset of ``ids`` that exist in Azure (batched key lookup)."""
         return set(self.get_chunk_states_by_ids(ids))
 
     def _search_all(
@@ -439,6 +447,25 @@ def build_filter(filters: dict[str, Any] | None) -> str | None:
         else:
             raise TypeError(f"Unsupported filter value for {field}: {type(value).__name__}")
     return " and ".join(expressions)
+
+
+def _id_lookup_batches(
+    ids: list[str], *, max_ids: int = 150, max_chars: int = 28_000
+) -> Iterable[list[str]]:
+    """Split IDs so each ``search.in`` filter stays under Azure size limits."""
+    batch: list[str] = []
+    size = 0
+    for identifier in ids:
+        # id + comma (quotes wrap the whole list once).
+        piece = len(identifier) + 1
+        if batch and (len(batch) >= max_ids or size + piece > max_chars):
+            yield batch
+            batch = []
+            size = 0
+        batch.append(identifier)
+        size += piece
+    if batch:
+        yield batch
 
 
 def _payload_batches(
