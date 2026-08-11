@@ -15,7 +15,7 @@ from mesozoica_ai.evaluate import (
 )
 from mesozoica_ai.evaluate.foundry import FoundryRagEvaluator, RagEvaluationRecord
 from mesozoica_ai.common.models import CitedOutput, Evidence
-from mesozoica_ai.generate.prompt import _pack_evidence, _validate_citations
+from mesozoica_ai.generate.prompt import _coerce_citations, _pack_evidence, _validate_citations
 from mesozoica_ai.common.tokens import TokenCounter
 
 
@@ -47,6 +47,22 @@ def test_prompt_budget_and_explicit_citation_validation():
     _validate_citations(["one"], ["one"])
     with pytest.raises(CitationError, match="unknown evidence"):
         _validate_citations(["missing"], ["one"])
+
+
+def test_coerce_citations_drops_unknown_ids_when_valid_remain():
+    class Answer(CitedOutput):
+        answer: str
+
+    parsed = Answer(answer="ok", source_chunk_ids=["one", "missing"])
+    coerced = _coerce_citations(parsed, ["one", "two"])
+    assert coerced.source_chunk_ids == ["one"]
+    replaced = _coerce_citations(
+        Answer(answer="bad", source_chunk_ids=["missing"]),
+        ["one", "two"],
+    )
+    assert replaced.source_chunk_ids == ["one", "two"]
+    with pytest.raises(CitationError, match="at least one"):
+        _coerce_citations(Answer(answer="empty", source_chunk_ids=["missing"]), [])
 
 
 def test_retrieval_metrics_and_baseline_regression_are_exact():
@@ -109,6 +125,19 @@ def test_prompt_rag_uses_strict_schema_and_returns_model_directly(monkeypatch):
     )
     assert result.question == "Question?"
     assert chat.kwargs["strict"] is True
+
+
+def test_prompt_rag_drops_unknown_citations(monkeypatch):
+    chat = FakeChat(Quiz(question="Question?", source_chunk_ids=["one", "hallucinated"]))
+    monkeypatch.setattr(rag_prompt, "ChatOpenAI", lambda **kwargs: chat)
+    monkeypatch.setattr(rag_prompt, "TokenCounter", lambda encoding: COUNTER)
+    result = prompt_rag(
+        Quiz,
+        query="Make a question",
+        evidence=[_chunk("one", "doc-1")],
+        config=_rag_config(),
+    )
+    assert result.source_chunk_ids == ["one"]
 
 
 def test_magic_citation_field_is_not_validated_without_explicit_base_model(monkeypatch):

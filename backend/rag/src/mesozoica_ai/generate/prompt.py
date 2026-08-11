@@ -109,7 +109,7 @@ def prompt_rag(
     except Exception as exc:
         raise StructuredOutputError("Model output failed Pydantic validation") from exc
     if isinstance(parsed, CitedOutput):
-        _validate_citations(parsed.source_chunk_ids, diagnostics.included_evidence_ids)
+        parsed = _coerce_citations(parsed, diagnostics.included_evidence_ids)
     raw = result.get("raw") if isinstance(result, dict) else None
     usage = getattr(raw, "usage_metadata", None) or {}
     logger.info("rag.generate", extra={"rag": {
@@ -228,3 +228,33 @@ def _validate_citations(citation_ids: Sequence[str], evidence_ids: Sequence[str]
     unknown = sorted(set(citation_ids) - set(evidence_ids))
     if unknown:
         raise CitationError(f"Output cited unknown evidence: {', '.join(unknown)}")
+
+
+def _coerce_citations(parsed: CitedOutput, evidence_ids: Sequence[str]) -> CitedOutput:
+    """Keep only citations that were actually packed into the prompt.
+
+    Models occasionally invent or remix chunk hashes. Prefer the intersection
+    with supplied evidence; if nothing overlaps, fall back to the packed
+    evidence IDs so a grounded answer is not discarded for citation noise.
+    """
+    allowed = list(evidence_ids)
+    allowed_set = set(allowed)
+    kept = [cid for cid in parsed.source_chunk_ids if cid in allowed_set]
+    unknown = sorted(set(parsed.source_chunk_ids) - allowed_set)
+    if kept:
+        if unknown:
+            logger.warning(
+                "rag.citations_dropped unknown=%s kept=%s",
+                unknown,
+                kept,
+            )
+            return parsed.model_copy(update={"source_chunk_ids": kept})
+        return parsed
+    if not allowed:
+        raise CitationError("Cited outputs must cite at least one evidence item")
+    logger.warning(
+        "rag.citations_replaced unknown=%s fallback=%s",
+        unknown or list(parsed.source_chunk_ids),
+        allowed,
+    )
+    return parsed.model_copy(update={"source_chunk_ids": allowed})

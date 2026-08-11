@@ -11,6 +11,7 @@ from app.features.assistant.application.ask import ask_question
 from app.features.assistant.schemas import AskRequest, AskResponse
 from app.models.user import User
 from mesozoica_ai.common.errors import (
+    CitationError,
     ConfigurationError,
     InsufficientEvidenceError,
     StructuredOutputError,
@@ -35,7 +36,7 @@ async def ask(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Not enough indexed knowledge to answer that question.",
         ) from exc
-    except (ConfigurationError, StructuredOutputError) as exc:
+    except (CitationError, ConfigurationError, StructuredOutputError) as exc:
         logger.warning("assistant ask failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

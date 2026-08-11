@@ -67,6 +67,24 @@ class KnowledgeRepository(Protocol):
         self, source_row: Any, chunks: Sequence[EmbeddedChunk]
     ) -> None: ...
 
+    def document_inventory(
+        self,
+        *,
+        subject_kind: str = DEFAULT_SUBJECT_KIND,
+        acquisition_succeeded_only: bool = True,
+    ) -> list[tuple[str, str, str]]:
+        """Return ``(subject_id, source, provenance_source_id)`` per document."""
+        ...
+
+    def chunk_inventory(
+        self,
+        *,
+        subject_kind: str = DEFAULT_SUBJECT_KIND,
+        embed_succeeded_only: bool = True,
+    ) -> list[tuple[str, str, str]]:
+        """Return ``(subject_id, source, provenance_source_id)`` per chunk."""
+        ...
+
 
 class SqlModelKnowledgeRepository:
     """SQLModel-backed repository parameterized by the three table classes."""
@@ -234,6 +252,65 @@ class SqlModelKnowledgeRepository:
                 _embedded_to_chunk_row(self.chunk_model, source_row.id, chunk, now=now)
             )
         self.save_source(source_row)
+
+    def document_inventory(
+        self,
+        *,
+        subject_kind: str = DEFAULT_SUBJECT_KIND,
+        acquisition_succeeded_only: bool = True,
+    ) -> list[tuple[str, str, str]]:
+        from sqlmodel import select
+
+        statement = (
+            select(
+                self.source_model.subject_id,
+                self.source_model.source,
+                self.doc_model.provenance_source_id,
+            )
+            .join(
+                self.doc_model,
+                self.doc_model.source_id == self.source_model.id,
+            )
+            .where(self.source_model.subject_kind == subject_kind)
+        )
+        if acquisition_succeeded_only:
+            statement = statement.where(
+                self.source_model.acquisition_status == "succeeded"
+            )
+        return [
+            (str(subject_id), str(source), str(provenance or ""))
+            for subject_id, source, provenance in self.session.exec(statement).all()
+        ]
+
+    def chunk_inventory(
+        self,
+        *,
+        subject_kind: str = DEFAULT_SUBJECT_KIND,
+        embed_succeeded_only: bool = True,
+    ) -> list[tuple[str, str, str]]:
+        from sqlmodel import select
+
+        statement = (
+            select(
+                self.source_model.subject_id,
+                self.source_model.source,
+                self.chunk_model.metadata_json,
+            )
+            .join(
+                self.chunk_model,
+                self.chunk_model.source_id == self.source_model.id,
+            )
+            .where(self.source_model.subject_kind == subject_kind)
+        )
+        if embed_succeeded_only:
+            statement = statement.where(self.source_model.embed_status == "succeeded")
+        rows: list[tuple[str, str, str]] = []
+        for subject_id, source, metadata in self.session.exec(statement).all():
+            provenance = ""
+            if isinstance(metadata, dict):
+                provenance = str(metadata.get("source_id") or "").strip()
+            rows.append((str(subject_id), str(source), provenance))
+        return rows
 
 
 def _document_to_doc_row(

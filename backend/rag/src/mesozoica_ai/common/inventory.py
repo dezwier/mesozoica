@@ -76,33 +76,41 @@ def sql_knowledge_overview(
     *,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> KnowledgeOverview:
-    """Summarize acquired documents across succeeded sources."""
-    subjects: set[str] = set()
-    wiki_subjects: set[str] = set()
-    openalex_subjects: set[str] = set()
+    """Summarize acquired documents across succeeded sources.
+
+    Uses two queries (sources + doc inventory), not one query per source.
+    """
+    sources = repo.list_sources(
+        subject_kind=subject_kind, acquisition_succeeded_only=True
+    )
+    subjects = {str(row.subject_id) for row in sources}
+    wiki_subjects = {
+        str(row.subject_id) for row in sources if row.source == "wikipedia"
+    }
+    openalex_subjects = {
+        str(row.subject_id) for row in sources if row.source == "openalex"
+    }
+
+    inventory = repo.document_inventory(
+        subject_kind=subject_kind, acquisition_succeeded_only=True
+    )
     wiki_sections = 0
     openalex_sections = 0
-    openalex_papers = 0
-
-    for source_row in repo.list_sources(
-        subject_kind=subject_kind, acquisition_succeeded_only=True
-    ):
-        subjects.add(str(source_row.subject_id))
-        docs = repo.list_documents(source_row)
-        if source_row.source == "wikipedia":
-            wiki_subjects.add(str(source_row.subject_id))
-            wiki_sections += len(docs)
-        elif source_row.source == "openalex":
-            openalex_subjects.add(str(source_row.subject_id))
-            openalex_sections += len(docs)
-            openalex_papers += len(paper_inventory(docs))
+    openalex_papers: set[tuple[str, str]] = set()
+    for subject_id, source, provenance in inventory:
+        if source == "wikipedia":
+            wiki_sections += 1
+        elif source == "openalex":
+            openalex_sections += 1
+            if provenance:
+                openalex_papers.add((subject_id, provenance))
 
     return KnowledgeOverview(
         dinosaurs=len(subjects),
         wikipedia_dinos=len(wiki_subjects),
         wikipedia_units=wiki_sections,
         openalex_dinos=len(openalex_subjects),
-        openalex_papers=openalex_papers,
+        openalex_papers=len(openalex_papers),
         openalex_units=openalex_sections,
         unit_label="sections",
     )
@@ -113,30 +121,36 @@ def sql_embedded_overview(
     *,
     subject_kind: str = DEFAULT_SUBJECT_KIND,
 ) -> KnowledgeOverview:
-    """Summarize successfully embedded chunk rows."""
-    subjects: set[str] = set()
-    wiki_subjects: set[str] = set()
-    openalex_subjects: set[str] = set()
-    papers: set[tuple[str, str]] = set()
+    """Summarize successfully embedded chunk rows.
+
+    Uses two queries (sources + chunk inventory), not one query per source.
+    """
+    sources = [
+        row
+        for row in repo.list_sources(subject_kind=subject_kind)
+        if row.embed_status == "succeeded"
+    ]
+    subjects = {str(row.subject_id) for row in sources}
+    wiki_subjects = {
+        str(row.subject_id) for row in sources if row.source == "wikipedia"
+    }
+    openalex_subjects = {
+        str(row.subject_id) for row in sources if row.source == "openalex"
+    }
+
+    inventory = repo.chunk_inventory(
+        subject_kind=subject_kind, embed_succeeded_only=True
+    )
     wiki_chunks = 0
     openalex_chunks = 0
-
-    for source_row in repo.list_sources(subject_kind=subject_kind):
-        if source_row.embed_status != "succeeded":
-            continue
-        subject = str(source_row.subject_id)
-        chunks = repo.list_chunks(source_row)
-        subjects.add(subject)
-        if source_row.source == "wikipedia":
-            wiki_subjects.add(subject)
-            wiki_chunks += len(chunks)
-        elif source_row.source == "openalex":
-            openalex_subjects.add(subject)
-            openalex_chunks += len(chunks)
-            for chunk in chunks:
-                source_id = str(chunk.metadata.source_id or "").strip()
-                if subject and source_id:
-                    papers.add((subject, source_id))
+    papers: set[tuple[str, str]] = set()
+    for subject_id, source, provenance in inventory:
+        if source == "wikipedia":
+            wiki_chunks += 1
+        elif source == "openalex":
+            openalex_chunks += 1
+            if provenance:
+                papers.add((subject_id, provenance))
 
     return KnowledgeOverview(
         dinosaurs=len(subjects),
