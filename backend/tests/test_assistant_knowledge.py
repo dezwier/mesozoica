@@ -186,12 +186,12 @@ def test_list_subject_sources_groups_and_dedupes(session, monkeypatch) -> None:
                     kind="openalex",
                 ),
                 KnowledgeSourceItem(
-                    title="Paper Two",
+                    title="<i>Paper</i> Two",
                     url="https://doi.org/10.1/b",
                     kind="openalex",
                 ),
                 KnowledgeSourceItem(
-                    title="Tyrannosaurus rex anatomy",
+                    title="<i>Tyrannosaurus</i> rex anatomy",
                     url="https://doi.org/10.1/c",
                     kind="openalex",
                 ),

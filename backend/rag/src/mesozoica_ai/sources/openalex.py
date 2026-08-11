@@ -86,11 +86,37 @@ def paper_inventory(documents: list[Any]) -> list[tuple[str, str]]:
     return papers
 
 
+_ITALIC_BLOCK_RE = re.compile(
+    r"<(?:i|em|italic)(?:\s[^>]*)?>(.*?)</(?:i|em|italic)>",
+    re.IGNORECASE | re.DOTALL,
+)
 _TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
 
 
 def _display_title(title: str) -> str:
-    return " ".join(_TAG_RE.sub("", html.unescape(title)).split())
+    """Unescape and keep italics as ``<i>…</i>`` for downstream display."""
+    text = html.unescape(title or "")
+    protected: list[str] = []
+
+    def _protect(match: re.Match[str]) -> str:
+        inner = _WS_RE.sub(" ", match.group(1)).strip()
+        protected.append(inner)
+        return f"\0I{len(protected) - 1}\0"
+
+    text = _ITALIC_BLOCK_RE.sub(_protect, text)
+    text = _TAG_RE.sub(" ", text)
+    text = _WS_RE.sub(" ", text).strip()
+
+    def _restore(match: re.Match[str]) -> str:
+        idx = int(match.group(1))
+        inner = protected[idx] if 0 <= idx < len(protected) else ""
+        return f"<i>{inner}</i>" if inner else ""
+
+    text = re.sub(r"\0I(\d+)\0", _restore, text)
+    text = re.sub(r"(\S)<i>", r"\1 <i>", text)
+    text = re.sub(r"</i>(\S)", r"</i> \1", text)
+    return _WS_RE.sub(" ", text).strip()
 
 
 def _retrieve_documents(

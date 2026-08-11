@@ -89,12 +89,27 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   late final AssistantRepository _repository =
       widget._repository ?? AssistantRepository();
 
+  /// Shared resting height for dino + ask fields (and send button).
+  static const double _fieldHeight = 48;
+  static const EdgeInsets _fieldContentPadding = EdgeInsets.symmetric(
+    horizontal: 12,
+    vertical: 14,
+  );
+  static const TextStyle _fieldTextStyle = TextStyle(
+    color: MapChromeTheme.cream,
+    fontSize: 14,
+    height: 1.25,
+  );
+
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _subjectQuery = TextEditingController();
 
   /// Autocomplete-owned focus node; listener attached in the field builder.
   FocusNode? _subjectFocusNode;
+
+  /// Dino field stays focusable for browsing; keyboard only when toggled on.
+  bool _subjectKeyboardEnabled = false;
 
   bool _loading = false;
   String? _error;
@@ -127,7 +142,50 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   }
 
   void _dismissKeyboard() {
+    if (_subjectKeyboardEnabled) {
+      setState(() => _subjectKeyboardEnabled = false);
+    }
     FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  void _toggleKeyboard() {
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final subjectFocused = _subjectFocusNode?.hasFocus == true;
+    final askFocused = _focusNode.hasFocus;
+
+    if (keyboardOpen ||
+        askFocused ||
+        (subjectFocused && _subjectKeyboardEnabled)) {
+      _dismissKeyboard();
+      // Keep dino field focused for browsing without the soft keyboard.
+      if (subjectFocused) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _subjectFocusNode?.requestFocus();
+        });
+      }
+      return;
+    }
+
+    if (subjectFocused || (_subjectFocusNode != null && !askFocused)) {
+      setState(() => _subjectKeyboardEnabled = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final node = _subjectFocusNode;
+        if (node == null) return;
+        if (!node.hasFocus) node.requestFocus();
+        SystemChannels.textInput.invokeMethod('TextInput.show');
+      });
+      return;
+    }
+
+    _focusNode.requestFocus();
+  }
+
+  bool get _keyboardToggleActive {
+    return MediaQuery.viewInsetsOf(context).bottom > 0 ||
+        _focusNode.hasFocus ||
+        (_subjectFocusNode?.hasFocus == true && _subjectKeyboardEnabled);
   }
 
   void _attachSubjectFocusListener(FocusNode node) {
@@ -203,6 +261,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
       _sourcesLoading = true;
       _sourcesError = null;
       _selectedSources = null;
+      _subjectKeyboardEnabled = false;
       if (_answer == null) _resultTab = 1;
     });
     try {
@@ -349,16 +408,20 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                 ),
                               ),
                               IconButton(
-                                tooltip: 'Hide keyboard',
+                                tooltip: _keyboardToggleActive
+                                    ? 'Hide keyboard'
+                                    : 'Show keyboard',
                                 visualDensity: VisualDensity.compact,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
                                   minWidth: 32,
                                   minHeight: 32,
                                 ),
-                                onPressed: _dismissKeyboard,
+                                onPressed: _toggleKeyboard,
                                 icon: Icon(
-                                  Icons.keyboard_hide_outlined,
+                                  _keyboardToggleActive
+                                      ? Icons.keyboard_hide_outlined
+                                      : Icons.keyboard_alt_outlined,
                                   size: 18,
                                   color: MapChromeTheme.mutedGold.withValues(
                                     alpha: 0.85,
@@ -387,23 +450,21 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                           _buildSubjectPicker(),
                           const SizedBox(height: 10),
                           Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: TextField(
+                                child: SizedBox(
+                                  height: _fieldHeight,
+                                  child: TextField(
                                   controller: _controller,
                                   focusNode: _focusNode,
                                   enabled: !_loading,
                                   minLines: 1,
-                                  maxLines: 4,
+                                  maxLines: 1,
                                   maxLength: 500,
                                   maxLengthEnforcement:
                                       MaxLengthEnforcement.enforced,
-                                  style: const TextStyle(
-                                    color: MapChromeTheme.cream,
-                                    fontSize: 14,
-                                    height: 1.3,
-                                  ),
+                                  style: _fieldTextStyle,
                                   cursorColor: MapChromeTheme.mutedGold,
                                   decoration: InputDecoration(
                                     isDense: true,
@@ -413,13 +474,11 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                       color: MapChromeTheme.mutedGold
                                           .withValues(alpha: 0.7),
                                       fontSize: 14,
+                                      height: 1.25,
                                     ),
                                     filled: true,
                                     fillColor: MapChromeTheme.leatherSoft,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
+                                    contentPadding: _fieldContentPadding,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
                                       borderSide: BorderSide(
@@ -447,15 +506,18 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                   textInputAction: TextInputAction.send,
                                   onSubmitted: (_) => _send(),
                                 ),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               SizedBox(
-                                width: 40,
-                                height: 40,
+                                width: _fieldHeight,
+                                height: _fieldHeight,
                                 child: Material(
                                   color: MapChromeTheme.leatherSoftMid,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(
+                                      _fieldHeight / 2,
+                                    ),
                                     side: BorderSide(
                                       color: MapChromeTheme.chromeBorder,
                                     ),

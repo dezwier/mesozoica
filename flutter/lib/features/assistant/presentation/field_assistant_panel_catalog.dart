@@ -54,30 +54,40 @@ extension on _FieldAssistantPanelState {
             controller.text.isEmpty) {
           controller.text = _subjectQuery.text;
         }
-        return TextField(
+        return SizedBox(
+          height: _fieldHeight,
+          child: TextField(
           controller: controller,
           focusNode: focusNode,
-          style: const TextStyle(
-            color: MapChromeTheme.cream,
-            fontSize: 13,
-            height: 1.3,
-          ),
+          readOnly: !_subjectKeyboardEnabled,
+          // Keep a caret while browsing so focus state is visible.
+          showCursor: true,
+          enableInteractiveSelection: _subjectKeyboardEnabled,
+          keyboardType: TextInputType.text,
+          style: _fieldTextStyle,
           cursorColor: MapChromeTheme.mutedGold,
+          onTap: () {
+            // Focusing opens the dropdown; keyboard stays off until toggled.
+            if (!_subjectKeyboardEnabled) {
+              SystemChannels.textInput.invokeMethod('TextInput.hide');
+            }
+          },
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Browse a dinosaur…',
             hintStyle: TextStyle(
               color: MapChromeTheme.mutedGold.withValues(alpha: 0.7),
-              fontSize: 13,
+              fontSize: 14,
+              height: 1.25,
             ),
             prefixIcon: const Icon(
               Icons.pets,
-              size: 16,
+              size: 18,
               color: MapChromeTheme.mutedGold,
             ),
             prefixIconConstraints: const BoxConstraints(
-              minWidth: 36,
-              minHeight: 32,
+              minWidth: 40,
+              minHeight: _fieldHeight,
             ),
             suffixIcon: _selectedSubject == null
                 ? null
@@ -86,31 +96,29 @@ extension on _FieldAssistantPanelState {
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
+                      minWidth: 40,
+                      minHeight: _fieldHeight,
                     ),
                     onPressed: () {
                       controller.clear();
                       _subjectQuery.clear();
-                      _dismissKeyboard();
                       _mutatePanelState(() {
+                        _subjectKeyboardEnabled = false;
                         _selectedSubject = null;
                         _selectedSources = null;
                         _sourcesError = null;
                       });
+                      SystemChannels.textInput.invokeMethod('TextInput.hide');
                     },
                     icon: Icon(
                       Icons.clear,
-                      size: 16,
+                      size: 18,
                       color: MapChromeTheme.mutedGold.withValues(alpha: 0.85),
                     ),
                   ),
             filled: true,
             fillColor: MapChromeTheme.leatherSoft,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
-            ),
+            contentPadding: _fieldContentPadding,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
@@ -144,9 +152,11 @@ extension on _FieldAssistantPanelState {
             }
           },
           onSubmitted: (_) {
-            _dismissKeyboard();
+            _mutatePanelState(() => _subjectKeyboardEnabled = false);
+            SystemChannels.textInput.invokeMethod('TextInput.hide');
             onFieldSubmitted();
           },
+        ),
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
@@ -378,11 +388,8 @@ extension on _FieldAssistantPanelState {
                   ),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(
+                    child: _richTitle(
                       source.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
                       style: TextStyle(
                         color: MapChromeTheme.hudGold,
                         fontSize: 12,
@@ -514,8 +521,9 @@ extension on _FieldAssistantPanelState {
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(
+                child: _richTitle(
                   title,
+                  maxLines: 3,
                   style: const TextStyle(
                     color: MapChromeTheme.hudGold,
                     fontSize: 13,
@@ -530,5 +538,43 @@ extension on _FieldAssistantPanelState {
         ),
       ),
     );
+  }
+
+  /// Renders API titles that may contain ``<i>…</i>`` italic spans.
+  Widget _richTitle(
+    String title, {
+    required TextStyle style,
+    int maxLines = 1,
+  }) {
+    return Text.rich(
+      TextSpan(style: style, children: _titleSpans(title, style)),
+      maxLines: maxLines,
+      overflow: TextOverflow.ellipsis,
+      softWrap: maxLines > 1,
+    );
+  }
+
+  List<InlineSpan> _titleSpans(String title, TextStyle style) {
+    final italicStyle = style.copyWith(fontStyle: FontStyle.italic);
+    final pattern = RegExp(r'<i>(.*?)</i>', caseSensitive: false, dotAll: true);
+    final spans = <InlineSpan>[];
+    var start = 0;
+    for (final match in pattern.allMatches(title)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: title.substring(start, match.start)));
+      }
+      final inner = match.group(1) ?? '';
+      if (inner.isNotEmpty) {
+        spans.add(TextSpan(text: inner, style: italicStyle));
+      }
+      start = match.end;
+    }
+    if (start < title.length) {
+      spans.add(TextSpan(text: title.substring(start)));
+    }
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: title));
+    }
+    return spans;
   }
 }
