@@ -3,11 +3,17 @@ from __future__ import annotations
 import logging
 import time
 
+from collections.abc import Callable
+from typing import TypeVar
+
 from langchain_core.embeddings import Embeddings
 
+from mesozoica_ai.common.errors import EmbeddingProviderError
 from mesozoica_ai.common.models import EmbeddedChunk, KnowledgeChunk
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class Embedder:
@@ -23,8 +29,10 @@ class Embedder:
         if not chunks:
             return []
         started = time.perf_counter()
-        vectors = self._embed_documents_with_retry(
-            [chunk.embedding_text for chunk in chunks]
+        vectors = self._with_retry(
+            lambda: self.client.embed_documents(
+                [chunk.embedding_text for chunk in chunks]
+            )
         )
         if len(vectors) != len(chunks):
             raise RuntimeError("Embedding provider returned an unexpected vector count")
@@ -45,19 +53,32 @@ class Embedder:
         )
         return embedded
 
-    def _embed_documents_with_retry(
-        self, texts: list[str], *, attempts: int = 4
-    ) -> list[list[float]]:
-        """Retry Azure Foundry intermittent ``unknown_model`` 400s."""
+    def embed_query(self, query: str) -> list[float]:
+        """Embed one retrieval query and validate its configured dimensions."""
+        vector = self._with_retry(lambda: self.client.embed_query(query))
+        if len(vector) != self.dimensions:
+            raise RuntimeError(
+                "Embedding provider returned a query vector with dimensions that do not "
+                f"match the configured index ({self.dimensions})"
+            )
+        return vector
+
+    def _with_retry(self, call: Callable[[], T], *, attempts: int = 8) -> T:
+        """Retry Azure Foundry intermittent ``unknown_model`` 400s with backoff."""
         last_error: BaseException | None = None
         for attempt in range(1, attempts + 1):
             try:
-                return self.client.embed_documents(texts)
+                return call()
             except Exception as exc:
                 last_error = exc
                 if "unknown_model" not in str(exc) or attempt >= attempts:
+                    if "unknown_model" in str(exc):
+                        raise EmbeddingProviderError(
+                            f"Azure OpenAI embedding deployment {self.model!r} "
+                            f"unavailable after {attempts} attempts ({exc})"
+                        ) from exc
                     raise
-                delay = 0.4 * attempt
+                delay = min(30.0, 0.5 * (2 ** (attempt - 1)))
                 logger.warning(
                     "embed unknown_model from %s (attempt %s/%s); retrying in %.1fs",
                     self.model,
@@ -68,13 +89,3 @@ class Embedder:
                 time.sleep(delay)
         assert last_error is not None
         raise last_error
-
-    def embed_query(self, query: str) -> list[float]:
-        """Embed one retrieval query and validate its configured dimensions."""
-        vector = self.client.embed_query(query)
-        if len(vector) != self.dimensions:
-            raise RuntimeError(
-                "Embedding provider returned a query vector with dimensions that do not "
-                f"match the configured index ({self.dimensions})"
-            )
-        return vector

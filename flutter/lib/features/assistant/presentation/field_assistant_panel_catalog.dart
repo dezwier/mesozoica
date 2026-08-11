@@ -53,10 +53,10 @@ extension on _FieldAssistantPanelState {
           style: _kFieldTextStyle,
           cursorColor: MapChromeTheme.mutedGold,
           onTap: () {
-            // Focusing opens the dropdown; keyboard stays off until toggled.
             if (!_subjectKeyboardEnabled) {
-              SystemChannels.textInput.invokeMethod('TextInput.hide');
+              _mutatePanelState(() => _subjectKeyboardEnabled = true);
             }
+            SystemChannels.textInput.invokeMethod('TextInput.show');
           },
           decoration: InputDecoration(
             isDense: true,

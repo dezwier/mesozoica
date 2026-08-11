@@ -24,6 +24,7 @@ from mesozoica_ai.common.checkpoints import (
     reset_indexing,
 )
 from mesozoica_ai.common.config import AiConfig
+from mesozoica_ai.common.errors import EmbeddingProviderError
 from mesozoica_ai.common.knowledge_repo import KnowledgeRepository
 from mesozoica_ai.common.resume import UnitOfWork, run_resumable_item
 from mesozoica_ai.common.store import SessionUnitOfWork
@@ -125,6 +126,18 @@ def embed_knowledge(
     # One Azure OpenAI client for the whole run. Recreating per dinosaur races
     # Foundry routing and surfaces intermittent unknown_model 400s.
     embedder = build_embedder(active)
+    logger.info(
+        "Probing embedding deployment %s (%s dims)",
+        active.embedding_deployment,
+        active.embedding_dimensions,
+    )
+    try:
+        embedder.embed_query("mesozoica embedding probe")
+    except Exception as exc:
+        raise EmbeddingProviderError(
+            f"Embedding probe failed for deployment "
+            f"{active.embedding_deployment!r}: {exc}"
+        ) from exc
 
     for snapshot in pending:
         label = f"{snapshot.subject_name}/{snapshot.source}"
@@ -163,17 +176,26 @@ def embed_knowledge(
             return loaded
 
         logger.info("%s: embedding", label)
-        outcome = run_resumable_item(
-            work_unit,
-            snapshot,
-            should_run=lambda row: True,
-            begin=begin_embedding,
-            work=work,
-            complete=complete,
-            fail=fail_embedding,
-            reload=reload,
-            label=label,
-        )
+        try:
+            outcome = run_resumable_item(
+                work_unit,
+                snapshot,
+                should_run=lambda row: True,
+                begin=begin_embedding,
+                work=work,
+                complete=complete,
+                fail=fail_embedding,
+                reload=reload,
+                label=label,
+                reraise=lambda exc: isinstance(exc, EmbeddingProviderError),
+            )
+        except EmbeddingProviderError as exc:
+            summary.failed += 1
+            logger.error(
+                "Stopping embed run — Azure embedding deployment unavailable: %s",
+                exc,
+            )
+            return summary
         if outcome == "succeeded":
             prepared = prepare_result.get("prepared")
             if prepared is not None:

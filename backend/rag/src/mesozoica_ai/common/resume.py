@@ -6,6 +6,8 @@ import logging
 from collections.abc import Callable
 from typing import Literal, Protocol, TypeVar
 
+from mesozoica_ai.common.errors import AiError
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
@@ -36,6 +38,7 @@ def run_resumable_item(
     fail: Callable[[T, BaseException], None],
     reload: Callable[[T], T],
     label: str,
+    reraise: Callable[[BaseException], bool] | None = None,
 ) -> Outcome:
     """Run one checkpointed unit: begin → commit → work → complete/fail → commit."""
     if not should_run(item):
@@ -52,7 +55,15 @@ def run_resumable_item(
         item = reload(item)
         fail(item, exc)
         outcome = "failed"
-        logger.exception("%s failed", label)
+        if isinstance(exc, AiError):
+            logger.warning("%s failed: %s", label, exc)
+        else:
+            logger.exception("%s failed", label)
+        work_unit.save(item)
+        work_unit.commit()
+        if reraise is not None and reraise(exc):
+            raise
+        return outcome
     work_unit.save(item)
     work_unit.commit()
     return outcome

@@ -57,6 +57,10 @@ class CitationError(AiError):
     """Raised when output cites evidence that was not supplied."""
 
 
+class EmbeddingProviderError(AiError):
+    """Raised when Azure OpenAI embeddings stay unavailable after retries."""
+
+
 # Compatibility aliases used by moved private modules during redesign.
 KnowledgeBaseConfigurationError = ConfigurationError
 KnowledgeBaseError = AiError

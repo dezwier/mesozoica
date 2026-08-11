@@ -69,8 +69,7 @@ class FieldAssistantChip extends StatelessWidget {
           child: Icon(
             Icons.auto_awesome,
             size: 22,
-            // Same amber as the clear-day sun in [WeatherDisplay.weatherIconColor].
-            color: Color(0xFFFFC107),
+            color: MapChromeTheme.cream,
             shadows: _textShadows,
           ),
         ),
@@ -107,7 +106,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   /// Autocomplete-owned focus node; listener attached in the field builder.
   FocusNode? _subjectFocusNode;
 
-  /// Dino field stays focusable for browsing; keyboard only when toggled on.
+  /// Soft keyboard for the dino Autocomplete field (on by default when focused).
   bool _subjectKeyboardEnabled = false;
 
   bool _loading = false;
@@ -129,6 +128,10 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   void initState() {
     super.initState();
     unawaited(_loadSubjects());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focusNode.requestFocus();
+    });
   }
 
   @override
@@ -201,7 +204,18 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
 
   void _onSubjectFocusChanged() {
     final node = _subjectFocusNode;
-    if (node == null || node.hasFocus) return;
+    if (node == null) return;
+    if (node.hasFocus) {
+      // Dino selector opens the soft keyboard by default.
+      if (!_subjectKeyboardEnabled) {
+        setState(() => _subjectKeyboardEnabled = true);
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _subjectFocusNode?.hasFocus != true) return;
+        SystemChannels.textInput.invokeMethod('TextInput.show');
+      });
+      return;
+    }
     // After the focus transfer settles: keep keyboard if the ask field
     // took focus; otherwise dismiss (tap-away from the dino selector).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -457,6 +471,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                   child: TextField(
                                   controller: _controller,
                                   focusNode: _focusNode,
+                                  autofocus: true,
                                   enabled: !_loading,
                                   minLines: 1,
                                   maxLines: 1,
