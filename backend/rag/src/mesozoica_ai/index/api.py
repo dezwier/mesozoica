@@ -102,14 +102,14 @@ def prepare_embeddings(
     by_id = {chunk.id: chunk for chunk in (*reused, *freshly_embedded)}
     ordered = [by_id[chunk.id] for chunk in chunks]
     if to_embed:
-        logger.info(
+        logger.debug(
             "prepare_embeddings: embed %s/%s chunks (reused %s)",
             len(to_embed),
             len(chunks),
             len(reused),
         )
     else:
-        logger.info(
+        logger.debug(
             "prepare_embeddings: reuse all %s chunks",
             len(chunks),
         )
@@ -176,7 +176,7 @@ def sync_embedded_chunks(
         and existing[chunk.id].document_hash != chunk.document_hash
     ]
     if to_upsert:
-        logger.info(
+        logger.debug(
             "%s: upsert %s/%s embedded chunks (Azure already has %s)",
             label,
             len(to_upsert),
@@ -185,7 +185,7 @@ def sync_embedded_chunks(
         )
         store.upsert(to_upsert)
     else:
-        logger.info(
+        logger.debug(
             "%s: skip upsert (%s chunks already in Azure)",
             label,
             len(normalized),

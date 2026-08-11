@@ -45,7 +45,7 @@ class Embedder:
             EmbeddedChunk(**chunk.model_dump(), embedding=vector)
             for chunk, vector in zip(chunks, vectors, strict=True)
         ]
-        logger.info(
+        logger.debug(
             "embed %s chunks (%s dims, %.0fms)",
             len(chunks),
             self.dimensions,
@@ -79,7 +79,7 @@ class Embedder:
                         ) from exc
                     raise
                 delay = min(30.0, 0.5 * (2 ** (attempt - 1)))
-                logger.warning(
+                logger.debug(
                     "embed unknown_model from %s (attempt %s/%s); retrying in %.1fs",
                     self.model,
                     attempt,

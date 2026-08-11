@@ -24,7 +24,7 @@ from mesozoica_ai.common.checkpoints import (
     reset_indexing,
 )
 from mesozoica_ai.common.config import AiConfig
-from mesozoica_ai.common.errors import EmbeddingProviderError
+from mesozoica_ai.common.errors import EmbeddingProviderError, BatchWriteError
 from mesozoica_ai.common.knowledge_repo import KnowledgeRepository
 from mesozoica_ai.common.resume import UnitOfWork, run_resumable_item
 from mesozoica_ai.common.store import SessionUnitOfWork
@@ -114,11 +114,20 @@ def embed_knowledge(
         else:
             already_embedded += 1
 
+    pending_total = len(pending)
+    pending_dinos = len({str(row.subject_id) for row in pending})
+    acquired_dinos = len({str(row.subject_id) for row in snapshots})
     logger.info(
-        "dinosaur_knowledge embed: %s acquired row(s); %s pending, %s already embedded",
-        len(snapshots),
-        len(pending),
+        "Embed → SQL: %s source-row(s) to embed (%s dino(s)); "
+        "%s source-row(s) already embedded; "
+        "%s acquired source-row(s) / %s dino(s) | %s @ %s dims",
+        pending_total,
+        pending_dinos,
         already_embedded,
+        len(snapshots),
+        acquired_dinos,
+        active.embedding_deployment,
+        active.embedding_dimensions,
     )
     summary = JobSummary(candidates=len(snapshots))
     summary.skipped = already_embedded
@@ -126,11 +135,6 @@ def embed_knowledge(
     # One Azure OpenAI client for the whole run. Recreating per dinosaur races
     # Foundry routing and surfaces intermittent unknown_model 400s.
     embedder = build_embedder(active)
-    logger.info(
-        "Probing embedding deployment %s (%s dims)",
-        active.embedding_deployment,
-        active.embedding_dimensions,
-    )
     try:
         embedder.embed_query("mesozoica embedding probe")
     except Exception as exc:
@@ -139,9 +143,10 @@ def embed_knowledge(
             f"{active.embedding_deployment!r}: {exc}"
         ) from exc
 
-    for snapshot in pending:
+    for embed_i, snapshot in enumerate(pending, start=1):
         label = f"{snapshot.subject_name}/{snapshot.source}"
         prepare_result: dict[str, Any] = {}
+        fail_info: dict[str, BaseException] = {}
 
         def work(row: Any, *, _result=prepare_result) -> None:
             existing = repo.list_chunks(row)
@@ -165,6 +170,10 @@ def embed_knowledge(
                 new_inventory_hash=_result["new_inventory"],
             )
 
+        def fail(row: Any, exc: BaseException, *, _info=fail_info) -> None:
+            _info["exc"] = exc
+            fail_embedding(row, exc)
+
         def reload(row: Any) -> Any:
             loaded = repo.get_source(
                 subject_kind=row.subject_kind,
@@ -175,7 +184,6 @@ def embed_knowledge(
                 raise RuntimeError(f"Missing knowledge source after failure: {row.id}")
             return loaded
 
-        logger.info("%s: embedding", label)
         try:
             outcome = run_resumable_item(
                 work_unit,
@@ -184,7 +192,7 @@ def embed_knowledge(
                 begin=begin_embedding,
                 work=work,
                 complete=complete,
-                fail=fail_embedding,
+                fail=fail,
                 reload=reload,
                 label=label,
                 reraise=lambda exc: isinstance(exc, EmbeddingProviderError),
@@ -192,7 +200,10 @@ def embed_knowledge(
         except EmbeddingProviderError as exc:
             summary.failed += 1
             logger.error(
-                "Stopping embed run — Azure embedding deployment unavailable: %s",
+                "embed %s/%s %s | SQL failed (stopping): %s",
+                embed_i,
+                pending_total,
+                label,
                 exc,
             )
             return summary
@@ -200,14 +211,30 @@ def embed_knowledge(
             prepared = prepare_result.get("prepared")
             if prepared is not None:
                 logger.info(
-                    "%s: done embed=%s reuse=%s chunks=%s",
+                    "embed %s/%s %s | SQL ok +%s reuse=%s total=%s",
+                    embed_i,
+                    pending_total,
                     label,
                     prepared.embedded_count,
                     prepared.reused_count,
                     prepared.chunk_count,
                 )
+            else:
+                logger.info(
+                    "embed %s/%s %s | SQL ok",
+                    embed_i,
+                    pending_total,
+                    label,
+                )
         elif outcome == "failed":
-            logger.error("%s: failed", label)
+            reason = fail_info.get("exc") or "unknown error"
+            logger.error(
+                "embed %s/%s %s | SQL failed: %s",
+                embed_i,
+                pending_total,
+                label,
+                reason,
+            )
         elif outcome == "skipped":
             summary.skipped += 1
             continue
@@ -266,56 +293,51 @@ def ingest_knowledge(
         ]
     else:
         ensure_index(config=active)
-        logger.info("Azure index ready (%s)", getattr(active, "search_index", None) or "?")
+        logger.debug(
+            "Azure index ready (%s)", getattr(active, "search_index", None) or "?"
+        )
 
     fingerprint = pipeline_fingerprint(config=active)
     store = build_store(active, write_enabled=False)
     pending = []
     already_indexed = 0
     drift_resets = 0
-    verify_total = sum(
-        1
-        for snapshot in snapshots
-        if snapshot.embed_status == "succeeded"
-        and not indexing_needed(
-            snapshot, pipeline_fingerprint=fingerprint, overwrite=overwrite
-        )
-    )
-    verify_done = 0
-    if verify_total:
-        logger.info(
-            "Verifying Azure keys for %s already-indexed source(s)…",
-            verify_total,
-        )
+    skip_by_status: dict[str, int] = {}
+    skip_no_chunks = 0
+    queue_fresh = 0
+
+    def _skip_status_summary() -> str:
+        parts = [f"{status}={count}" for status, count in sorted(skip_by_status.items())]
+        if skip_no_chunks:
+            parts.append(f"no_chunks={skip_no_chunks}")
+        return ", ".join(parts) if parts else "0"
+
+    # Sync-check is quiet on purpose; one prep line is logged after it finishes.
     for snapshot in snapshots:
         label = f"{snapshot.subject_name}/{snapshot.source}"
         if snapshot.embed_status != "succeeded":
-            logger.info("%s: skip ingest (embed_status=%s)", label, snapshot.embed_status)
+            skip_by_status[snapshot.embed_status] = (
+                skip_by_status.get(snapshot.embed_status, 0) + 1
+            )
+            logger.debug("%s: not ready (embed_status=%s)", label, snapshot.embed_status)
             continue
         chunks = repo.list_chunks(snapshot)
         if not chunks:
-            logger.info("%s: skip ingest (no chunks)", label)
+            skip_no_chunks += 1
+            logger.debug("%s: not ready (no chunks)", label)
             continue
         if indexing_needed(
             snapshot, pipeline_fingerprint=fingerprint, overwrite=overwrite
         ):
             pending.append(snapshot)
+            queue_fresh += 1
             continue
         chunk_ids = {chunk.id for chunk in chunks}
-        verify_done += 1
-        if verify_done == 1 or verify_done % 50 == 0 or verify_done == verify_total:
-            logger.info(
-                "Azure verify progress %s/%s (latest %s, %s chunks)",
-                verify_done,
-                verify_total,
-                label,
-                len(chunk_ids),
-            )
         try:
-            # Scoped search (one query per dino) instead of N get_document calls.
+            # Scoped search (one query per source) instead of N get_document calls.
             azure_ids = set(store.get_chunk_states(snapshot_scope(snapshot)))
         except Exception as exc:
-            logger.warning("%s: Azure verify failed (%s); re-syncing", label, exc)
+            logger.debug("%s: Azure verify failed (%s); queue re-sync", label, exc)
             reset_indexing(snapshot)
             repo.save_source(snapshot)
             pending.append(snapshot)
@@ -324,8 +346,8 @@ def ingest_knowledge(
         if chunk_ids == azure_ids:
             already_indexed += 1
             continue
-        logger.info(
-            "%s: Azure drift (sql_chunks=%s azure_keys=%s); re-syncing",
+        logger.debug(
+            "%s: drift sql=%s azure=%s",
             label,
             len(chunk_ids),
             len(azure_ids),
@@ -342,19 +364,32 @@ def ingest_knowledge(
         for snapshot in snapshots
         if snapshot.embed_status == "succeeded" and repo.list_chunks(snapshot)
     ]
+    upsert_total = len(pending)
+    upsert_dinos = len({str(row.subject_id) for row in pending})
+    acquired_dinos = len({str(row.subject_id) for row in snapshots})
     logger.info(
-        "dinosaur_knowledge ingest: %s embedded row(s); %s pending, %s already indexed%s",
-        len(eligible),
-        len(pending),
+        "Ingest → Azure: %s source-row(s) to upsert (%s dino(s)); "
+        "%s source-row(s) already in sync; "
+        "%s drift re-queued; %s fresh; "
+        "not_ready=%s; "
+        "%s acquired source-row(s) / %s dino(s) | index=%s",
+        upsert_total,
+        upsert_dinos,
         already_indexed,
-        f", {drift_resets} Azure drift" if drift_resets else "",
+        drift_resets,
+        queue_fresh,
+        _skip_status_summary(),
+        len(snapshots),
+        acquired_dinos,
+        getattr(active, "search_index", None) or "?",
     )
     summary = JobSummary(candidates=len(eligible))
     summary.skipped = already_indexed + (len(snapshots) - len(eligible))
 
-    for snapshot in pending:
+    for upsert_i, snapshot in enumerate(pending, start=1):
         label = f"{snapshot.subject_name}/{snapshot.source}"
         sync_result: dict[str, Any] = {}
+        fail_info: dict[str, BaseException] = {}
 
         def work(row: Any, *, _result=sync_result) -> None:
             _result["result"] = sync_embedded_chunks(
@@ -362,6 +397,10 @@ def ingest_knowledge(
                 scope=snapshot_scope(row),
                 config=active,
             )
+
+        def fail(row: Any, exc: BaseException, *, _info=fail_info) -> None:
+            _info["exc"] = exc
+            fail_indexing(row, exc)
 
         def reload(row: Any) -> Any:
             loaded = repo.get_source(
@@ -373,33 +412,60 @@ def ingest_knowledge(
                 raise RuntimeError(f"Missing knowledge source after failure: {row.id}")
             return loaded
 
-        logger.info("%s: ingesting", label)
-        outcome = run_resumable_item(
-            work_unit,
-            snapshot,
-            should_run=lambda row: True,
-            begin=begin_indexing,
-            work=work,
-            complete=lambda row, _result=sync_result: complete_indexing(
-                row, pipeline_fingerprint=_result["result"].pipeline_fingerprint
-            ),
-            fail=fail_indexing,
-            reload=reload,
-            label=label,
-        )
+        try:
+            outcome = run_resumable_item(
+                work_unit,
+                snapshot,
+                should_run=lambda row: True,
+                begin=begin_indexing,
+                work=work,
+                complete=lambda row, _result=sync_result: complete_indexing(
+                    row, pipeline_fingerprint=_result["result"].pipeline_fingerprint
+                ),
+                fail=fail,
+                reload=reload,
+                label=label,
+                reraise=_is_index_capacity_error,
+            )
+        except BatchWriteError as exc:
+            summary.failed += 1
+            logger.error(
+                "upsert %s/%s %s | Azure failed (stopping): %s",
+                upsert_i,
+                upsert_total,
+                label,
+                exc,
+            )
+            return summary
         if outcome == "succeeded":
             result = sync_result.get("result")
             if result is not None:
                 logger.info(
-                    "%s: done upsert=%s skip=%s meta=%s delete=%s",
+                    "upsert %s/%s %s | Azure ok +%s skip=%s meta=%s del=%s",
+                    upsert_i,
+                    upsert_total,
                     label,
                     result.embedded_count,
                     result.skipped_count,
                     result.metadata_updated_count,
                     result.deleted_count,
                 )
+            else:
+                logger.info(
+                    "upsert %s/%s %s | Azure ok",
+                    upsert_i,
+                    upsert_total,
+                    label,
+                )
         elif outcome == "failed":
-            logger.error("%s: failed", label)
+            reason = fail_info.get("exc") or "unknown error"
+            logger.error(
+                "upsert %s/%s %s | Azure failed: %s",
+                upsert_i,
+                upsert_total,
+                label,
+                reason,
+            )
         elif outcome == "skipped":
             summary.skipped += 1
             continue
@@ -474,4 +540,13 @@ def _normalize_sources(sources: Sequence[str] | None) -> list[str]:
     unknown = sorted(set(normalized) - set(SUPPORTED_SOURCES))
     if unknown:
         raise ValueError(f"Unsupported knowledge sources: {', '.join(unknown)}")
-    return list(dict.fromkeys(normalized))
+    return normalized
+
+
+def _is_index_capacity_error(exc: BaseException) -> bool:
+    if not isinstance(exc, BatchWriteError):
+        return False
+    text = " ".join(
+        part for part in (exc.reason, str(exc)) if part
+    ).casefold()
+    return "vector quota" in text or "storage quota" in text or "quota has been exceeded" in text

@@ -199,7 +199,7 @@ class AzureSearchKnowledgeStore:
         """Return all indexed chunk identity fields for inventory summaries."""
         return self._search_all(
             {},
-            select=["id", "subject_id", "source", "source_id"],
+            select=["id", "subject_id", "source", "source_id", "document_id"],
         )
 
     def list_ids(self, filters: dict[str, Any]) -> list[str]:
@@ -331,6 +331,7 @@ class AzureSearchKnowledgeStore:
         ):
             pending = batch
             permanent: list[str] = []
+            permanent_reasons: list[str] = []
             for attempt in range(1, self.write_attempts + 1):
                 by_key = {str(document["id"]): document for document in pending}
                 try:
@@ -344,7 +345,11 @@ class AzureSearchKnowledgeStore:
                             min(8.0, 0.5 * 2 ** (attempt - 1)) + self.jitter() * 0.25
                         )
                         continue
-                    raise BatchWriteError(operation, sorted(by_key)) from exc
+                    raise BatchWriteError(
+                        operation,
+                        sorted(by_key),
+                        reason=_azure_error_reason(exc),
+                    ) from exc
                 transient: list[dict[str, Any]] = []
                 returned_keys: set[str] = set()
                 for result in results:
@@ -357,18 +362,27 @@ class AzureSearchKnowledgeStore:
                         transient.append(by_key[key])
                     else:
                         permanent.append(key)
+                        reason = getattr(result, "error_message", None)
+                        if reason:
+                            permanent_reasons.append(f"{status}: {reason}")
                 # A missing per-document result is ambiguous and must not be counted as
                 # success; retry that key without replaying confirmed successes.
                 transient.extend(
                     by_key[key] for key in sorted(set(by_key) - returned_keys)
                 )
                 if permanent:
-                    raise BatchWriteError(operation, sorted(set(permanent)))
+                    raise BatchWriteError(
+                        operation,
+                        sorted(set(permanent)),
+                        reason=_unique_reason(permanent_reasons),
+                    )
                 if not transient:
                     break
                 if attempt == self.write_attempts:
                     raise BatchWriteError(
-                        operation, sorted(str(document["id"]) for document in transient)
+                        operation,
+                        sorted(str(document["id"]) for document in transient),
+                        reason="exhausted transient retries",
                     )
                 pending = transient
                 self.sleeper(min(8.0, 0.5 * 2 ** (attempt - 1)) + self.jitter() * 0.25)
@@ -490,3 +504,26 @@ def _payload_batches(
         size += document_size
     if batch:
         yield batch
+
+
+def _azure_error_reason(exc: BaseException) -> str:
+    parts: list[str] = []
+    message = getattr(exc, "message", None) or str(exc)
+    if message:
+        parts.append(str(message).strip())
+    code = getattr(exc, "error", None)
+    error_code = getattr(code, "code", None) if code is not None else None
+    if not error_code:
+        error_code = getattr(exc, "status_code", None)
+    if error_code:
+        parts.append(f"code={error_code}")
+    return "; ".join(parts) if parts else exc.__class__.__name__
+
+
+def _unique_reason(reasons: list[str]) -> str | None:
+    unique = list(dict.fromkeys(reason for reason in reasons if reason))
+    if not unique:
+        return None
+    if len(unique) == 1:
+        return unique[0]
+    return f"{unique[0]} (+{len(unique) - 1} other reason(s))"

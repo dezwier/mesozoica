@@ -231,10 +231,6 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   }
 
   void _onScrimTap() {
-    if (FocusManager.instance.primaryFocus?.hasFocus == true) {
-      _dismissKeyboard();
-      return;
-    }
     if (!_loading) _close();
   }
 

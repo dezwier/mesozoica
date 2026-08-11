@@ -1,6 +1,8 @@
 from mesozoica_ai.common.inventory import (
     KnowledgeOverview,
+    StoreCounts,
     azure_knowledge_overview_from_rows,
+    azure_store_counts_from_rows,
     knowledge_overview_from_embedded_rows,
     knowledge_overview_from_sql_rows,
     overview_drift_lines,
@@ -120,3 +122,41 @@ def test_embedded_overview_counts_chunks_and_papers():
     assert overview.openalex_units == 3
     assert overview.unit_label == "chunks"
     assert "chunks" in overview.summary_line()
+
+
+def test_azure_store_counts_from_rows():
+    counts = azure_store_counts_from_rows(
+        [
+            {
+                "id": "1",
+                "subject_id": "dinosaur:1",
+                "source": "wikipedia",
+                "source_id": "wiki-1",
+                "document_id": "doc-a",
+            },
+            {
+                "id": "2",
+                "subject_id": "dinosaur:1",
+                "source": "wikipedia",
+                "source_id": "wiki-1",
+                "document_id": "doc-a",
+            },
+            {
+                "id": "3",
+                "subject_id": "dinosaur:1",
+                "source": "openalex",
+                "source_id": "W1",
+                "document_id": "doc-b",
+            },
+            {
+                "id": "4",
+                "subject_id": "dinosaur:2",
+                "source": "openalex",
+                "source_id": "W2",
+                "document_id": "doc-c",
+            },
+        ]
+    )
+    assert counts == StoreCounts(dinosaurs=2, sources=3, docs=3, chunks=4)
+    assert "2 unique dino(s)" in counts.summary_line()
+    assert "3 source-row(s)" in counts.summary_line()

@@ -48,9 +48,8 @@ from app.features.ingestion.application.dinosaur_knowledge.repository import (
     dinosaur_knowledge_repo,
 )
 from app.features.ingestion.public import parse_dino_names
-from mesozoica_ai.common import AiConfig, sql_embedded_overview
-from mesozoica_ai.common.inventory import overview_drift_lines
-from mesozoica_ai.index import azure_knowledge_overview, ingest_knowledge
+from mesozoica_ai.common import JobSummary, log_knowledge_counts
+from mesozoica_ai.index import ingest_knowledge
 
 
 def run(
@@ -72,48 +71,33 @@ def run(
         overwrite,
         recreate_index,
     )
+    summary = JobSummary(candidates=0)
+    interrupted = False
     with Session(engine) as session:
         repo = dinosaur_knowledge_repo(session)
-        summary = ingest_knowledge(
-            repo=repo,
-            names=dinos,
-            sources=sources,
-            max_items=max_items,
-            overwrite=overwrite,
-            dry_run=dry_run,
-            recreate_index=recreate_index,
-        )
-        embedded = sql_embedded_overview(repo)
-        logger.info(
-            "Done: succeeded=%s skipped=%s failed=%s",
-            summary.succeeded,
-            summary.skipped,
-            summary.failed,
-        )
-        for line in embedded.log_lines(title="Embedded (SQL chunks)"):
-            logger.info("%s", line)
-        if not dry_run:
-            try:
-                import time
-
-                time.sleep(2)
-                azure_overview = azure_knowledge_overview(
-                    config=AiConfig(),
-                    repo=repo,
-                )
-                for line in azure_overview.log_lines(title="In Azure Search"):
-                    logger.info("%s", line)
-                for line in overview_drift_lines(
-                    embedded,
-                    azure_overview,
-                    left_name="Embedded",
-                    right_name="Azure",
-                ):
-                    logger.info("%s", line)
-            except Exception as exc:
-                logger.warning("Azure overview unavailable (%s)", exc)
+        try:
+            summary = ingest_knowledge(
+                repo=repo,
+                names=dinos,
+                sources=sources,
+                max_items=max_items,
+                overwrite=overwrite,
+                dry_run=dry_run,
+                recreate_index=recreate_index,
+            )
+            logger.info(
+                "Done: succeeded=%s skipped=%s failed=%s",
+                summary.succeeded,
+                summary.skipped,
+                summary.failed,
+            )
+        except KeyboardInterrupt:
+            interrupted = True
+            logger.warning("Interrupted")
+        finally:
+            log_knowledge_counts(logger, repo)
     print(json.dumps(summary.model_dump(), indent=2, default=str))
-    return summary.exit_code
+    return 130 if interrupted else summary.exit_code
 
 
 if __name__ == "__main__":

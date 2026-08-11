@@ -48,7 +48,7 @@ from app.features.ingestion.application.dinosaur_knowledge.repository import (
     dinosaur_knowledge_repo,
 )
 from app.features.ingestion.public import parse_dino_names
-from mesozoica_ai.common import sql_embedded_overview, sql_knowledge_overview
+from mesozoica_ai.common import JobSummary, log_knowledge_counts
 from mesozoica_ai.index import embed_knowledge
 
 
@@ -69,30 +69,32 @@ def run(
         dry_run,
         overwrite,
     )
+    summary = JobSummary(candidates=0)
+    interrupted = False
     with Session(engine) as session:
         repo = dinosaur_knowledge_repo(session)
-        summary = embed_knowledge(
-            repo=repo,
-            names=dinos,
-            sources=sources,
-            max_items=max_items,
-            overwrite=overwrite,
-            dry_run=dry_run,
-        )
-        acquired = sql_knowledge_overview(repo)
-        embedded = sql_embedded_overview(repo)
-        logger.info(
-            "Done: succeeded=%s skipped=%s failed=%s",
-            summary.succeeded,
-            summary.skipped,
-            summary.failed,
-        )
-        for line in acquired.log_lines(title="Acquired (SQL documents)"):
-            logger.info("%s", line)
-        for line in embedded.log_lines(title="Embedded (SQL chunks)"):
-            logger.info("%s", line)
+        try:
+            summary = embed_knowledge(
+                repo=repo,
+                names=dinos,
+                sources=sources,
+                max_items=max_items,
+                overwrite=overwrite,
+                dry_run=dry_run,
+            )
+            logger.info(
+                "Done: succeeded=%s skipped=%s failed=%s",
+                summary.succeeded,
+                summary.skipped,
+                summary.failed,
+            )
+        except KeyboardInterrupt:
+            interrupted = True
+            logger.warning("Interrupted")
+        finally:
+            log_knowledge_counts(logger, repo)
     print(json.dumps(summary.model_dump(), indent=2, default=str))
-    return summary.exit_code
+    return 130 if interrupted else summary.exit_code
 
 
 if __name__ == "__main__":

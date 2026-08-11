@@ -39,10 +39,23 @@ class IndexCompatibilityError(AiError):
 class BatchWriteError(AiError):
     """Raised after retryable batch writes are exhausted."""
 
-    def __init__(self, operation: str, failed_keys: list[str]) -> None:
+    def __init__(
+        self,
+        operation: str,
+        failed_keys: list[str],
+        *,
+        reason: str | None = None,
+    ) -> None:
         self.operation = operation
         self.failed_keys = failed_keys
-        super().__init__(f"{operation} failed for keys: {', '.join(failed_keys)}")
+        self.reason = reason
+        key_preview = ", ".join(failed_keys[:8])
+        if len(failed_keys) > 8:
+            key_preview = f"{key_preview}, … (+{len(failed_keys) - 8} more)"
+        detail = f"{operation} failed for {len(failed_keys)} key(s): {key_preview}"
+        if reason:
+            detail = f"{detail} — {reason}"
+        super().__init__(detail)
 
 
 class InsufficientEvidenceError(AiError):

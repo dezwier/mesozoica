@@ -2,12 +2,106 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from mesozoica_ai.common.batch import DEFAULT_SUBJECT_KIND
 from mesozoica_ai.common.knowledge_repo import KnowledgeRepository
 from mesozoica_ai.sources.openalex import paper_inventory
+
+
+@dataclass(frozen=True)
+class StoreCounts:
+    """Dinosaur / source / doc / chunk totals for one store (SQL or Azure)."""
+
+    dinosaurs: int
+    sources: int
+    docs: int
+    chunks: int
+
+    def summary_line(self) -> str:
+        return (
+            f"{self.dinosaurs} unique dino(s) | {self.sources} source-row(s) "
+            f"(wiki/openalex) | {self.docs} doc(s) | {self.chunks} chunk(s)"
+        )
+
+
+def sql_store_counts(
+    repo: KnowledgeRepository,
+    *,
+    subject_kind: str = DEFAULT_SUBJECT_KIND,
+) -> StoreCounts:
+    """Count dinosaurs / sources / docs / chunks currently in SQL."""
+    sources = repo.list_sources(subject_kind=subject_kind)
+    dinosaurs = {str(row.subject_id) for row in sources}
+    docs = repo.document_inventory(
+        subject_kind=subject_kind, acquisition_succeeded_only=False
+    )
+    chunks = repo.chunk_inventory(
+        subject_kind=subject_kind, embed_succeeded_only=False
+    )
+    return StoreCounts(
+        dinosaurs=len(dinosaurs),
+        sources=len(sources),
+        docs=len(docs),
+        chunks=len(chunks),
+    )
+
+
+def azure_store_counts_from_rows(rows: list[dict[str, Any]]) -> StoreCounts:
+    """Count dinosaurs / sources / docs / chunks from Azure inventory hits."""
+    dinosaurs: set[str] = set()
+    sources: set[tuple[str, str]] = set()
+    docs: set[str] = set()
+    for row in rows:
+        subject = str(row.get("subject_id") or "").strip()
+        source = str(row.get("source") or "").strip().casefold()
+        document_id = str(row.get("document_id") or "").strip()
+        source_id = str(row.get("source_id") or "").strip()
+        if subject:
+            dinosaurs.add(subject)
+        if subject and source:
+            sources.add((subject, source))
+        if document_id:
+            docs.add(document_id)
+        elif subject and source and source_id:
+            docs.add(f"{subject}:{source}:{source_id}")
+    return StoreCounts(
+        dinosaurs=len(dinosaurs),
+        sources=len(sources),
+        docs=len(docs),
+        chunks=len(rows),
+    )
+
+
+def azure_store_counts(*, config: Any | None = None) -> StoreCounts:
+    """Fetch Azure inventory rows and return store counts."""
+    from mesozoica_ai.common.config import AiConfig
+    from mesozoica_ai.index.runtime import build_store
+
+    store = build_store(config or AiConfig(), write_enabled=False)
+    return azure_store_counts_from_rows(store.inventory_rows())
+
+
+def log_knowledge_counts(
+    logger: logging.Logger,
+    repo: KnowledgeRepository,
+    *,
+    include_azure: bool = True,
+    config: Any | None = None,
+) -> None:
+    """Log dinosaur/source/doc/chunk totals for SQL and (optionally) Azure."""
+    sql = sql_store_counts(repo)
+    logger.info("=== Knowledge inventory ===")
+    logger.info("SQL:   %s", sql.summary_line())
+    if not include_azure:
+        return
+    try:
+        azure = azure_store_counts(config=config)
+        logger.info("Azure: %s", azure.summary_line())
+    except Exception as exc:
+        logger.warning("Azure: unavailable (%s)", exc)
 
 
 @dataclass(frozen=True)

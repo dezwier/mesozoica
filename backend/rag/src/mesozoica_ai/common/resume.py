@@ -56,7 +56,7 @@ def run_resumable_item(
         fail(item, exc)
         outcome = "failed"
         if isinstance(exc, AiError):
-            logger.warning("%s failed: %s", label, exc)
+            logger.debug("%s failed: %s", label, exc)
         else:
             logger.exception("%s failed", label)
         work_unit.save(item)

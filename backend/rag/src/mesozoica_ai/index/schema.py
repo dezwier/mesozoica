@@ -151,7 +151,7 @@ class AzureKnowledgeIndex:
                 "Azure Search index is incompatible; use explicit --recreate-index. "
                 + "; ".join(invalid)
             )
-        logger.info("rag.index.validate", extra={"rag": {
+        logger.debug("rag.index.validate", extra={"rag": {
             "index": self.index_name, "schema_version": self.SCHEMA_VERSION,
             "dimensions": self.vector_dimensions,
         }})

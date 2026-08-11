@@ -40,8 +40,11 @@ from mesozoica_ai.common.errors import (
 )
 from mesozoica_ai.common.inventory import (
     KnowledgeOverview,
+    StoreCounts,
+    log_knowledge_counts,
     sql_embedded_overview,
     sql_knowledge_overview,
+    sql_store_counts,
 )
 from mesozoica_ai.common.knowledge_repo import (
     KnowledgeRepository,
@@ -93,8 +96,11 @@ __all__ = [
     "KnowledgeOverview",
     "KnowledgeRepository",
     "SqlModelKnowledgeRepository",
+    "StoreCounts",
+    "log_knowledge_counts",
     "sql_embedded_overview",
     "sql_knowledge_overview",
+    "sql_store_counts",
     "KnowledgeChunk",
     "KnowledgeDocument",
     "PrepareEmbeddingsResult",

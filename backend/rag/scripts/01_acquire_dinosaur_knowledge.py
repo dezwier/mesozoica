@@ -65,8 +65,8 @@ from mesozoica_ai.common import (
     RateLimitedError,
     SourceFetchError,
     SqlModelKnowledgeRepository,
+    log_knowledge_counts,
     needs_acquisition,
-    sql_knowledge_overview,
     store_documents,
     subject_metadata,
 )
@@ -88,66 +88,71 @@ def run(
     if not dry_run and "openalex" in sources and not (settings.openalex_api_key or "").strip():
         raise RuntimeError("OPENALEX_API_KEY is required for OpenAlex acquisition")
 
+    summary = JobSummary(candidates=0)
+    interrupted = False
     with Session(engine) as session:
         repo = dinosaur_knowledge_repo(session)
-        subjects = list_dinosaur_knowledge_subjects(session, names=dinos)
-        if "openalex" in sources and not overwrite:
-            subjects = _subjects_preferring_new_openalex(
-                repo, subjects, paper_target=paper_target
-            )
-        if max_items is not None:
-            subjects = subjects[:max_items]
-        logger.info(
-            "Acquiring %s dinosaur(s) × sources=%s (dry_run=%s overwrite=%s openalex_target=%s)",
-            len(subjects),
-            ",".join(sources),
-            dry_run,
-            overwrite,
-            paper_target,
-        )
-
-        summary = JobSummary(candidates=len(subjects) * len(sources))
-        for subject in subjects:
-            if "wikipedia" in sources:
-                _acquire_wikipedia(
-                    session,
-                    repo=repo,
-                    subject=subject,
-                    summary=summary,
-                    dry_run=dry_run,
-                    overwrite=overwrite,
+        try:
+            subjects = list_dinosaur_knowledge_subjects(session, names=dinos)
+            if "openalex" in sources and not overwrite:
+                subjects = _subjects_preferring_new_openalex(
+                    repo, subjects, paper_target=paper_target
                 )
-            if "openalex" in sources:
-                try:
-                    _acquire_openalex(
+            if max_items is not None:
+                subjects = subjects[:max_items]
+            logger.info(
+                "Acquiring %s dinosaur(s) × sources=%s (dry_run=%s overwrite=%s openalex_target=%s)",
+                len(subjects),
+                ",".join(sources),
+                dry_run,
+                overwrite,
+                paper_target,
+            )
+
+            summary = JobSummary(candidates=len(subjects) * len(sources))
+            for subject in subjects:
+                if "wikipedia" in sources:
+                    _acquire_wikipedia(
+                        session,
                         repo=repo,
                         subject=subject,
                         summary=summary,
                         dry_run=dry_run,
                         overwrite=overwrite,
-                        user_agent=user_agent,
-                        paper_target=paper_target,
                     )
-                except RateLimitedError as exc:
-                    logger.warning(
-                        "OpenAlex rate limited — stopping acquire early (%s)",
-                        exc,
-                    )
-                    summary.failed += 1
-                    break
+                if "openalex" in sources:
+                    try:
+                        _acquire_openalex(
+                            repo=repo,
+                            subject=subject,
+                            summary=summary,
+                            dry_run=dry_run,
+                            overwrite=overwrite,
+                            user_agent=user_agent,
+                            paper_target=paper_target,
+                        )
+                    except RateLimitedError as exc:
+                        logger.warning(
+                            "OpenAlex rate limited — stopping acquire early (%s)",
+                            exc,
+                        )
+                        summary.failed += 1
+                        break
 
-        logger.info(
-            "Done: succeeded=%s skipped=%s failed=%s",
-            summary.succeeded,
-            summary.skipped,
-            summary.failed,
-        )
-        overview = sql_knowledge_overview(repo)
-        for line in overview.log_lines(title="Acquired (SQL documents)"):
-            logger.info("%s", line)
+            logger.info(
+                "Done: succeeded=%s skipped=%s failed=%s",
+                summary.succeeded,
+                summary.skipped,
+                summary.failed,
+            )
+        except KeyboardInterrupt:
+            interrupted = True
+            logger.warning("Interrupted")
+        finally:
+            log_knowledge_counts(logger, repo)
 
     print(json.dumps(summary.model_dump(), indent=2, default=str))
-    return summary.exit_code
+    return 130 if interrupted else summary.exit_code
 
 
 def _openalex_state(
