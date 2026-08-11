@@ -1,6 +1,7 @@
 from mesozoica_ai.common.inventory import (
     KnowledgeOverview,
     azure_knowledge_overview_from_rows,
+    knowledge_overview_from_embedded_rows,
     knowledge_overview_from_sql_rows,
     overview_drift_lines,
 )
@@ -25,9 +26,9 @@ def test_azure_knowledge_overview_from_rows():
         openalex_units=3,
         unit_label="chunks",
     )
-    lines = overview.log_lines(title="Overview (Azure Search)")
-    assert lines[0] == "=== Overview (Azure Search) ==="
-    assert "2 paper(s)" in lines[3]
+    lines = overview.log_lines(title="In Azure Search")
+    assert lines[0] == "=== In Azure Search ==="
+    assert "2 paper(s)" in lines[1]
 
 
 def test_overview_drift_lines_flag_paper_mismatch():
@@ -38,7 +39,7 @@ def test_overview_drift_lines_flag_paper_mismatch():
         openalex_dinos=11,
         openalex_papers=82,
         openalex_units=457,
-        unit_label="sections",
+        unit_label="chunks",
     )
     azure = KnowledgeOverview(
         dinosaurs=12,
@@ -49,9 +50,9 @@ def test_overview_drift_lines_flag_paper_mismatch():
         openalex_units=1249,
         unit_label="chunks",
     )
-    lines = overview_drift_lines(sql, azure)
-    assert any("openalex papers: SQL=82 Azure=71" in line for line in lines)
-    assert any("behind SQL" in line for line in lines)
+    lines = overview_drift_lines(sql, azure, left_name="Embedded", right_name="Azure")
+    assert any("openalex papers: Embedded=82 Azure=71" in line for line in lines)
+    assert any("behind Embedded" in line for line in lines)
 
 
 def test_sql_knowledge_overview_counts_papers_and_sections():
@@ -86,3 +87,36 @@ def test_sql_knowledge_overview_counts_papers_and_sections():
     assert overview.openalex_papers == 2
     assert overview.openalex_units == 3
     assert overview.unit_label == "sections"
+
+
+def test_embedded_overview_counts_chunks_and_papers():
+    class Row:
+        def __init__(self, subject_id, source, embedded_chunks):
+            self.subject_id = subject_id
+            self.source = source
+            self.embedded_chunks = embedded_chunks
+
+    overview = knowledge_overview_from_embedded_rows(
+        [
+            Row(
+                "1",
+                "wikipedia",
+                [{"id": "c1", "metadata": {}}, {"id": "c2", "metadata": {}}],
+            ),
+            Row(
+                "1",
+                "openalex",
+                [
+                    {"id": "c3", "metadata": {"source_id": "W1"}},
+                    {"id": "c4", "metadata": {"source_id": "W1"}},
+                    {"id": "c5", "metadata": {"source_id": "W2"}},
+                ],
+            ),
+        ]
+    )
+    assert overview.dinosaurs == 1
+    assert overview.wikipedia_units == 2
+    assert overview.openalex_papers == 2
+    assert overview.openalex_units == 3
+    assert overview.unit_label == "chunks"
+    assert "chunks" in overview.summary_line()

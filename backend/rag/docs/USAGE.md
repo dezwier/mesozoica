@@ -5,23 +5,27 @@ copy-paste sequences for the common paths.
 
 ## Mental model
 
-Two stores, one pipeline:
+Three durable stages, one retrieval path:
 
 | Stage | Lives in |
 |---|---|
 | Wikipedia text (from `dinosaur_type_revision`) / OpenAlex | Memory only (`Document` objects) |
-| Durable raw sources (optional) | PostgreSQL `dinosaur_knowledge` |
-| Searchable chunks + vectors | Azure AI Search |
+| Durable raw sources | PostgreSQL `dinosaur_knowledge.documents` |
+| Chunked embeddings | PostgreSQL `dinosaur_knowledge.embedded_chunks` |
+| Searchable vectors | Azure AI Search |
 | Model answers | Memory only (your Pydantic type) |
 
 ```text
 dinosaur_type_revision / retrieve_openalex
         │
         ▼
-   (optional) store_documents → Postgres dinosaur_knowledge
+   store_documents → Postgres dinosaur_knowledge.documents
         │
         ▼
-ensure_index  →  sync_documents   (or chunk → embed → index_chunks)
+   prepare_embeddings → Postgres dinosaur_knowledge.embedded_chunks
+        │
+        ▼
+ensure_index  →  sync_embedded_chunks   (or ad-hoc sync_documents)
         │
         ▼
 embed_query  →  retrieve_chunks  →  prompt_rag / generate_quiz
@@ -79,19 +83,27 @@ Splits documents into section-aware chunks (still in memory).
 
 Embeds chunk text with the configured Azure embedding deployment.
 
+### `prepare_embeddings(documents, *, config, existing=None)`
+
+Chunks documents and embeds only chunks whose vector identity changed.
+Pass prior SQL `embedded_chunks` as ``existing`` to reuse vectors after a
+failed Azure ingest (or any re-run with unchanged content).
+
 ### `index_chunks(embedded_chunks, *, config)`
 
 Upserts embedded chunks into Azure Search. Does **not** remove stale chunks for
-a scope; prefer `sync_documents` for production ingest.
+a scope; prefer `sync_embedded_chunks` / `sync_documents` for production ingest.
+
+### `sync_embedded_chunks(embedded_chunks, *, scope, config)`
+
+**Preferred Azure ingest when vectors are already in SQL.** Upserts, merges
+metadata-only changes, deletes stale scope chunks, and verifies keys — with
+**no** embedding API calls.
 
 ### `sync_documents(documents, *, scope, config)`
 
-**Preferred ingest.** For one filter `scope` (e.g. namespace + subject + source):
-
-1. chunks documents
-2. embeds only chunks whose vector content changed
-3. upserts into Azure
-4. deletes Azure chunks that disappeared from this scope
+Ad-hoc convenience: `prepare_embeddings` then `sync_embedded_chunks` (no SQL
+cache). Prefer the embed/ingest scripts for production dinosaur knowledge.
 
 ```python
 from mesozoica_ai import AiConfig, ensure_index, retrieve_openalex, sync_documents
@@ -182,7 +194,7 @@ print(result.answer, result.source_chunk_ids)
 CLI:
 
 ```bash
-.venv/bin/python rag/scripts/04_answer_question.py \
+.venv/bin/python rag/scripts/05_answer_question.py \
   --question "What did Abrosaurus eat?" --dinos Abrosaurus --show-chunks
 ```
 
@@ -202,9 +214,9 @@ print(quiz.model_dump_json(indent=2))
 CLI (exactly one `--dinos`):
 
 ```bash
-.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --difficulty medium
-.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --chunks-only
-.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --show-chunks
+.venv/bin/python rag/scripts/04_generate_quiz.py --dinos Triceratops --difficulty medium
+.venv/bin/python rag/scripts/04_generate_quiz.py --dinos Triceratops --chunks-only
+.venv/bin/python rag/scripts/04_generate_quiz.py --dinos Triceratops --show-chunks
 ```
 
 `--chunks-only` prints the retrieval query/filters and each chunk with ranking
@@ -239,24 +251,32 @@ store_documents(session, DinosaurKnowledge, subject=subject, source="openalex", 
 
 ## Batch index (`mesozoica_ai.index`)
 
-### `index_knowledge(*, session, model, names=None, sources=None, ...)`
+### `embed_knowledge(*, session, model, names=None, sources=None, ...)`
 
-For each acquired Postgres row eligible for indexing:
+For each acquired Postgres row eligible for embedding:
+
+1. `prepare_embeddings` (reuse prior SQL vectors when hashes match)
+2. write `embedded_chunks` + embed checkpoint fields
+
+### `ingest_knowledge(*, session, model, names=None, sources=None, ...)`
+
+For each successfully embedded row eligible for Azure ingest:
 
 1. optionally recreate the Azure index (`recreate_index=True`, full scope only)
 2. `ensure_index` unless just recreated
-3. `sync_documents` for that snapshot’s scope
-4. record pipeline fingerprint on the checkpoint
+3. `sync_embedded_chunks` from SQL (no embedding API)
+4. record pipeline fingerprint on the index checkpoint
+
+### `index_knowledge(*, session, model, names=None, sources=None, ...)`
+
+Compat convenience: `embed_knowledge` then `ingest_knowledge`.
 
 ```python
-from mesozoica_ai.index import index_knowledge
+from mesozoica_ai.index import embed_knowledge, ingest_knowledge
 
 with Session(engine) as session:
-    index_knowledge(
-        session=session,
-        model=DinosaurKnowledge,
-        names=["Triceratops"],
-    ).print_exit()
+    embed_knowledge(session=session, model=DinosaurKnowledge, names=["Triceratops"])
+    ingest_knowledge(session=session, model=DinosaurKnowledge, names=["Triceratops"])
 ```
 
 ### `recreate_index(*, config)` / `pipeline_fingerprint(*, config)`
@@ -308,17 +328,19 @@ answer = prompt_rag(MyModel, query=q, evidence=chunks, config=config)
 ### B. Production dinosaur knowledge
 
 ```text
-dinosaur_type_revision / retrieve_openalex + store_documents  → Postgres dinosaur_knowledge
-index_knowledge                                               → Azure Search
+dinosaur_type_revision / retrieve_openalex + store_documents  → Postgres documents
+embed_knowledge                                               → Postgres embedded_chunks
+ingest_knowledge                                              → Azure Search
 ```
 
-Run via the script (all genera by default) or the app cron `dinosaur_knowledge`
+Run via the scripts (all genera by default) or the app cron `dinosaur_knowledge`
 (same `run_knowledge_job`):
 
 ```bash
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Tyrannosaurus --sources wikipedia
-.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Tyrannosaurus
+.venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py --dinos Tyrannosaurus
+.venv/bin/python rag/scripts/03_ingest_dinosaur_knowledge.py --dinos Tyrannosaurus
 python -m app.crons.runner --job dinosaur_knowledge --dinos Tyrannosaurus
 ```
 
@@ -327,10 +349,11 @@ python -m app.crons.runner --job dinosaur_knowledge --dinos Tyrannosaurus
 ```bash
 cd backend
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Triceratops
-.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Triceratops
-.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops
-.venv/bin/python rag/scripts/04_answer_question.py --question "What horns did Triceratops have?" --dinos Triceratops
-.venv/bin/python rag/scripts/05_evaluate_retrieval.py
+.venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py --dinos Triceratops
+.venv/bin/python rag/scripts/03_ingest_dinosaur_knowledge.py --dinos Triceratops
+.venv/bin/python rag/scripts/04_generate_quiz.py --dinos Triceratops
+.venv/bin/python rag/scripts/05_answer_question.py --question "What horns did Triceratops have?" --dinos Triceratops
+.venv/bin/python rag/scripts/06_evaluate_retrieval.py
 ```
 
 ---

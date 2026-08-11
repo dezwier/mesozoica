@@ -15,24 +15,34 @@ def format_checkpoint_status(
     current_pipeline_fingerprint: str | None = None,
     subject_header: str = "SUBJECT",
 ) -> str:
-    """Render acquisition/indexing status for duck-typed checkpoint rows."""
+    """Render acquisition/embed/index status for duck-typed checkpoint rows."""
     header = (
-        f"{subject_header:28} {'SOURCE':10} {'ACQUIRE':10} {'INDEX':10} "
-        f"{'TRIES':7} {'CONTENT':8} {'PIPELINE':8} {'REINDEX REASON':18} "
-        f"{'ACQUIRED AT':20} {'INDEXED AT':20} LAST ERROR"
+        f"{subject_header:28} {'SOURCE':10} {'ACQUIRE':10} {'EMBED':10} {'INDEX':10} "
+        f"{'TRIES':11} {'CONTENT':8} {'PIPELINE':8} {'REINDEX REASON':18} "
+        f"{'ACQUIRED AT':20} {'EMBEDDED AT':20} {'INDEXED AT':20} LAST ERROR"
     )
     lines = [header, "-" * len(header)]
     for row in rows:
-        error = (row.index_error or row.acquisition_error or "").replace("\n", " ")[:80]
+        error = (
+            row.index_error
+            or getattr(row, "embed_error", None)
+            or row.acquisition_error
+            or ""
+        ).replace("\n", " ")[:80]
         reason = _reindex_reason(row, current_pipeline_fingerprint)
+        embed_status = getattr(row, "embed_status", "-")
+        embed_attempts = getattr(row, "embed_attempts", 0)
+        embed_finished = getattr(row, "embed_finished_at", None)
         lines.append(
             f"{str(row.subject_name)[:28]:28} {str(row.source)[:10]:10} "
-            f"{str(row.acquisition_status)[:10]:10} {str(row.index_status)[:10]:10} "
-            f"{row.acquisition_attempts}/{row.index_attempts:<5} "
+            f"{str(row.acquisition_status)[:10]:10} {str(embed_status)[:10]:10} "
+            f"{str(row.index_status)[:10]:10} "
+            f"{row.acquisition_attempts}/{embed_attempts}/{row.index_attempts:<5} "
             f"{_short(row.content_hash):8} "
             f"{_short(row.indexed_pipeline_fingerprint):8} "
             f"{reason[:18]:18} "
             f"{_timestamp(row.acquisition_finished_at):20} "
+            f"{_timestamp(embed_finished):20} "
             f"{_timestamp(row.index_finished_at):20} {error}"
         )
     if not rows:
@@ -79,6 +89,13 @@ def _short(value: str | None) -> str:
 def _reindex_reason(row: Any, fingerprint: str | None) -> str:
     if row.acquisition_status != "succeeded":
         return "acquisition"
+    embed_status = getattr(row, "embed_status", "succeeded")
+    embedded_hash = getattr(row, "embedded_hash", row.content_hash)
+    embedded_fp = getattr(row, "embedded_pipeline_fingerprint", fingerprint)
+    if embed_status != "succeeded" or embedded_hash != row.content_hash:
+        return "embed pending" if embed_status != "succeeded" else "content changed"
+    if fingerprint and embedded_fp != fingerprint:
+        return "pipeline changed"
     if row.indexed_hash != row.content_hash:
         return "content changed"
     if fingerprint and row.indexed_pipeline_fingerprint != fingerprint:

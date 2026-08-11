@@ -18,6 +18,7 @@ __all__ = [
     "Evidence",
     "EvidencePolicy",
     "IndexResult",
+    "PrepareEmbeddingsResult",
     "PromptBudgetDiagnostics",
     "RejectionCounts",
     "RetrievalMode",
@@ -141,6 +142,17 @@ class ChunkState(BaseModel):
     embedding_hash: str | None = None
     document_hash: str | None = None
     pipeline_fingerprint: str | None = None
+
+
+class PrepareEmbeddingsResult(BaseModel):
+    """Outcome of chunking plus changed-only embedding preparation."""
+
+    document_count: int
+    chunk_count: int
+    embedded_count: int
+    reused_count: int
+    chunks: list[EmbeddedChunk]
+    pipeline_fingerprint: str
 
 
 class SyncResult(BaseModel):

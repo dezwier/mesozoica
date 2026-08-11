@@ -1,14 +1,14 @@
-"""Index dinosaur_knowledge SQL rows into Azure Search (chunk → embed → upsert).
+"""Chunk + embed dinosaur_knowledge SQL rows; persist vectors in SQL.
 
-Only processes acquired rows in ``dinosaur_knowledge`` that are not yet indexed
-(or whose content/pipeline hash changed). Does not walk the dinosaur catalog.
+Only processes acquired rows that are not yet embedded (or whose
+content/pipeline hash changed). Does not upload to Azure Search — use
+03_ingest_dinosaur_knowledge.py for that.
 
 Does not fetch Wikipedia/OpenAlex — use 01_acquire_dinosaur_knowledge.py for that.
 
   cd backend
-  .venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py
-  .venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Tyrannosaurus
-  .venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --recreate-index
+  .venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py
+  .venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py --dinos Tyrannosaurus
 """
 
 from __future__ import annotations
@@ -41,39 +41,36 @@ for _noisy in (
 ):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
 
-logger = logging.getLogger("index")
+logger = logging.getLogger("embed")
 
 from sqlmodel import Session
 
 from app.core.database import engine
 from app.features.ingestion.models.dinosaur_knowledge import DinosaurKnowledge
 from app.features.ingestion.public import parse_dino_names
-from mesozoica_ai.common import AiConfig, sql_knowledge_overview
-from mesozoica_ai.common.inventory import overview_drift_lines
-from mesozoica_ai.index import azure_knowledge_overview, index_knowledge
+from mesozoica_ai.common import sql_embedded_overview, sql_knowledge_overview
+from mesozoica_ai.index import embed_knowledge
 
 
 def run(
     *,
     dry_run: bool = False,
     overwrite: bool = False,
-    recreate_index: bool = False,
     dinos: list[str] | None = None,
     sources: list[str] | None = None,
     max_items: int | None = None,
 ) -> int:
     sources = sources or ["wikipedia", "openalex"]
     logger.info(
-        "Index dinosaur_knowledge → Azure (name_filter=%s sources=%s "
-        "dry_run=%s overwrite=%s recreate=%s)",
+        "Embed dinosaur_knowledge → SQL (name_filter=%s sources=%s "
+        "dry_run=%s overwrite=%s)",
         ",".join(dinos) if dinos else "(none)",
         ",".join(sources),
         dry_run,
         overwrite,
-        recreate_index,
     )
     with Session(engine) as session:
-        summary = index_knowledge(
+        summary = embed_knowledge(
             session=session,
             model=DinosaurKnowledge,
             names=dinos,
@@ -81,33 +78,19 @@ def run(
             max_items=max_items,
             overwrite=overwrite,
             dry_run=dry_run,
-            recreate_index=recreate_index,
         )
-        sql_overview = sql_knowledge_overview(session, DinosaurKnowledge)
+        acquired = sql_knowledge_overview(session, DinosaurKnowledge)
+        embedded = sql_embedded_overview(session, DinosaurKnowledge)
         logger.info(
             "Done: succeeded=%s skipped=%s failed=%s",
             summary.succeeded,
             summary.skipped,
             summary.failed,
         )
-        for line in sql_overview.log_lines(title="Overview (SQL dinosaur_knowledge)"):
+        for line in acquired.log_lines(title="Acquired (SQL documents)"):
             logger.info("%s", line)
-        if not dry_run:
-            try:
-                import time
-
-                time.sleep(2)
-                azure_overview = azure_knowledge_overview(
-                    config=AiConfig(),
-                    session=session,
-                    model=DinosaurKnowledge,
-                )
-                for line in azure_overview.log_lines(title="Overview (Azure Search)"):
-                    logger.info("%s", line)
-                for line in overview_drift_lines(sql_overview, azure_overview):
-                    logger.info("%s", line)
-            except Exception as exc:
-                logger.warning("Azure overview unavailable (%s)", exc)
+        for line in embedded.log_lines(title="Embedded (SQL chunks)"):
+            logger.info("%s", line)
     print(json.dumps(summary.model_dump(), indent=2, default=str))
     return summary.exit_code
 
@@ -125,18 +108,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--max-items", type=int, default=None)
     parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument(
-        "--recreate-index",
-        action="store_true",
-        help="Wipe Azure index and re-index every acquired dinosaur_knowledge row",
-    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     raise SystemExit(
         run(
             dry_run=args.dry_run,
             overwrite=args.overwrite,
-            recreate_index=args.recreate_index,
             dinos=parse_dino_names(args.dinos) if args.dinos else None,
             sources=args.sources,
             max_items=args.max_items,

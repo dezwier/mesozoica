@@ -202,9 +202,13 @@ def test_http_get_text_decompresses_raw_gzip_bodies():
 def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
     checkpoint = SimpleNamespace(
         documents=[], source_version=None, source_hash=None, content_hash=None,
+        embedded_chunks=[{"id": "old"}], embedded_hash="old",
+        embedded_pipeline_fingerprint="pipeline",
         indexed_hash="old", indexed_pipeline_fingerprint="pipeline",
-        acquisition_status="pending", index_status="succeeded",
-        acquisition_attempts=0, acquisition_error=None, index_error=None,
+        acquisition_status="pending", embed_status="succeeded",
+        index_status="succeeded",
+        acquisition_attempts=0, acquisition_error=None,
+        embed_error=None, index_error=None,
         acquisition_started_at=None, acquisition_finished_at=None,
         updated_at=datetime.now(timezone.utc),
     )
@@ -223,14 +227,21 @@ def test_acquisition_checkpoint_helpers_preserve_or_invalidate_index_state():
         }],
     )
     assert complete_acquisition(checkpoint, first) is True
+    assert checkpoint.embed_status == "pending"
     assert checkpoint.index_status == "pending"
+    assert checkpoint.embedded_chunks == []
     assert acquisition_needed(checkpoint) is False
 
+    checkpoint.embed_status = "succeeded"
+    checkpoint.embedded_hash = checkpoint.content_hash
+    checkpoint.embedded_pipeline_fingerprint = "pipeline"
+    checkpoint.embedded_chunks = [{"id": "c"}]
     checkpoint.index_status = "succeeded"
     checkpoint.indexed_hash = checkpoint.content_hash
     checkpoint.indexed_pipeline_fingerprint = "pipeline"
     begin_acquisition(checkpoint)
     assert complete_acquisition(checkpoint, first) is False
+    assert checkpoint.embed_status == "succeeded"
     assert checkpoint.index_status == "succeeded"
 
     begin_acquisition(checkpoint)

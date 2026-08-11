@@ -19,6 +19,7 @@ from mesozoica_ai.common.models import (
     IndexResult,
     KnowledgeChunk,
     KnowledgeDocument,
+    PrepareEmbeddingsResult,
     RejectionCounts,
     RetrievalMode,
     RetrievalRequest,
@@ -48,6 +49,69 @@ def embed_chunks(
     return build_embedder(config).embed(normalized)
 
 
+def prepare_embeddings(
+    documents: Sequence[ModelInput],
+    *,
+    config: KnowledgeConfig,
+    existing: Sequence[EmbeddedChunk | Mapping[str, Any]] | None = None,
+) -> PrepareEmbeddingsResult:
+    """Chunk documents and embed only chunks whose vector content changed.
+
+    ``existing`` is typically prior ``embedded_chunks`` from SQL. Matching
+    ``id`` + ``embedding_hash`` + ``pipeline_fingerprint`` reuses vectors.
+    """
+    normalized = _normalize_documents(documents)
+    chunker = build_chunker(config)
+    chunks = chunker.split(normalized)
+    prior = {
+        chunk.id: chunk
+        for chunk in (
+            _validate_model(EmbeddedChunk, item) for item in (existing or ())
+        )
+    }
+    to_embed: list[KnowledgeChunk] = []
+    reused: list[EmbeddedChunk] = []
+    for chunk in chunks:
+        previous = prior.get(chunk.id)
+        if (
+            previous is not None
+            and previous.embedding_hash == chunk.embedding_hash
+            and previous.pipeline_fingerprint == chunk.pipeline_fingerprint
+            and previous.embedding
+        ):
+            reused.append(
+                EmbeddedChunk(
+                    **chunk.model_dump(exclude={"embedding"}),
+                    embedding=previous.embedding,
+                )
+            )
+        else:
+            to_embed.append(chunk)
+    freshly_embedded = build_embedder(config).embed(to_embed) if to_embed else []
+    by_id = {chunk.id: chunk for chunk in (*reused, *freshly_embedded)}
+    ordered = [by_id[chunk.id] for chunk in chunks]
+    if to_embed:
+        logger.info(
+            "prepare_embeddings: embed %s/%s chunks (reused %s)",
+            len(to_embed),
+            len(chunks),
+            len(reused),
+        )
+    else:
+        logger.info(
+            "prepare_embeddings: reuse all %s chunks",
+            len(chunks),
+        )
+    return PrepareEmbeddingsResult(
+        document_count=len(normalized),
+        chunk_count=len(chunks),
+        embedded_count=len(freshly_embedded),
+        reused_count=len(reused),
+        chunks=ordered,
+        pipeline_fingerprint=chunker.pipeline_fingerprint,
+    )
+
+
 def ensure_index(*, config: KnowledgeConfig) -> None:
     """Create a missing Azure index or validate the existing compatible schema."""
     build_index(config).ensure()
@@ -70,59 +134,53 @@ def index_chunks(
     )
 
 
-def sync_documents(
-    documents: Sequence[ModelInput],
+def sync_embedded_chunks(
+    embedded_chunks: Sequence[EmbeddedChunk | Mapping[str, Any]],
     *,
     scope: dict[str, Any],
     config: KnowledgeConfig,
 ) -> SyncResult:
-    """Safely synchronize one scope while embedding only vector-changed chunks."""
+    """Upsert prepared embeddings into Azure without calling the embedding API."""
     if not scope:
         raise ValueError("sync scope must contain at least one exact-match filter")
     label = _scope_label(scope)
-    normalized = _normalize_documents(documents)
-    _validate_document_scope(normalized, scope)
-    chunker = build_chunker(config)
-    chunks = chunker.split(normalized)
+    normalized = [_validate_model(EmbeddedChunk, chunk) for chunk in embedded_chunks]
+    _validate_embedded_scope(normalized, scope)
     store = build_store(config, write_enabled=True)
-    current = {chunk.id: chunk for chunk in chunks}
-    # Key lookup is authoritative. search=* scope scans are incomplete on this index
-    # (missing docs after successful upsert), which caused endless re-embeds.
+    current = {chunk.id: chunk for chunk in normalized}
     existing = store.get_chunk_states_by_ids(list(current))
-    to_embed = [
+    to_upsert = [
         chunk
-        for chunk in chunks
+        for chunk in normalized
         if chunk.id not in existing
         or existing[chunk.id].embedding_hash != chunk.embedding_hash
         or existing[chunk.id].pipeline_fingerprint != chunk.pipeline_fingerprint
     ]
-    embed_ids = {chunk.id for chunk in to_embed}
+    upsert_ids = {chunk.id for chunk in to_upsert}
     metadata_only = [
         chunk
-        for chunk in chunks
+        for chunk in normalized
         if chunk.id in existing
-        and chunk.id not in embed_ids
+        and chunk.id not in upsert_ids
         and existing[chunk.id].document_hash != chunk.document_hash
     ]
-    # Writes precede deletion so partial failures cannot erase the last usable scope.
-    if to_embed:
+    if to_upsert:
         logger.info(
-            "%s: embed %s/%s chunks (Azure already has %s)",
+            "%s: upsert %s/%s embedded chunks (Azure already has %s)",
             label,
-            len(to_embed),
-            len(chunks),
+            len(to_upsert),
+            len(normalized),
             len(existing),
         )
-        store.upsert(build_embedder(config).embed(to_embed))
+        store.upsert(to_upsert)
     else:
         logger.info(
-            "%s: skip embed (%s chunks already in Azure)",
+            "%s: skip upsert (%s chunks already in Azure)",
             label,
-            len(chunks),
+            len(normalized),
         )
     if metadata_only:
         store.merge_metadata(metadata_only)
-    # Best-effort stale cleanup via search; may under-delete if search is incomplete.
     stale_ids = sorted(set(store.list_ids(scope)) - set(current))
     if stale_ids:
         store.delete(stale_ids)
@@ -135,16 +193,33 @@ def sync_documents(
             f"(sample: {', '.join(missing_after[:3])})"
         )
 
+    fingerprint = (
+        normalized[0].pipeline_fingerprint
+        if normalized
+        else pipeline_fingerprint(config=config)
+    )
     return SyncResult(
-        document_count=len(normalized),
-        chunk_count=len(chunks),
-        embedded_count=len(to_embed),
+        document_count=len({chunk.document_id for chunk in normalized}),
+        chunk_count=len(normalized),
+        embedded_count=len(to_upsert),
         metadata_updated_count=len(metadata_only),
-        skipped_count=len(chunks) - len(to_embed) - len(metadata_only),
+        skipped_count=len(normalized) - len(to_upsert) - len(metadata_only),
         deleted_count=len(stale_ids),
         chunk_ids=sorted(current),
-        pipeline_fingerprint=chunker.pipeline_fingerprint,
+        pipeline_fingerprint=fingerprint,
     )
+
+
+def sync_documents(
+    documents: Sequence[ModelInput],
+    *,
+    scope: dict[str, Any],
+    config: KnowledgeConfig,
+) -> SyncResult:
+    """Chunk, embed, and synchronize one scope (ad-hoc path without SQL cache)."""
+    prepared = prepare_embeddings(documents, config=config)
+    result = sync_embedded_chunks(prepared.chunks, scope=scope, config=config)
+    return result.model_copy(update={"embedded_count": prepared.embedded_count})
 
 
 def _scope_label(scope: dict[str, Any]) -> str:
@@ -219,8 +294,24 @@ def azure_knowledge_overview(
         scope = snapshot_scope(row)
         subject = str(scope.get("subject_id") or "")
         source = str(row.source or "").casefold()
-        chunks = chunk_documents(list(row.documents or []), config=config)
-        found_ids = store.existing_ids([chunk.id for chunk in chunks])
+        if getattr(row, "embedded_chunks", None):
+            chunk_ids = [
+                str(chunk.get("id") or "")
+                for chunk in row.embedded_chunks
+                if chunk.get("id")
+            ]
+            chunks_by_id = {
+                str(chunk.get("id")): chunk
+                for chunk in row.embedded_chunks
+                if chunk.get("id")
+            }
+        else:
+            chunks = chunk_documents(list(row.documents or []), config=config)
+            chunk_ids = [chunk.id for chunk in chunks]
+            chunks_by_id = {
+                chunk.id: chunk.model_dump(mode="json") for chunk in chunks
+            }
+        found_ids = store.existing_ids(chunk_ids)
         if not found_ids:
             continue
         subjects.add(subject)
@@ -230,12 +321,10 @@ def azure_knowledge_overview(
         elif source == "openalex":
             openalex_subjects.add(subject)
             openalex_chunks += len(found_ids)
-            by_id = {chunk.id: chunk for chunk in chunks}
             for chunk_id in found_ids:
-                chunk = by_id.get(chunk_id)
-                if chunk is None:
-                    continue
-                source_id = str(chunk.metadata.source_id or "").strip()
+                chunk = chunks_by_id.get(chunk_id) or {}
+                metadata = chunk.get("metadata") or {}
+                source_id = str(metadata.get("source_id") or "").strip()
                 if subject and source_id:
                     papers.add((subject, source_id))
 
@@ -410,9 +499,10 @@ def _select_evidence(
         if not raw:
             raise InsufficientEvidenceError(
                 "Retrieval returned 0 chunks from Azure Search for this query/filter. "
-                "Acquire and index the subject first "
-                "(rag/scripts/01_acquire_dinosaur_knowledge.py then "
-                "02_index_dinosaur_knowledge.py)."
+                "Acquire, embed, and ingest the subject first "
+                "(rag/scripts/01_acquire_dinosaur_knowledge.py, "
+                "02_embed_dinosaur_knowledge.py, then "
+                "03_ingest_dinosaur_knowledge.py)."
             )
         raise InsufficientEvidenceError(
             f"Retrieval selected {len(selected)} usable chunks from {len(raw)} raw "
@@ -442,5 +532,19 @@ def _validate_document_scope(
             if actual != expected:
                 raise ValueError(
                     f"Document {document.id!r} does not match sync scope "
+                    f"{field}={expected!r}"
+                )
+
+
+def _validate_embedded_scope(
+    chunks: list[EmbeddedChunk], scope: dict[str, Any]
+) -> None:
+    for chunk in chunks:
+        metadata = chunk.metadata.model_dump(mode="json", exclude_none=True)
+        for field, expected in scope.items():
+            actual = chunk.document_id if field == "document_id" else metadata.get(field)
+            if actual != expected:
+                raise ValueError(
+                    f"Chunk {chunk.id!r} does not match sync scope "
                     f"{field}={expected!r}"
                 )

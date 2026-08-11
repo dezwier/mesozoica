@@ -4,10 +4,15 @@ from datetime import datetime, timezone
 import pytest
 
 from mesozoica_ai.common import (
+    begin_embedding,
     begin_indexing,
+    complete_embedding,
     complete_indexing,
+    embedding_needed,
+    fail_embedding,
     fail_indexing,
     indexing_needed,
+    reset_embedding,
     reset_indexing,
 )
 from mesozoica_ai.common.config import AiConfig as KnowledgeConfig
@@ -23,9 +28,11 @@ from mesozoica_ai.index import (
     ensure_index,
     index_chunks,
     pipeline_fingerprint,
+    prepare_embeddings,
     recreate_index,
     retrieve_chunks,
     sync_documents,
+    sync_embedded_chunks,
 )
 from mesozoica_ai.index import api as knowledge_api
 from mesozoica_ai.index.chunking import RecursiveChunker
@@ -175,11 +182,48 @@ def test_pipeline_fingerprint_changes_with_chunking_or_embedding_configuration()
 
 def test_index_checkpoint_helpers_explain_resume_and_pipeline_changes():
     checkpoint = SimpleNamespace(
-        content_hash="content", indexed_hash=None,
-        indexed_pipeline_fingerprint=None, index_status="pending",
-        index_attempts=0, index_error=None, index_started_at=None,
-        index_finished_at=None, updated_at=datetime.now(timezone.utc),
+        content_hash="content",
+        embedded_chunks=[],
+        embedded_hash=None,
+        embedded_pipeline_fingerprint=None,
+        indexed_hash=None,
+        indexed_pipeline_fingerprint=None,
+        embed_status="pending",
+        index_status="pending",
+        embed_attempts=0,
+        index_attempts=0,
+        embed_error=None,
+        index_error=None,
+        embed_started_at=None,
+        embed_finished_at=None,
+        index_started_at=None,
+        index_finished_at=None,
+        updated_at=datetime.now(timezone.utc),
     )
+    assert embedding_needed(checkpoint, pipeline_fingerprint="v1") is True
+    begin_embedding(checkpoint)
+    assert checkpoint.embed_status == "running" and checkpoint.embed_attempts == 1
+    chunk = EmbeddedChunk(
+        id="c1",
+        document_id="d1",
+        text="hello",
+        embedding_text="hello",
+        metadata={"source": "test", "source_id": "1", "title": "T"},
+        chunk_index=0,
+        start_index=0,
+        embedding_hash="eh",
+        document_hash="dh",
+        pipeline_fingerprint="v1",
+        embedding=[0.0, 1.0],
+    )
+    assert complete_embedding(
+        checkpoint, embedded_chunks=[chunk], pipeline_fingerprint="v1"
+    ) is True
+    assert checkpoint.embed_status == "succeeded"
+    assert checkpoint.index_status == "pending"
+    assert embedding_needed(checkpoint, pipeline_fingerprint="v1") is False
+    assert embedding_needed(checkpoint, pipeline_fingerprint="v2") is True
+
     assert indexing_needed(checkpoint, pipeline_fingerprint="v1") is True
     begin_indexing(checkpoint)
     assert checkpoint.index_status == "running" and checkpoint.index_attempts == 1
@@ -190,6 +234,88 @@ def test_index_checkpoint_helpers_explain_resume_and_pipeline_changes():
     assert checkpoint.index_status == "failed"
     reset_indexing(checkpoint)
     assert checkpoint.index_status == "pending" and checkpoint.indexed_hash is None
+    fail_embedding(checkpoint, RuntimeError("embed failed"))
+    assert checkpoint.embed_status == "failed"
+    reset_embedding(checkpoint)
+    assert checkpoint.embed_status == "pending" and checkpoint.embedded_chunks == []
+
+
+def test_prepare_embeddings_reuses_matching_sql_vectors(monkeypatch):
+    chunker = _chunker()
+    document = _document("Short text")
+    current = chunker.split([document])[0]
+    existing = EmbeddedChunk(
+        **current.model_dump(),
+        embedding=[9.0, 9.0],
+    )
+    embed_calls = []
+
+    class TrackingEmbedder:
+        def embed(self, chunks):
+            embed_calls.append(len(chunks))
+            return Embedder(FakeEmbeddings(), "embedding", 2).embed(chunks)
+
+    monkeypatch.setattr(knowledge_api, "build_chunker", lambda config: chunker)
+    monkeypatch.setattr(
+        knowledge_api, "build_embedder", lambda config: TrackingEmbedder()
+    )
+    prepared = prepare_embeddings(
+        [document], config=_config(), existing=[existing]
+    )
+    assert prepared.embedded_count == 0
+    assert prepared.reused_count == 1
+    assert prepared.chunks[0].embedding == [9.0, 9.0]
+    assert embed_calls == []
+
+
+def test_sync_embedded_chunks_skips_upsert_for_matching_azure_state(monkeypatch):
+    chunker = _chunker()
+    document = _document("Short text")
+    current = chunker.split([document])[0]
+    embedded = EmbeddedChunk(**current.model_dump(), embedding=[0.0, 1.0])
+    state = ChunkState(
+        embedding_hash=current.embedding_hash,
+        document_hash="old-metadata-hash",
+        pipeline_fingerprint=current.pipeline_fingerprint,
+    )
+    store = FakeStore({current.id: state, "stale": ChunkState()})
+    monkeypatch.setattr(knowledge_api, "build_chunker", lambda config: chunker)
+    monkeypatch.setattr(
+        knowledge_api, "build_store", lambda config, *, write_enabled: store
+    )
+    result = sync_embedded_chunks(
+        [embedded], scope={"source": "test"}, config=_config()
+    )
+    assert result.embedded_count == 0
+    assert result.metadata_updated_count == 1
+    assert result.deleted_count == 1
+    assert store.events == ["merge", "delete"]
+
+
+def test_sync_distinguishes_embedding_metadata_and_stale_changes_before_deletion(monkeypatch):
+    chunker = _chunker()
+    document = _document("Short text")
+    current = chunker.split([document])[0]
+    state = ChunkState(
+        embedding_hash=current.embedding_hash,
+        document_hash="old-metadata-hash",
+        pipeline_fingerprint=current.pipeline_fingerprint,
+    )
+    store = FakeStore({current.id: state, "stale": ChunkState()})
+    embedder = Embedder(FakeEmbeddings(), "embedding", 2)
+    monkeypatch.setattr(knowledge_api, "build_chunker", lambda config: chunker)
+    monkeypatch.setattr(knowledge_api, "build_embedder", lambda config: embedder)
+    monkeypatch.setattr(
+        knowledge_api, "build_store", lambda config, *, write_enabled: store
+    )
+    result = sync_documents(
+        [document], scope={"source": "test"}, config=_config()
+    )
+    # Ad-hoc sync_documents always embeds, then Azure upsert may still skip.
+    assert result.embedded_count == 1
+    assert result.metadata_updated_count == 1
+    assert result.deleted_count == 1
+    assert store.events == ["merge", "delete"]
 
 
 def test_flat_processing_embedding_and_index_functions_accept_structural_values(monkeypatch):
@@ -246,31 +372,6 @@ def test_settings_validate_cross_field_constraints_and_tokenizer_load_errors(mon
         KnowledgeConfig(_env_file=None, **values, chunk_size=10, chunk_overlap=10)
     with pytest.raises(TokenizerError, match="Unable to load"):
         load_encoding("not-a-real-tiktoken-encoding")
-
-
-def test_sync_distinguishes_embedding_metadata_and_stale_changes_before_deletion(monkeypatch):
-    chunker = _chunker()
-    document = _document("Short text")
-    current = chunker.split([document])[0]
-    state = ChunkState(
-        embedding_hash=current.embedding_hash,
-        document_hash="old-metadata-hash",
-        pipeline_fingerprint=current.pipeline_fingerprint,
-    )
-    store = FakeStore({current.id: state, "stale": ChunkState()})
-    embedder = Embedder(FakeEmbeddings(), "embedding", 2)
-    monkeypatch.setattr(knowledge_api, "build_chunker", lambda config: chunker)
-    monkeypatch.setattr(knowledge_api, "build_embedder", lambda config: embedder)
-    monkeypatch.setattr(
-        knowledge_api, "build_store", lambda config, *, write_enabled: store
-    )
-    result = sync_documents(
-        [document], scope={"source": "test"}, config=_config()
-    )
-    assert result.embedded_count == 0
-    assert result.metadata_updated_count == 1
-    assert result.deleted_count == 1
-    assert store.events == ["merge", "delete"]
 
 
 def test_retrieval_modes_and_evidence_policy_deduplicate_and_cap_documents(monkeypatch):

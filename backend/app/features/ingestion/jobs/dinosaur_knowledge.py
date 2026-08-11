@@ -1,4 +1,4 @@
-"""Cron/app entry: acquire SQL snapshots, then index into Azure Search."""
+"""Cron/app entry: acquire SQL snapshots, embed, then ingest into Azure Search."""
 
 from __future__ import annotations
 
@@ -19,13 +19,18 @@ def _load(name: str, path: Path) -> Any:
 
 
 def run_knowledge_job(**kwargs: Any) -> int:
-    """Run acquire then index (same pair of rag scripts)."""
+    """Run acquire → embed → ingest (same trio of rag scripts)."""
     acquire_kwargs = {
         key: kwargs[key]
         for key in ("dry_run", "overwrite", "dinos", "sources", "max_items")
         if key in kwargs
     }
-    index_kwargs = {
+    embed_kwargs = {
+        key: kwargs[key]
+        for key in ("dry_run", "overwrite", "dinos", "sources", "max_items")
+        if key in kwargs
+    }
+    ingest_kwargs = {
         key: kwargs[key]
         for key in (
             "dry_run",
@@ -43,7 +48,13 @@ def run_knowledge_job(**kwargs: Any) -> int:
     ).run(**acquire_kwargs)
     if acquire:
         return acquire
+    embed = _load(
+        "mesozoica_embed_dinosaur_knowledge",
+        _SCRIPTS / "02_embed_dinosaur_knowledge.py",
+    ).run(**embed_kwargs)
+    if embed:
+        return embed
     return _load(
-        "mesozoica_index_dinosaur_knowledge",
-        _SCRIPTS / "02_index_dinosaur_knowledge.py",
-    ).run(**index_kwargs)
+        "mesozoica_ingest_dinosaur_knowledge",
+        _SCRIPTS / "03_ingest_dinosaur_knowledge.py",
+    ).run(**ingest_kwargs)

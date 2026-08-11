@@ -6,13 +6,13 @@ Pipeline:
   3. load application context (placeholder: user level / language / difficulty)
   4. assemble one prompt and validate structured output + citations
 
-Requires the subject to already be acquired (01) and indexed (02).
+Requires the subject to already be acquired (01), embedded (02), and ingested (03).
 
   cd backend
-  .venv/bin/python rag/scripts/03_generate_quiz.py --dinos Abrosaurus
-  .venv/bin/python rag/scripts/03_generate_quiz.py --dinos Abrosaurus --show-chunks
-  .venv/bin/python rag/scripts/03_generate_quiz.py --dinos Abrosaurus --chunks-only
-  .venv/bin/python rag/scripts/03_generate_quiz.py --dinos Tyrannosaurus --difficulty hard
+  .venv/bin/python rag/scripts/04_generate_quiz.py --dinos Abrosaurus
+  .venv/bin/python rag/scripts/04_generate_quiz.py --dinos Abrosaurus --show-chunks
+  .venv/bin/python rag/scripts/04_generate_quiz.py --dinos Abrosaurus --chunks-only
+  .venv/bin/python rag/scripts/04_generate_quiz.py --dinos Tyrannosaurus --difficulty hard
 """
 
 from __future__ import annotations

@@ -77,6 +77,8 @@ def test_domain_packages_export_expected_helpers():
     assert set(sources.__all__) == {"retrieve_openalex"}
     index = importlib.import_module("mesozoica_ai.index")
     assert "index_knowledge" in index.__all__
+    assert "embed_knowledge" in index.__all__
+    assert "ingest_knowledge" in index.__all__
     generate = importlib.import_module("mesozoica_ai.generate")
     assert {"generate_quiz", "answer_from_index", "answer_question", "prompt_rag", "GroundedAnswer"} <= set(
         generate.__all__

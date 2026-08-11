@@ -1,12 +1,14 @@
-"""Summaries of acquired / indexed dinosaur knowledge."""
+"""Summaries of acquired / embedded / indexed dinosaur knowledge."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from mesozoica_ai.common.batch import DEFAULT_SUBJECT_KIND
 from mesozoica_ai.sources.openalex import paper_inventory
+
+StageFilter = Literal["acquired", "embedded"]
 
 
 @dataclass(frozen=True)
@@ -21,47 +23,51 @@ class KnowledgeOverview:
     openalex_units: int
     unit_label: str = "sections"
 
+    def summary_line(self) -> str:
+        """One-line inventory suitable for script end logs."""
+        return (
+            f"{self.dinosaurs} dino(s) | "
+            f"wiki {self.wikipedia_dinos} dino(s) / {self.wikipedia_units} {self.unit_label} | "
+            f"openalex {self.openalex_dinos} dino(s) / {self.openalex_papers} paper(s) / "
+            f"{self.openalex_units} {self.unit_label}"
+        )
+
     def log_lines(self, *, title: str) -> list[str]:
         return [
             f"=== {title} ===",
-            f"dinosaurs: {self.dinosaurs}",
-            (
-                f"wikipedia: {self.wikipedia_dinos} dino(s), "
-                f"{self.wikipedia_units} {self.unit_label}"
-            ),
-            (
-                f"openalex:  {self.openalex_dinos} dino(s), "
-                f"{self.openalex_papers} paper(s), "
-                f"{self.openalex_units} {self.unit_label}"
-            ),
+            self.summary_line(),
         ]
 
 
 def overview_drift_lines(
-    sql: KnowledgeOverview, azure: KnowledgeOverview
+    left: KnowledgeOverview,
+    right: KnowledgeOverview,
+    *,
+    left_name: str = "SQL",
+    right_name: str = "Azure",
 ) -> list[str]:
-    """Compare SQL vs Azure on dinosaurs/papers (sections≠chunks by design)."""
-    lines = ["=== Drift (SQL vs Azure) ==="]
+    """Compare two overviews on dinosaurs/papers (unit counts may differ by design)."""
+    lines = [f"=== Drift ({left_name} vs {right_name}) ==="]
     checks = [
-        ("dinosaurs", sql.dinosaurs, azure.dinosaurs),
-        ("wikipedia dinos", sql.wikipedia_dinos, azure.wikipedia_dinos),
-        ("openalex dinos", sql.openalex_dinos, azure.openalex_dinos),
-        ("openalex papers", sql.openalex_papers, azure.openalex_papers),
+        ("dinosaurs", left.dinosaurs, right.dinosaurs),
+        ("wikipedia dinos", left.wikipedia_dinos, right.wikipedia_dinos),
+        ("openalex dinos", left.openalex_dinos, right.openalex_dinos),
+        ("openalex papers", left.openalex_papers, right.openalex_papers),
     ]
     drifted = False
-    for label, left, right in checks:
-        if left == right:
-            lines.append(f"{label}: ok ({left})")
+    for label, a, b in checks:
+        if a == b:
+            lines.append(f"{label}: ok ({a})")
         else:
             drifted = True
-            lines.append(f"{label}: SQL={left} Azure={right}")
+            lines.append(f"{label}: {left_name}={a} {right_name}={b}")
     if not drifted:
         lines.append(
-            "note: section vs chunk counts differ by design (chunking splits text)"
+            f"note: {left.unit_label} vs {right.unit_label} counts may differ by design"
         )
     else:
         lines.append(
-            "Azure is behind SQL — re-index will sync missing papers/chunks"
+            f"{right_name} is behind {left_name} — re-ingest will sync missing papers/chunks"
         )
     return lines
 
@@ -73,7 +79,7 @@ def sql_knowledge_overview(
     subject_kind: str = DEFAULT_SUBJECT_KIND,
     succeeded_only: bool = True,
 ) -> KnowledgeOverview:
-    """Summarize ``dinosaur_knowledge`` rows (sections = stored documents)."""
+    """Summarize acquired ``dinosaur_knowledge`` rows (units = documents/sections)."""
     from sqlmodel import select
 
     statement = select(model).where(model.subject_kind == subject_kind)
@@ -82,8 +88,24 @@ def sql_knowledge_overview(
     return knowledge_overview_from_sql_rows(list(session.exec(statement).all()))
 
 
+def sql_embedded_overview(
+    session: Any,
+    model: type[Any],
+    *,
+    subject_kind: str = DEFAULT_SUBJECT_KIND,
+) -> KnowledgeOverview:
+    """Summarize successfully embedded rows (units = embedded chunks)."""
+    from sqlmodel import select
+
+    statement = select(model).where(
+        model.subject_kind == subject_kind,
+        model.embed_status == "succeeded",
+    )
+    return knowledge_overview_from_embedded_rows(list(session.exec(statement).all()))
+
+
 def knowledge_overview_from_sql_rows(rows: list[Any]) -> KnowledgeOverview:
-    """Build a SQL overview from checkpoint rows."""
+    """Build a SQL acquisition overview from checkpoint rows."""
     subjects: set[str] = set()
     wiki_subjects: set[str] = set()
     openalex_subjects: set[str] = set()
@@ -110,6 +132,43 @@ def knowledge_overview_from_sql_rows(rows: list[Any]) -> KnowledgeOverview:
         openalex_papers=openalex_papers,
         openalex_units=openalex_sections,
         unit_label="sections",
+    )
+
+
+def knowledge_overview_from_embedded_rows(rows: list[Any]) -> KnowledgeOverview:
+    """Build an overview from rows with successful ``embedded_chunks``."""
+    subjects: set[str] = set()
+    wiki_subjects: set[str] = set()
+    openalex_subjects: set[str] = set()
+    papers: set[tuple[str, str]] = set()
+    wiki_chunks = 0
+    openalex_chunks = 0
+
+    for row in rows:
+        subject = str(row.subject_id)
+        source = str(row.source or "").casefold()
+        chunks = list(row.embedded_chunks or [])
+        subjects.add(subject)
+        if source == "wikipedia":
+            wiki_subjects.add(subject)
+            wiki_chunks += len(chunks)
+        elif source == "openalex":
+            openalex_subjects.add(subject)
+            openalex_chunks += len(chunks)
+            for chunk in chunks:
+                metadata = chunk.get("metadata") or {}
+                source_id = str(metadata.get("source_id") or "").strip()
+                if subject and source_id:
+                    papers.add((subject, source_id))
+
+    return KnowledgeOverview(
+        dinosaurs=len(subjects),
+        wikipedia_dinos=len(wiki_subjects),
+        wikipedia_units=wiki_chunks,
+        openalex_dinos=len(openalex_subjects),
+        openalex_papers=len(papers),
+        openalex_units=openalex_chunks,
+        unit_label="chunks",
     )
 
 

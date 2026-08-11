@@ -1,8 +1,8 @@
 # Mesozoica AI
 
 `mesozoica_ai` is a typed RAG toolkit for Mesozoica: ingest source documents,
-sync into Azure AI Search, retrieve chunks, and generate cited structured
-answers.
+embed into Postgres, sync into Azure AI Search, retrieve chunks, and generate
+cited structured answers.
 
 ## Start here
 
@@ -22,7 +22,7 @@ mesozoica_ai/
   __init__.py     pipeline verbs only
   common/         AiConfig, Document, checkpoints, store_documents
   sources/        openalex.py, http.py, helpers.py
-  index/          chunk / embed / sync / retrieve / index_knowledge
+  index/          chunk / embed / sync / retrieve / embed_knowledge / ingest_knowledge
   generate/       prompt_rag, answer_from_index, generate_quiz
   evaluate/       offline + live metrics, knowledge_status
 ```
@@ -41,7 +41,7 @@ from mesozoica_ai import (
 )
 from mesozoica_ai.common import store_documents
 from mesozoica_ai.generate import generate_quiz, answer_from_index
-from mesozoica_ai.index import index_knowledge
+from mesozoica_ai.index import embed_knowledge, ingest_knowledge
 from mesozoica_ai.evaluate import evaluate_knowledge, knowledge_status
 ```
 
@@ -51,13 +51,15 @@ from mesozoica_ai.evaluate import evaluate_knowledge, knowledge_status
 cd backend
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Tyrannosaurus
-.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py
-.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops
-.venv/bin/python rag/scripts/03_generate_quiz.py --dinos Triceratops --chunks-only
-.venv/bin/python rag/scripts/04_answer_question.py --question "What horns did Triceratops have?" --dinos Triceratops
-.venv/bin/python rag/scripts/05_evaluate_retrieval.py
+.venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py
+.venv/bin/python rag/scripts/03_ingest_dinosaur_knowledge.py
+.venv/bin/python rag/scripts/04_generate_quiz.py --dinos Triceratops
+.venv/bin/python rag/scripts/04_generate_quiz.py --dinos Triceratops --chunks-only
+.venv/bin/python rag/scripts/05_answer_question.py --question "What horns did Triceratops have?" --dinos Triceratops
+.venv/bin/python rag/scripts/06_evaluate_retrieval.py
 .venv/bin/python -m pytest rag/tests -q
 ```
 
-1. **Acquire** — latest `dinosaur_type_revision` Wikipedia article + OpenAlex → Postgres `dinosaur_knowledge`
-2. **Index** — SQL snapshots → chunk / embed / Azure Search
+1. **Acquire** — latest `dinosaur_type_revision` Wikipedia article + OpenAlex → Postgres `documents`
+2. **Embed** — SQL documents → chunk / embed → Postgres `embedded_chunks`
+3. **Ingest** — SQL embeddings → Azure Search

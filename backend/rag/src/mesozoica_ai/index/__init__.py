@@ -12,6 +12,7 @@ from mesozoica_ai.common.models import (
     EvidencePolicy,
     IndexResult,
     KnowledgeChunk,
+    PrepareEmbeddingsResult,
     RetrievalMode,
     RetrievalResult,
     RetrievedChunk,
@@ -22,6 +23,8 @@ from mesozoica_ai.common.models import (
 chunk_documents = _api.chunk_documents
 embed_chunks = _api.embed_chunks
 index_chunks = _api.index_chunks
+prepare_embeddings = _api.prepare_embeddings
+sync_embedded_chunks = _api.sync_embedded_chunks
 
 
 def ensure_index(*, config: AiConfig) -> None:
@@ -40,7 +43,7 @@ def sync_documents(
     scope: dict[str, Any],
     config: AiConfig,
 ) -> SyncResult:
-    """Safely synchronize one scope while embedding only vector-changed chunks."""
+    """Chunk, embed, and synchronize one scope (ad-hoc path without SQL cache)."""
     return _api.sync_documents(documents, scope=scope, config=config)
 
 
@@ -115,8 +118,10 @@ def retrieve_chunks(
 
 
 from .batch import (
+    embed_knowledge,
     index_knowledge,
     index_snapshots,
+    ingest_knowledge,
     list_knowledge_rows,
     require_full_recreate_scope,
 )
@@ -128,6 +133,7 @@ __all__ = [
     "EvidencePolicy",
     "IndexResult",
     "KnowledgeChunk",
+    "PrepareEmbeddingsResult",
     "RetrievalMode",
     "RetrievalResult",
     "RetrievedChunk",
@@ -135,15 +141,19 @@ __all__ = [
     "azure_knowledge_overview",
     "chunk_documents",
     "embed_chunks",
+    "embed_knowledge",
     "embed_query",
     "ensure_index",
     "index_chunks",
     "index_knowledge",
     "index_snapshots",
+    "ingest_knowledge",
     "list_knowledge_rows",
     "pipeline_fingerprint",
+    "prepare_embeddings",
     "recreate_index",
     "require_full_recreate_scope",
     "retrieve_chunks",
     "sync_documents",
+    "sync_embedded_chunks",
 ]

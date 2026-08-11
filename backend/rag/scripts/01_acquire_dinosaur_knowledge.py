@@ -1,6 +1,7 @@
 """Acquire Wikipedia revisions + OpenAlex into the dinosaur_knowledge SQL table.
 
-Does not touch Azure Search — use 02_index_dinosaur_knowledge.py for that.
+Does not touch Azure Search — use 02_embed_dinosaur_knowledge.py then
+03_ingest_dinosaur_knowledge.py for that.
 
 Wikipedia text comes from the latest ``dinosaur_type_revision`` row (no live
 Wikipedia fetch). OpenAlex keeps up to OPENALEX_MAX_WORKS (default 10) unique
@@ -123,7 +124,13 @@ def run(
                     break
 
         overview = sql_knowledge_overview(session, DinosaurKnowledge)
-        for line in overview.log_lines(title="Overview (SQL dinosaur_knowledge)"):
+        logger.info(
+            "Done: succeeded=%s skipped=%s failed=%s",
+            summary.succeeded,
+            summary.skipped,
+            summary.failed,
+        )
+        for line in overview.log_lines(title="Acquired (SQL documents)"):
             logger.info("%s", line)
 
     print(json.dumps(summary.model_dump(), indent=2, default=str))

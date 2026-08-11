@@ -6,14 +6,14 @@ Pipeline:
   3. assemble one prompt with evidence only (no application context)
   4. validate structured answer + citations
 
-Requires knowledge already acquired (01) and indexed (02).
+Requires knowledge already acquired (01), embedded (02), and ingested (03).
 
   cd backend
-  .venv/bin/python rag/scripts/04_answer_question.py \\
+  .venv/bin/python rag/scripts/05_answer_question.py \\
       --question "What did Abrosaurus eat?"
-  .venv/bin/python rag/scripts/04_answer_question.py \\
+  .venv/bin/python rag/scripts/05_answer_question.py \\
       --question "Where was Abrosaurus found?" --dinos Abrosaurus --show-chunks
-  .venv/bin/python rag/scripts/04_answer_question.py \\
+  .venv/bin/python rag/scripts/05_answer_question.py \\
       --question "Classify Abrosaurus" --dinos Abrosaurus --chunks-only
 """
 
@@ -105,10 +105,12 @@ def run(
         if not indexed:
             raise RuntimeError(
                 f"No Azure chunks for {subject.name} ({filters['subject_id']}). "
-                "Run acquire then index first:\n"
+                "Run acquire, embed, then ingest first:\n"
                 f"  .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py "
                 f"--dinos {subject.name}\n"
-                f"  .venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py "
+                f"  .venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py "
+                f"--dinos {subject.name}\n"
+                f"  .venv/bin/python rag/scripts/03_ingest_dinosaur_knowledge.py "
                 f"--dinos {subject.name}"
             )
 

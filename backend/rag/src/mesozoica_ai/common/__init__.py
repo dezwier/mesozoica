@@ -12,12 +12,17 @@ from mesozoica_ai.common.batch import (
 from mesozoica_ai.common.checkpoints import (
     acquisition_needed,
     begin_acquisition,
+    begin_embedding,
     begin_indexing,
     complete_acquisition,
+    complete_embedding,
     complete_indexing,
+    embedding_needed,
     fail_acquisition,
+    fail_embedding,
     fail_indexing,
     indexing_needed,
+    reset_embedding,
     reset_indexing,
 )
 from mesozoica_ai.common.config import AiConfig
@@ -31,7 +36,11 @@ from mesozoica_ai.common.errors import (
     SourceFetchError,
     StructuredOutputError,
 )
-from mesozoica_ai.common.inventory import KnowledgeOverview, sql_knowledge_overview
+from mesozoica_ai.common.inventory import (
+    KnowledgeOverview,
+    sql_embedded_overview,
+    sql_knowledge_overview,
+)
 from mesozoica_ai.common.metadata import SourceMetadata
 from mesozoica_ai.common.models import (
     Chunk,
@@ -43,6 +52,7 @@ from mesozoica_ai.common.models import (
     IndexResult,
     KnowledgeChunk,
     KnowledgeDocument,
+    PrepareEmbeddingsResult,
     RetrievalMode,
     RetrievalResult,
     RetrievedChunk,
@@ -74,9 +84,11 @@ __all__ = [
     "InsufficientEvidenceError",
     "JobSummary",
     "KnowledgeOverview",
+    "sql_embedded_overview",
     "sql_knowledge_overview",
     "KnowledgeChunk",
     "KnowledgeDocument",
+    "PrepareEmbeddingsResult",
     "RetrievalMode",
     "RetrievalResult",
     "RetrievedChunk",
@@ -93,14 +105,19 @@ __all__ = [
     "acquire_knowledge",
     "acquisition_needed",
     "begin_acquisition",
+    "begin_embedding",
     "begin_indexing",
     "complete_acquisition",
+    "complete_embedding",
     "complete_indexing",
+    "embedding_needed",
     "fail_acquisition",
+    "fail_embedding",
     "fail_indexing",
     "indexing_needed",
     "load_encoding",
     "needs_acquisition",
+    "reset_embedding",
     "reset_indexing",
     "run_resumable_item",
     "snapshot_scope",

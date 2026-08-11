@@ -43,23 +43,39 @@ class DinosaurKnowledge(SQLModel, table=True):
     documents: list[dict[str, Any]] = Field(
         default_factory=list, sa_column=Column(JSON, nullable=False)
     )
+    embedded_chunks: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
     source_version: str | None = Field(default=None, max_length=255)
     source_hash: str | None = Field(default=None, max_length=64)
     content_hash: str | None = Field(default=None, max_length=64, index=True)
+    embedded_hash: str | None = Field(default=None, max_length=64)
+    embedded_pipeline_fingerprint: str | None = Field(default=None, max_length=64)
     indexed_hash: str | None = Field(default=None, max_length=64)
     indexed_pipeline_fingerprint: str | None = Field(default=None, max_length=64)
     acquisition_status: str = Field(
         default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16
     )
+    embed_status: str = Field(
+        default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16
+    )
     index_status: str = Field(default=KNOWLEDGE_STATUS_PENDING, index=True, max_length=16)
     acquisition_attempts: int = Field(default=0)
+    embed_attempts: int = Field(default=0)
     index_attempts: int = Field(default=0)
     acquisition_error: str | None = Field(default=None, sa_column=Column(Text))
+    embed_error: str | None = Field(default=None, sa_column=Column(Text))
     index_error: str | None = Field(default=None, sa_column=Column(Text))
     acquisition_started_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True))
     )
     acquisition_finished_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    embed_started_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    embed_finished_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True))
     )
     index_started_at: datetime | None = Field(

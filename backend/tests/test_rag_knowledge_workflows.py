@@ -270,7 +270,7 @@ def test_acquisition_dry_run_does_not_create_checkpoints(session):
 def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None):
     import mesozoica_ai.index.batch as workflow_module
 
-    calls = {"ensure": 0, "recreate": 0, "sync": []}
+    calls = {"ensure": 0, "recreate": 0, "prepare": [], "sync": []}
 
     def ensure(*, config):
         calls["ensure"] += 1
@@ -278,13 +278,40 @@ def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None)
     def recreate(*, config):
         calls["recreate"] += 1
 
-    def sync(documents, *, scope, config):
-        calls["sync"].append((documents, scope))
+    def prepare(documents, *, config, existing=None):
+        calls["prepare"].append((documents, existing))
+        return SimpleNamespace(
+            chunks=[
+                {
+                    "id": "chunk-1",
+                    "document_id": "doc-1",
+                    "text": "t",
+                    "embedding_text": "t",
+                    "metadata": {"source": "wikipedia", "source_id": "1", "title": "T"},
+                    "chunk_index": 0,
+                    "start_index": 0,
+                    "embedding_hash": "eh",
+                    "document_hash": "dh",
+                    "pipeline_fingerprint": fingerprint,
+                    "embedding": [0.0, 1.0],
+                }
+            ],
+            embedded_count=1 if not existing else 0,
+            reused_count=1 if existing else 0,
+            chunk_count=1,
+            pipeline_fingerprint=fingerprint,
+        )
+
+    def sync(embedded_chunks, *, scope, config):
+        calls["sync"].append((embedded_chunks, scope))
         if scope["source"] == fail_source:
-            raise RuntimeError("embedding unavailable")
+            raise RuntimeError("azure unavailable")
         return SimpleNamespace(pipeline_fingerprint=fingerprint)
 
     class FakeStore:
+        def existing_ids(self, ids):
+            return set(ids)
+
         def list_ids(self, filters):
             return ["chunk-1"]
 
@@ -293,12 +320,8 @@ def _patch_indexing(monkeypatch, *, fingerprint="pipeline-v2", fail_source=None)
     monkeypatch.setattr(
         workflow_module, "pipeline_fingerprint", lambda *, config: fingerprint
     )
-    monkeypatch.setattr(workflow_module, "sync_documents", sync)
-    monkeypatch.setattr(
-        workflow_module,
-        "chunk_documents",
-        lambda documents, *, config: [SimpleNamespace(id="chunk-1")],
-    )
+    monkeypatch.setattr(workflow_module, "prepare_embeddings", prepare)
+    monkeypatch.setattr(workflow_module, "sync_embedded_chunks", sync)
     monkeypatch.setattr(
         workflow_module,
         "build_store",
@@ -324,6 +347,7 @@ def test_indexing_uses_source_scope_and_recreate_resets_checkpoints(session, mon
 
     assert summary.succeeded == 1
     assert calls["recreate"] == 1
+    assert snapshot.embed_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert snapshot.index_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert snapshot.indexed_hash == snapshot.content_hash
     assert snapshot.indexed_pipeline_fingerprint == "pipeline-v2"
@@ -359,7 +383,9 @@ def test_indexing_continues_after_one_source_fails(session, monkeypatch):
 
     assert summary.failed == 1
     assert summary.succeeded == 1
+    assert by_source["openalex"].embed_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert by_source["openalex"].index_status == KNOWLEDGE_STATUS_FAILED
+    assert by_source["wikipedia"].embed_status == KNOWLEDGE_STATUS_SUCCEEDED
     assert by_source["wikipedia"].index_status == KNOWLEDGE_STATUS_SUCCEEDED
 
 
@@ -378,8 +404,56 @@ def test_pipeline_change_reindexes_unchanged_content(session, monkeypatch):
     )
     snapshot = session.exec(select(DinosaurKnowledge)).one()
     assert summary.succeeded == 1
+    assert len(calls["prepare"]) == 1
     assert len(calls["sync"]) == 1
     assert snapshot.indexed_pipeline_fingerprint == "pipeline-v3"
+
+
+def test_ingest_retries_without_reembedding_after_azure_failure(session, monkeypatch):
+    from mesozoica_ai.index import embed_knowledge, ingest_knowledge
+
+    acquire_dinosaur_knowledge(
+        session,
+        subjects=[SUBJECT],
+        retrievers=_retrievers(wikipedia=FakeWikipedia()),
+        sources=["wikipedia"],
+    )
+    calls = _patch_indexing(monkeypatch, fingerprint="pipeline-v2", fail_source="wikipedia")
+    embed_knowledge(
+        session=session,
+        model=DinosaurKnowledge,
+        config=SimpleNamespace(),
+        sources=["wikipedia"],
+    )
+    assert len(calls["prepare"]) == 1
+    snapshot = session.exec(select(DinosaurKnowledge)).one()
+    assert snapshot.embed_status == KNOWLEDGE_STATUS_SUCCEEDED
+    assert snapshot.embedded_chunks
+
+    failed = ingest_knowledge(
+        session=session,
+        model=DinosaurKnowledge,
+        config=SimpleNamespace(),
+        sources=["wikipedia"],
+    )
+    assert failed.failed == 1
+    session.refresh(snapshot)
+    assert snapshot.index_status == KNOWLEDGE_STATUS_FAILED
+    prepare_count = len(calls["prepare"])
+
+    calls2 = _patch_indexing(monkeypatch, fingerprint="pipeline-v2")
+    retry = ingest_knowledge(
+        session=session,
+        model=DinosaurKnowledge,
+        config=SimpleNamespace(),
+        sources=["wikipedia"],
+    )
+    assert retry.succeeded == 1
+    assert len(calls2["prepare"]) == 0
+    assert len(calls2["sync"]) == 1
+    session.refresh(snapshot)
+    assert snapshot.index_status == KNOWLEDGE_STATUS_SUCCEEDED
+    assert prepare_count == 1
 
 
 def test_status_output_and_quiz_validation(session):

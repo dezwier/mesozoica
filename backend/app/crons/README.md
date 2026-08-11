@@ -162,21 +162,23 @@ RAILWAY_RUN=1 railway run python -m app.crons.runner --job tool_image_generate -
 ### Dinosaur knowledge workflow
 
 The single `dinosaur_knowledge` cron is disabled by default (scheduled daily at
-01:00 UTC). It runs acquire then index via
-[`01_acquire_dinosaur_knowledge.py`](../../rag/scripts/01_acquire_dinosaur_knowledge.py)
-and [`02_index_dinosaur_knowledge.py`](../../rag/scripts/02_index_dinosaur_knowledge.py).
+01:00 UTC). It runs acquire → embed → ingest via
+[`01_acquire_dinosaur_knowledge.py`](../../rag/scripts/01_acquire_dinosaur_knowledge.py),
+[`02_embed_dinosaur_knowledge.py`](../../rag/scripts/02_embed_dinosaur_knowledge.py),
+and [`03_ingest_dinosaur_knowledge.py`](../../rag/scripts/03_ingest_dinosaur_knowledge.py).
 Configure the variables in [`../../rag/README.md`](../../rag/README.md), then run:
 
 ```bash
 make run-dinosaur-knowledge
 make run-dinosaur-knowledge CRON_EXTRA='--dinos Tyrannosaurus --sources wikipedia openalex'
 .venv/bin/python rag/scripts/01_acquire_dinosaur_knowledge.py --dinos Tyrannosaurus
-.venv/bin/python rag/scripts/02_index_dinosaur_knowledge.py --dinos Tyrannosaurus
+.venv/bin/python rag/scripts/02_embed_dinosaur_knowledge.py --dinos Tyrannosaurus
+.venv/bin/python rag/scripts/03_ingest_dinosaur_knowledge.py --dinos Tyrannosaurus
 ```
 
-Each dinosaur/source is committed independently in `dinosaur_knowledge`. Successful unchanged acquisitions are skipped, failed/running states retry, content changes reset only that source's indexing checkpoint, and a pipeline fingerprint change also makes a row eligible for indexing without `--overwrite`. Status/quiz/eval helpers live in the `mesozoica_ai` library (see [`../../rag/docs/USAGE.md`](../../rag/docs/USAGE.md)), not as app crons.
+Each dinosaur/source is committed independently in `dinosaur_knowledge`. Successful unchanged acquisitions are skipped, failed/running states retry, content changes reset that source's embed and index checkpoints, and a pipeline fingerprint change also makes a row eligible for re-embed/ingest without `--overwrite`. Embeddings are stored in SQL first so a failed Azure ingest can be retried without re-embedding. Status/quiz/eval helpers live in the `mesozoica_ai` library (see [`../../rag/docs/USAGE.md`](../../rag/docs/USAGE.md)), not as app crons.
 
-Normal indexing validates the existing schema and vector dimensions and never deletes the index. `--recreate-index` is intentionally destructive for the configured index; it is the only workflow path that recreates it and causes all successfully acquired rows to be reindexed.
+Normal ingest validates the existing schema and vector dimensions and never deletes the index. `--recreate-index` is intentionally destructive for the configured index; it is the only workflow path that recreates it and causes all successfully embedded rows to be re-ingested from SQL.
 
 ### Procedural field sites (lazy, not a cron)
 
