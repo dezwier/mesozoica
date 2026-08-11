@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from mesozoica_ai.common import AiConfig
@@ -29,6 +30,8 @@ _SCOPED_INSTRUCTIONS = (
 )
 
 _MAX_REFERENCES = 5
+_WS_RE = re.compile(r"\s+")
+_SOFT_HYPHEN_RE = re.compile("\u00ad+")
 
 
 def _display_title(record: dict[str, Any]) -> str:
@@ -41,6 +44,15 @@ def _display_title(record: dict[str, Any]) -> str:
     if not section or section.casefold() == "introduction":
         return title
     return f"{title} — {section}"
+
+
+
+def format_reference_text(text: str) -> str:
+    """Collapse hard-wrapped chunk text into readable flowing prose."""
+    cleaned = _SOFT_HYPHEN_RE.sub("", (text or "").replace("\r\n", "\n"))
+    # Join hard line wraps; keep a single space between paragraphs.
+    cleaned = cleaned.replace("\n", " ")
+    return _WS_RE.sub(" ", cleaned).strip()
 
 
 def select_references(
@@ -80,7 +92,7 @@ def select_references(
     for record in ordered:
         title = _display_title(record)
         url = (record.get("source_url") or "").strip()
-        text = (record.get("text") or "").strip()
+        text = format_reference_text(str(record.get("text") or ""))
         if not text:
             continue
         if not title:

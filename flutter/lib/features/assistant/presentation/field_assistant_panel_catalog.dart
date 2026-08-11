@@ -47,6 +47,7 @@ extension on _FieldAssistantPanelState {
       },
       onSelected: _selectSubject,
       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        _attachSubjectFocusListener(focusNode);
         // Keep the Autocomplete field in sync with our selection text.
         if (controller.text != _subjectQuery.text &&
             _selectedSubject != null &&
@@ -345,16 +346,18 @@ extension on _FieldAssistantPanelState {
 
   Widget _referenceChunkCard(SourceLink source) {
     final hasLink = source.url.isNotEmpty;
+    final text = _displayChunkText(source.text);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (source.text.isNotEmpty)
+        if (text.isNotEmpty)
           Text(
-            source.text,
+            text,
+            softWrap: true,
             style: TextStyle(
               color: MapChromeTheme.cream.withValues(alpha: 0.92),
               fontSize: 13,
-              height: 1.4,
+              height: 1.35,
             ),
           ),
         if (source.title.isNotEmpty) ...[
@@ -379,10 +382,11 @@ extension on _FieldAssistantPanelState {
                       source.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      softWrap: false,
                       style: TextStyle(
                         color: MapChromeTheme.hudGold,
                         fontSize: 12,
-                        height: 1.3,
+                        height: 1.2,
                         decoration: hasLink ? TextDecoration.underline : null,
                         decorationColor: MapChromeTheme.hudGold,
                       ),
@@ -395,6 +399,17 @@ extension on _FieldAssistantPanelState {
         ],
       ],
     );
+  }
+
+  /// Client-side guard against hard-wrapped wiki/paper chunks.
+  String _displayChunkText(String raw) {
+    final cleaned = raw
+        .replaceAll('\u00ad', '')
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\n', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return cleaned;
   }
 
   Widget _buildCatalogSourcesTab() {

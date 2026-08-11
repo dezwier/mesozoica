@@ -117,6 +117,34 @@ def test_select_references_falls_back_to_retrieval_order() -> None:
     ]
 
 
+def test_format_reference_text_collapses_hard_wraps() -> None:
+    from app.features.assistant.application.ask import format_reference_text
+
+    raw = (
+        "Abrosaurus\u00ad was a\n"
+        "sauropod dinosaur\n\n"
+        "from the Middle Jurassic."
+    )
+    assert format_reference_text(raw) == (
+        "Abrosaurus was a sauropod dinosaur from the Middle Jurassic."
+    )
+
+
+def test_select_references_formats_wrapped_chunk_text() -> None:
+    records = [
+        {
+            "id": "c1",
+            "source": "wikipedia",
+            "title": "Abrosaurus",
+            "section": "Description",
+            "source_url": "https://en.wikipedia.org/wiki/Abrosaurus#Description",
+            "text": "It was a\nsmall sauropod\n  with a short\nskull.",
+        },
+    ]
+    refs = select_references(records, cited_ids=["c1"])
+    assert refs[0].text == "It was a small sauropod with a short skull."
+
+
 def test_ask_question_happy_path() -> None:
     chunks = [
         _chunk(

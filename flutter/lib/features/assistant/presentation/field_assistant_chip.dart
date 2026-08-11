@@ -93,6 +93,9 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _subjectQuery = TextEditingController();
 
+  /// Autocomplete-owned focus node; listener attached in the field builder.
+  FocusNode? _subjectFocusNode;
+
   bool _loading = false;
   String? _error;
   AssistantAnswer? _answer;
@@ -116,6 +119,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
 
   @override
   void dispose() {
+    _detachSubjectFocusListener();
     _controller.dispose();
     _focusNode.dispose();
     _subjectQuery.dispose();
@@ -124,6 +128,30 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
 
   void _dismissKeyboard() {
     FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  void _attachSubjectFocusListener(FocusNode node) {
+    if (identical(_subjectFocusNode, node)) return;
+    _detachSubjectFocusListener();
+    _subjectFocusNode = node;
+    node.addListener(_onSubjectFocusChanged);
+  }
+
+  void _detachSubjectFocusListener() {
+    _subjectFocusNode?.removeListener(_onSubjectFocusChanged);
+    _subjectFocusNode = null;
+  }
+
+  void _onSubjectFocusChanged() {
+    final node = _subjectFocusNode;
+    if (node == null || node.hasFocus) return;
+    // After the focus transfer settles: keep keyboard if the ask field
+    // took focus; otherwise dismiss (tap-away from the dino selector).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_focusNode.hasFocus) return;
+      _dismissKeyboard();
+    });
   }
 
   void _close() {
@@ -290,11 +318,14 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                 constraints: BoxConstraints(maxHeight: availableHeight),
                 child: Material(
                   color: Colors.transparent,
-                  child: DecoratedBox(
-                    decoration: _panelDecoration,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 10, 14),
-                      child: Column(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _dismissKeyboard,
+                    child: DecoratedBox(
+                      decoration: _panelDecoration,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 10, 10, 14),
+                        child: Column(
                         mainAxisSize:
                             expandBody ? MainAxisSize.max : MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -489,6 +520,7 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                         ],
                       ),
                     ),
+                  ),
                   ),
                 ),
               ),
