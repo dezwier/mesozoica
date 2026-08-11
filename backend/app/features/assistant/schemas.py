@@ -16,3 +16,29 @@ class SourceLink(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     sources: list[SourceLink]
+
+
+class KnowledgeSubject(BaseModel):
+    id: str
+    name: str
+
+
+class KnowledgeSubjectsResponse(BaseModel):
+    subjects: list[KnowledgeSubject]
+
+
+class KnowledgeSourceItem(BaseModel):
+    title: str
+    url: str
+    kind: str
+
+
+class KnowledgeSourceGroup(BaseModel):
+    kind: str
+    items: list[KnowledgeSourceItem]
+
+
+class KnowledgeSourcesResponse(BaseModel):
+    subject_id: str
+    subject_name: str
+    groups: list[KnowledgeSourceGroup]

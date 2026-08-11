@@ -1,8 +1,9 @@
 import 'package:mesozoica/core/networking/api_client.dart';
 import 'package:mesozoica/core/networking/api_transport.dart';
 import 'package:mesozoica/features/assistant/domain/assistant_answer.dart';
+import 'package:mesozoica/features/assistant/domain/knowledge_catalog.dart';
 
-/// HTTP client for field-assistant Q&A.
+/// HTTP client for field-assistant Q&A and knowledge browsing.
 class AssistantRepository {
   AssistantRepository({ApiTransport? transport})
     : _transport = transport ?? ApiClient.instance;
@@ -15,5 +16,22 @@ class AssistantRepository {
       body: {'question': question},
     );
     return AssistantAnswer.fromJson(data);
+  }
+
+  Future<List<KnowledgeSubject>> listSubjects() async {
+    final data = await _transport.get('/api/v1/assistant/subjects');
+    final raw = data['subjects'] as List<dynamic>? ?? const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(KnowledgeSubject.fromJson)
+        .where((s) => s.id.isNotEmpty && s.name.isNotEmpty)
+        .toList();
+  }
+
+  Future<KnowledgeSources> listSources(String subjectId) async {
+    final data = await _transport.get(
+      '/api/v1/assistant/subjects/${Uri.encodeComponent(subjectId)}/sources',
+    );
+    return KnowledgeSources.fromJson(data);
   }
 }

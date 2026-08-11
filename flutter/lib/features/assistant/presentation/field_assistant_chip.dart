@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -5,8 +7,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:mesozoica/core/networking/api_client.dart';
 import 'package:mesozoica/features/assistant/data/assistant_repository.dart';
 import 'package:mesozoica/features/assistant/domain/assistant_answer.dart';
+import 'package:mesozoica/features/assistant/domain/knowledge_catalog.dart';
 import 'package:mesozoica/theme/map_chrome_decorations.dart';
 import 'package:mesozoica/theme/map_chrome_theme.dart';
+
+part 'field_assistant_panel_catalog.dart';
 
 /// Lifecycle for the field-assistant panel (map freeze + chrome via [AppShell]).
 abstract final class FieldAssistantOverlay {
@@ -86,10 +91,19 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final TextEditingController _subjectQuery = TextEditingController();
 
   bool _loading = false;
   String? _error;
   AssistantAnswer? _answer;
+
+  List<KnowledgeSubject> _subjects = const [];
+  bool _subjectsLoading = true;
+  String? _subjectsError;
+  KnowledgeSubject? _selectedSubject;
+  KnowledgeSources? _selectedSources;
+  bool _sourcesLoading = false;
+  String? _sourcesError;
 
   @override
   void initState() {
@@ -97,18 +111,81 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
     });
+    unawaited(_loadSubjects());
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
+    _subjectQuery.dispose();
     super.dispose();
   }
 
   void _close() {
     _focusNode.unfocus();
     FieldAssistantOverlay.close();
+  }
+
+  Future<void> _loadSubjects() async {
+    setState(() {
+      _subjectsLoading = true;
+      _subjectsError = null;
+    });
+    try {
+      final subjects = await _repository.listSubjects();
+      if (!mounted) return;
+      setState(() {
+        _subjects = subjects;
+        _subjectsLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _subjectsError = e.message;
+        _subjectsLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _subjectsError = 'Could not load dinosaurs.';
+        _subjectsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _selectSubject(KnowledgeSubject subject) async {
+    if (_sourcesLoading && _selectedSubject?.id == subject.id) return;
+    setState(() {
+      _selectedSubject = subject;
+      _subjectQuery.text = subject.name;
+      _sourcesLoading = true;
+      _sourcesError = null;
+      _selectedSources = null;
+    });
+    try {
+      final sources = await _repository.listSources(subject.id);
+      if (!mounted) return;
+      if (_selectedSubject?.id != subject.id) return;
+      setState(() {
+        _selectedSources = sources;
+        _sourcesLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (_selectedSubject?.id != subject.id) return;
+      setState(() {
+        _sourcesError = e.message;
+        _sourcesLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      if (_selectedSubject?.id != subject.id) return;
+      setState(() {
+        _sourcesError = 'Could not load sources.';
+        _sourcesLoading = false;
+      });
+    }
   }
 
   Future<void> _send() async {
@@ -143,11 +220,13 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
     }
   }
 
-  Future<void> _openSource(SourceLink source) async {
-    final uri = Uri.tryParse(source.url);
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
+
+  void _mutatePanelState(VoidCallback fn) => setState(fn);
 
   @override
   Widget build(BuildContext context) {
@@ -156,8 +235,11 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
     final availableHeight =
         media.size.height - widget.topClearance - keyboardInset - 32;
     final hasAnswer = _answer != null;
-    // Compact when asking; grow to most of the visible area once answered.
-    final panelMaxHeight = availableHeight * (hasAnswer ? 0.78 : 0.42);
+    final hasCatalogBrowse =
+        _selectedSubject != null || _subjects.isNotEmpty || _subjectsLoading;
+    // Compact when asking; grow once answering or browsing sources.
+    final panelMaxHeight =
+        availableHeight * ((hasAnswer || hasCatalogBrowse) ? 0.78 : 0.42);
 
     return Positioned.fill(
       child: Stack(
@@ -190,12 +272,15 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                     decoration: _panelDecoration,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 10, 10, 14),
-                      child: Column(
-                        mainAxisSize: hasAnswer
-                            ? MainAxisSize.max
-                            : MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+                        child: Column(
+                          mainAxisSize:
+                              (hasAnswer ||
+                                  _selectedSources != null ||
+                                  _sourcesLoading)
+                              ? MainAxisSize.max
+                              : MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
                             Row(
                               children: [
                                 const Icon(
@@ -334,6 +419,8 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 10),
+                            _buildSubjectPicker(),
                             if (_error != null) ...[
                               const SizedBox(height: 10),
                               Text(
@@ -345,7 +432,20 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                 ),
                               ),
                             ],
-                            if (hasAnswer) ...[
+                            if (_sourcesError != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                _sourcesError!,
+                                style: const TextStyle(
+                                  color: Color(0xFFE07060),
+                                  fontSize: 12,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                            if (hasAnswer ||
+                                _selectedSources != null ||
+                                _sourcesLoading) ...[
                               const SizedBox(height: 12),
                               Expanded(
                                 child: SingleChildScrollView(
@@ -353,87 +453,55 @@ class _FieldAssistantPanelState extends State<FieldAssistantPanel> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
-                                      Text(
-                                        _answer!.answer,
-                                        style: const TextStyle(
-                                          color: MapChromeTheme.cream,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      if (_answer!.sources.isNotEmpty) ...[
-                                        const SizedBox(height: 12),
-                                        const Text(
-                                          'Sources',
-                                          style: TextStyle(
-                                            color: MapChromeTheme.mutedGold,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.4,
+                                      if (_sourcesLoading)
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 12,
                                           ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        for (final source
-                                            in _answer!.sources)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 2,
-                                            ),
-                                            child: InkWell(
-                                              onTap: () =>
-                                                  _openSource(source),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 3,
-                                                    ),
-                                                child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            top: 2,
-                                                          ),
-                                                      child: Icon(
-                                                        source.isWikipedia
-                                                            ? Icons
-                                                                  .menu_book_outlined
-                                                            : Icons
-                                                                  .article_outlined,
-                                                        size: 13,
-                                                        color: MapChromeTheme
-                                                            .hudGold,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                    Expanded(
-                                                      child: Text(
-                                                        source.title,
-                                                        style:
-                                                            const TextStyle(
-                                                              color:
-                                                                  MapChromeTheme
-                                                                      .hudGold,
-                                                              fontSize: 13,
-                                                              height: 1.3,
-                                                              decoration:
-                                                                  TextDecoration
-                                                                      .underline,
-                                                              decorationColor:
-                                                                  MapChromeTheme
-                                                                      .hudGold,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: MapChromeTheme.cream,
                                               ),
                                             ),
                                           ),
+                                        ),
+                                      if (_selectedSources != null)
+                                        _buildSourceGroups(_selectedSources!),
+                                      if (hasAnswer) ...[
+                                        if (_selectedSources != null)
+                                          const SizedBox(height: 14),
+                                        Text(
+                                          _answer!.answer,
+                                          style: const TextStyle(
+                                            color: MapChromeTheme.cream,
+                                            fontSize: 14,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                        if (_answer!.sources.isNotEmpty) ...[
+                                          const SizedBox(height: 12),
+                                          const Text(
+                                            'Answer sources',
+                                            style: TextStyle(
+                                              color: MapChromeTheme.mutedGold,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          for (final source
+                                              in _answer!.sources)
+                                            _sourceLinkRow(
+                                              title: source.title,
+                                              url: source.url,
+                                              isWikipedia: source.isWikipedia,
+                                            ),
+                                        ],
                                       ],
                                     ],
                                   ),
