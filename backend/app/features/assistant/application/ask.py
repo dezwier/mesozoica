@@ -14,6 +14,7 @@ from mesozoica_ai.generate import (
 )
 from mesozoica_ai.index import embed_query, retrieve_chunks
 
+from app.features.assistant.application.display_text import clean_display_title
 from app.features.assistant.schemas import AskResponse, SourceLink
 
 ANSWER_INSTRUCTIONS = (
@@ -35,12 +36,12 @@ _SOFT_HYPHEN_RE = re.compile("\u00ad+")
 
 
 def _display_title(record: dict[str, Any]) -> str:
-    title = (record.get("title") or "").strip()
+    title = clean_display_title(str(record.get("title") or ""))
     if not title:
         return ""
     if record.get("source") != "wikipedia":
         return title
-    section = (record.get("section") or "").strip()
+    section = clean_display_title(str(record.get("section") or ""))
     if not section or section.casefold() == "introduction":
         return title
     return f"{title} — {section}"

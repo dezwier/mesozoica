@@ -194,7 +194,7 @@ def _retrieve(
             _section_documents(
                 work_id=work_id,
                 sections=sections,
-                base_metadata=_work_metadata(work, work_id=work_id, title=title),
+                base_metadata=_work_metadata(work, work_id=work_id, title=display_title),
             )
         )
         collected.add(work_id)

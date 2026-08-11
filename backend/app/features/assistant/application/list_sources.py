@@ -7,6 +7,7 @@ from urllib.parse import urldefrag
 
 from sqlmodel import col, select
 
+from app.features.assistant.application.display_text import clean_display_title
 from app.features.assistant.schemas import (
     KnowledgeSourceGroup,
     KnowledgeSourceItem,
@@ -56,7 +57,7 @@ def list_subject_sources(
         for document in repo.list_documents(source_row):
             meta = document.metadata
             url = (meta.source_url or "").strip()
-            title = (meta.title or "").strip()
+            title = clean_display_title(meta.title or "")
             if not url or not title:
                 continue
             # Wikipedia sections share one page — strip fragment for a single link.

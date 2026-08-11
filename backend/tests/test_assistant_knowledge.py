@@ -136,8 +136,18 @@ def test_list_subject_sources_groups_and_dedupes(session, monkeypatch) -> None:
                 metadata=SourceMetadata(
                     source="openalex",
                     source_id="W456",
-                    title="Paper Two",
+                    title="&lt;i&gt;Paper&lt;/i&gt; Two",
                     source_url="https://doi.org/10.1/b",
+                ),
+            ),
+            Document(
+                id="oa:c:abs",
+                text="Tagged paper",
+                metadata=SourceMetadata(
+                    source="openalex",
+                    source_id="W789",
+                    title="&lt;italic&gt;Tyrannosaurus&lt;/italic&gt; rex anatomy",
+                    source_url="https://doi.org/10.1/c",
                 ),
             ),
         ],
@@ -178,6 +188,11 @@ def test_list_subject_sources_groups_and_dedupes(session, monkeypatch) -> None:
                 KnowledgeSourceItem(
                     title="Paper Two",
                     url="https://doi.org/10.1/b",
+                    kind="openalex",
+                ),
+                KnowledgeSourceItem(
+                    title="Tyrannosaurus rex anatomy",
+                    url="https://doi.org/10.1/c",
                     kind="openalex",
                 ),
             ],
