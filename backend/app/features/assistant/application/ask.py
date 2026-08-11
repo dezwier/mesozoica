@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from mesozoica_ai.common import AiConfig
-from mesozoica_ai.common.batch import DEFAULT_NAMESPACE
+from mesozoica_ai.common.batch import DEFAULT_NAMESPACE, DEFAULT_SUBJECT_KIND
 from mesozoica_ai.generate import (
     GroundedAnswer,
     prompt_rag,
@@ -58,7 +58,12 @@ def select_sources(
     return picked
 
 
-def ask_question(question: str, *, config: AiConfig | None = None) -> AskResponse:
+def ask_question(
+    question: str,
+    *,
+    subject_id: str | None = None,
+    config: AiConfig | None = None,
+) -> AskResponse:
     """Retrieve evidence, generate a grounded answer, and attach source links."""
     query = question.strip()
     if not query:
@@ -66,6 +71,12 @@ def ask_question(question: str, *, config: AiConfig | None = None) -> AskRespons
 
     cfg = config or AiConfig()
     filters: dict[str, str] = {"namespace": DEFAULT_NAMESPACE}
+    scoped = (subject_id or "").strip()
+    if scoped:
+        # Catalog ids are bare dinosaur PKs; Azure chunks use kind:id.
+        if ":" not in scoped:
+            scoped = f"{DEFAULT_SUBJECT_KIND}:{scoped}"
+        filters["subject_id"] = scoped
     chunks = retrieve_chunks(
         query,
         query_embedding=embed_query(query, config=cfg),

@@ -155,6 +155,7 @@ def test_ask_question_happy_path() -> None:
 
     embed.assert_called_once()
     retrieve.assert_called_once()
+    assert retrieve.call_args.kwargs["filters"] == {"namespace": "mesozoica"}
     prompt.assert_called_once()
     assert result.answer == "Abrosaurus was a herbivore."
     assert result.sources == [
@@ -169,6 +170,53 @@ def test_ask_question_happy_path() -> None:
             kind="openalex",
         ),
     ]
+
+
+def test_ask_question_scopes_filters_when_subject_id_set() -> None:
+    grounded = GroundedAnswer(answer="Scoped.", source_chunk_ids=["c1"])
+    config = MagicMock()
+    with (
+        patch(
+            "app.features.assistant.application.ask.embed_query",
+            return_value=[0.1],
+        ),
+        patch(
+            "app.features.assistant.application.ask.retrieve_chunks",
+            return_value=[],
+        ) as retrieve,
+        patch(
+            "app.features.assistant.application.ask.prompt_rag",
+            return_value=grounded,
+        ),
+    ):
+        ask_question("How big?", subject_id="42", config=config)
+
+    assert retrieve.call_args.kwargs["filters"] == {
+        "namespace": "mesozoica",
+        "subject_id": "dinosaur:42",
+    }
+
+
+def test_ask_question_keeps_prefixed_subject_id() -> None:
+    grounded = GroundedAnswer(answer="Scoped.", source_chunk_ids=["c1"])
+    config = MagicMock()
+    with (
+        patch(
+            "app.features.assistant.application.ask.embed_query",
+            return_value=[0.1],
+        ),
+        patch(
+            "app.features.assistant.application.ask.retrieve_chunks",
+            return_value=[],
+        ) as retrieve,
+        patch(
+            "app.features.assistant.application.ask.prompt_rag",
+            return_value=grounded,
+        ),
+    ):
+        ask_question("How big?", subject_id="dinosaur:7", config=config)
+
+    assert retrieve.call_args.kwargs["filters"]["subject_id"] == "dinosaur:7"
 
 
 def test_ask_question_rejects_blank() -> None:

@@ -78,6 +78,31 @@ extension on _FieldAssistantPanelState {
               minWidth: 36,
               minHeight: 32,
             ),
+            suffixIcon: _selectedSubject == null
+                ? null
+                : IconButton(
+                    tooltip: 'Clear dinosaur',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    onPressed: () {
+                      controller.clear();
+                      _subjectQuery.clear();
+                      _mutatePanelState(() {
+                        _selectedSubject = null;
+                        _selectedSources = null;
+                        _sourcesError = null;
+                      });
+                    },
+                    icon: Icon(
+                      Icons.clear,
+                      size: 16,
+                      color: MapChromeTheme.mutedGold.withValues(alpha: 0.85),
+                    ),
+                  ),
             filled: true,
             fillColor: MapChromeTheme.leatherSoft,
             contentPadding: const EdgeInsets.symmetric(
