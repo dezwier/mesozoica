@@ -31,6 +31,19 @@ def test_azure_knowledge_overview_from_rows():
     lines = overview.log_lines(title="In Azure Search")
     assert lines[0] == "=== In Azure Search ==="
     assert "2 paper(s)" in lines[1]
+    # Per-source log helper used by acquire/embed/ingest scripts.
+    class _Capture:
+        def __init__(self) -> None:
+            self.messages: list[str] = []
+
+        def info(self, msg: str, *args) -> None:
+            self.messages.append(msg % args if args else msg)
+
+    capture = _Capture()
+    overview.log(capture, prefix="inventory Azure")
+    assert capture.messages[0] == "inventory Azure: 2 dino(s)"
+    assert "wikipedia: 1 dino(s) / 2 chunks" in capture.messages[1]
+    assert "openalex: 2 dino(s) / 2 paper(s) / 3 chunks" in capture.messages[2]
 
 
 def test_overview_drift_lines_flag_paper_mismatch():

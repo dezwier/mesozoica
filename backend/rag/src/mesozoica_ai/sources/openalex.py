@@ -204,14 +204,14 @@ def _retrieve(
                 partial_documents=documents,
             ) from exc
         except (SourceFetchError, ET.ParseError) as exc:
-            logger.warning(
+            logger.debug(
                 "OpenAlex TEI skip %s  %s (%s)", work_id, display_title, exc
             )
             continue
         if not sections:
-            logger.warning("OpenAlex TEI empty %s  %s", work_id, display_title)
+            logger.debug("OpenAlex TEI empty %s  %s", work_id, display_title)
             continue
-        logger.info(
+        logger.debug(
             "OpenAlex + %s  %s (%s sections)",
             work_id,
             display_title,

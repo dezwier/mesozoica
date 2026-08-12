@@ -197,6 +197,17 @@ def embed_knowledge(
                 label=label,
                 reraise=lambda exc: isinstance(exc, EmbeddingProviderError),
             )
+        except KeyboardInterrupt:
+            logger.warning(
+                "Interrupted after %s/%s pending embeds "
+                "(succeeded=%s skipped=%s failed=%s)",
+                embed_i - 1,
+                pending_total,
+                summary.succeeded,
+                summary.skipped,
+                summary.failed,
+            )
+            return summary
         except EmbeddingProviderError as exc:
             summary.failed += 1
             logger.error(

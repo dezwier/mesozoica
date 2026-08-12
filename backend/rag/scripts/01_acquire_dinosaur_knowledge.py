@@ -40,7 +40,13 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(levelname)s %(name)s: %(message)s",
 )
-for _noisy in ("httpx", "httpcore"):
+for _noisy in (
+    "azure",
+    "azure.core.pipeline.policies.http_logging_policy",
+    "httpx",
+    "httpcore",
+    "openai",
+):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
 logger = logging.getLogger("acquire")
 
@@ -101,12 +107,12 @@ def run(
             if max_items is not None:
                 subjects = subjects[:max_items]
             logger.info(
-                "Acquiring %s dinosaur(s) × sources=%s (dry_run=%s overwrite=%s openalex_target=%s)",
+                "Acquiring %s dino(s) × %s (target=%s%s%s)",
                 len(subjects),
                 ",".join(sources),
-                dry_run,
-                overwrite,
                 paper_target,
+                " dry-run" if dry_run else "",
+                " overwrite" if overwrite else "",
             )
 
             summary = JobSummary(candidates=len(subjects) * len(sources))
@@ -133,23 +139,28 @@ def run(
                         )
                     except RateLimitedError as exc:
                         logger.warning(
-                            "OpenAlex rate limited — stopping acquire early (%s)",
+                            "OpenAlex rate limited — stopped early (%s)",
                             exc,
                         )
                         summary.failed += 1
                         break
 
             logger.info(
-                "Done: succeeded=%s skipped=%s failed=%s",
+                "Done: succeeded=%s skipped=%s failed=%s "
+                "(candidates=%s = %s dinos × %s sources)",
                 summary.succeeded,
                 summary.skipped,
                 summary.failed,
+                summary.candidates,
+                len(subjects),
+                len(sources),
             )
         except KeyboardInterrupt:
             interrupted = True
             logger.warning("Interrupted")
         finally:
-            log_knowledge_counts(logger, repo)
+            # Acquire only writes SQL; skip Azure inventory (full index scan).
+            log_knowledge_counts(logger, repo, include_azure=False)
 
     print(json.dumps(summary.model_dump(), indent=2, default=str))
     return 130 if interrupted else summary.exit_code
@@ -190,8 +201,7 @@ def _subjects_preferring_new_openalex(
         else:
             partial.append(subject)
     logger.info(
-        "OpenAlex order: %s never tried, %s partial top-up, "
-        "%s tried-empty, %s already at target",
+        "OpenAlex queue: %s new, %s top-up, %s empty, %s complete",
         len(never),
         len(partial),
         len(tried_empty),
@@ -211,15 +221,14 @@ def _acquire_wikipedia(
 ) -> None:
     label = f"{subject.name}/wikipedia"
     if dry_run:
-        logger.info("%s: dry-run skip", label)
+        logger.debug("%s: dry-run skip", label)
         summary.skipped += 1
         return
     if not needs_acquisition(repo, subject, "wikipedia", overwrite=overwrite):
-        logger.info("%s: already saved, skip", label)
+        logger.debug("%s: already saved, skip", label)
         summary.skipped += 1
         return
 
-    logger.info("%s: loading latest dinosaur_type_revision", label)
     try:
         article = get_latest_dinosaur_wikipedia_article(
             session, dinosaur_type_id=int(subject.id)
@@ -249,11 +258,10 @@ def _acquire_wikipedia(
             overwrite=overwrite,
         )
         logger.info(
-            "%s: stored %s section(s) from revision %s (%s)",
+            "%s: +%s section(s) (rev %s)",
             label,
             len(documents),
             article.revision_db_id,
-            outcome,
         )
     except Exception as exc:
         logger.exception("%s: failed (%s)", label, exc)
@@ -286,24 +294,22 @@ def _acquire_openalex(
     have_ids = {work_id for work_id, _ in have}
 
     if dry_run:
-        logger.info("%s: dry-run (%s/%s papers)", label, len(have), paper_target)
+        logger.debug("%s: dry-run (%s/%s papers)", label, len(have), paper_target)
         summary.skipped += 1
         return
 
     if not overwrite and row is not None and len(have) == 0:
-        logger.info("%s: skip (already tried, 0 papers)", label)
+        logger.debug("%s: skip (already tried, 0 papers)", label)
         summary.skipped += 1
         return
 
     if len(have) >= paper_target:
-        logger.info("%s: skip (%s/%s papers)", label, len(have), paper_target)
+        logger.debug("%s: skip (%s/%s papers)", label, len(have), paper_target)
         summary.skipped += 1
         return
 
     need = paper_target - len(have)
-    logger.info("%s: %s/%s papers, need %s more", label, len(have), paper_target, need)
-    if have:
-        _log_papers(have)
+    logger.debug("%s: %s/%s papers, need %s more", label, len(have), paper_target, need)
 
     try:
         new_documents = retrieve_openalex(
@@ -344,10 +350,10 @@ def _acquire_openalex(
 
     if not new_documents:
         if have:
-            logger.info("%s: no new papers; still %s/%s", label, len(have), paper_target)
+            logger.info("%s: +0 → %s/%s", label, len(have), paper_target)
             summary.skipped += 1
             return
-        logger.info("%s: no usable OpenAlex papers (recording empty try)", label)
+        logger.info("%s: 0 usable papers (recorded)", label)
         try:
             outcome = store_documents(
                 repo,
@@ -453,15 +459,9 @@ def _store_openalex_merge(
     )
     papers = paper_inventory(merged)
     added = paper_inventory(new_documents)
-    logger.info(
-        "%s: %s/%s papers (%s), added %s",
-        label,
-        len(papers),
-        paper_target,
-        outcome,
-        len(added),
-    )
-    _log_papers(added)
+    logger.info("%s: +%s → %s/%s", label, len(added), len(papers), paper_target)
+    for index, (work_id, title) in enumerate(added, start=1):
+        logger.debug("  %2d. %s  %s", index, work_id, _clean_title(title))
     summary.record(outcome)
 
 
@@ -470,11 +470,6 @@ _TAG_RE = re.compile(r"<[^>]+>")
 
 def _clean_title(title: str) -> str:
     return " ".join(_TAG_RE.sub("", html.unescape(title)).split())
-
-
-def _log_papers(papers: list[tuple[str, str]]) -> None:
-    for index, (work_id, title) in enumerate(papers, start=1):
-        logger.info("  %2d. %s  %s", index, work_id, _clean_title(title))
 
 
 if __name__ == "__main__":

@@ -91,17 +91,21 @@ def log_knowledge_counts(
     include_azure: bool = True,
     config: Any | None = None,
 ) -> None:
-    """Log dinosaur/source/doc/chunk totals for SQL and (optionally) Azure."""
-    sql = sql_store_counts(repo)
-    logger.info("=== Knowledge inventory ===")
-    logger.info("SQL:   %s", sql.summary_line())
+    """Log acquired vs embedded SQL totals (and optionally Azure), per source."""
+    sql_knowledge_overview(repo).log(logger, prefix="inventory SQL acquired")
+    sql_embedded_overview(repo).log(logger, prefix="inventory SQL embedded")
     if not include_azure:
         return
     try:
-        azure = azure_store_counts(config=config)
-        logger.info("Azure: %s", azure.summary_line())
+        from mesozoica_ai.common.config import AiConfig
+        from mesozoica_ai.index.runtime import build_store
+
+        store = build_store(config or AiConfig(), write_enabled=False)
+        azure_knowledge_overview_from_rows(store.inventory_rows()).log(
+            logger, prefix="inventory Azure"
+        )
     except Exception as exc:
-        logger.warning("Azure: unavailable (%s)", exc)
+        logger.warning("inventory Azure: unavailable (%s)", exc)
 
 
 @dataclass(frozen=True)
@@ -123,6 +127,23 @@ class KnowledgeOverview:
             f"wiki {self.wikipedia_dinos} dino(s) / {self.wikipedia_units} {self.unit_label} | "
             f"openalex {self.openalex_dinos} dino(s) / {self.openalex_papers} paper(s) / "
             f"{self.openalex_units} {self.unit_label}"
+        )
+
+    def log(self, logger: logging.Logger, *, prefix: str) -> None:
+        """Log totals with one line per source."""
+        logger.info("%s: %s dino(s)", prefix, self.dinosaurs)
+        logger.info(
+            "  wikipedia: %s dino(s) / %s %s",
+            self.wikipedia_dinos,
+            self.wikipedia_units,
+            self.unit_label,
+        )
+        logger.info(
+            "  openalex: %s dino(s) / %s paper(s) / %s %s",
+            self.openalex_dinos,
+            self.openalex_papers,
+            self.openalex_units,
+            self.unit_label,
         )
 
     def log_lines(self, *, title: str) -> list[str]:
