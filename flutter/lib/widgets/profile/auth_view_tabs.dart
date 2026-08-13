@@ -10,7 +10,6 @@ class _SignInTab extends StatelessWidget {
     this.onSignInWithGoogle,
     this.onSignInWithApple,
     required this.onSwitchToSignUp,
-    this.onFillDebugTestAccount,
   });
 
   final TextEditingController usernameController;
@@ -21,7 +20,6 @@ class _SignInTab extends StatelessWidget {
   final Future<void> Function({bool loginOnly})? onSignInWithGoogle;
   final Future<void> Function({bool loginOnly})? onSignInWithApple;
   final VoidCallback onSwitchToSignUp;
-  final VoidCallback? onFillDebugTestAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -93,27 +91,6 @@ class _SignInTab extends StatelessWidget {
               ),
             ),
           ),
-          if (onFillDebugTestAccount != null) ...[
-            const SizedBox(height: 16),
-            Text('Debug', style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: isLoading ? null : onFillDebugTestAccount,
-              icon: const Icon(Icons.bug_report_outlined, size: 18),
-              label: const Text('Fill test account'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                side: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
         ],
       ),
@@ -163,7 +140,6 @@ class _SignUpTab extends StatelessWidget {
     this.onSignInWithGoogle,
     this.onSignInWithApple,
     required this.onSwitchToSignIn,
-    this.onFillDebugTestAccount,
   });
 
   final TextEditingController registerUsernameController;
@@ -175,7 +151,6 @@ class _SignUpTab extends StatelessWidget {
   final Future<void> Function({bool loginOnly})? onSignInWithGoogle;
   final Future<void> Function({bool loginOnly})? onSignInWithApple;
   final VoidCallback onSwitchToSignIn;
-  final VoidCallback? onFillDebugTestAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -241,27 +216,6 @@ class _SignUpTab extends StatelessWidget {
               ),
             ),
           ),
-          if (onFillDebugTestAccount != null) ...[
-            const SizedBox(height: 16),
-            Text('Debug', style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: isLoading ? null : onFillDebugTestAccount,
-              icon: const Icon(Icons.bug_report_outlined, size: 18),
-              label: const Text('Fill test account'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                side: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
         ],
       ),
