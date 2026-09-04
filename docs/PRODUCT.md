@@ -99,7 +99,7 @@ mesozoica/
  * **Database:** PostgreSQL on Railway. PostGIS extensions planned for spatial mapping/location querying (not enabled in scaffold).
  * **Deployment:** Railway Dockerfile build; `alembic upgrade head` runs on startup; health at `/health`, readiness at `/ready`. Attach a Railway volume mounted at `/data` on the backend service; curated images live under `/data/images/{dinosaurs,fossils,site-types,tools}/` when `CURATED_IMAGES_DATA_ROOT=/data`.
  * **Static media:** `GET /media/dinosaurs/{filename}` serves curated card images from `DINOSAUR_IMAGES_DIR` (volume mount in production, repo `images/dinosaurs/` in local dev).
- * **Data Sync:** Cron runner at `app/crons/runner.py` loads schedules from `app/crons/crons.yaml`. Deploy as a separate Railway cron service via `backend/railway.cron.toml` (hourly trigger; jobs define their own UTC schedules).
+ * **Data Sync:** Cron runner at `app/crons/runner.py` loads schedules from `app/crons/crons.yaml`. Deploy as a separate Railway cron service via `backend/railway.cron.toml` (jobs define their own UTC schedules). The platform trigger is currently unset, so no job runs automatically.
  * **Dinosaur table:** `dinosaur` — name, birth/death (Ma), period, cladogram (JSON), diet_type, length, mass, location, short_description (LLM-only), long_description, full article HTML, article_date, insert_date, main_image_url (curated Railway URL after sync; Wikipedia URL as metadata fallback), llm_enriched (bool).
  * **Dinosaur read API:** `GET /api/v1/dinosaurs` (paginated list, optional `q`, `ma_younger`, `ma_older` filters, card summary fields), `GET /api/v1/dinosaurs/{id}` (single summary).
 ### Frontend

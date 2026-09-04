@@ -114,7 +114,7 @@ jobs:
   # 15-minute past+forecast for ~5 km cells with non-hidden/non-exhausted field sites.
   # Railway cronSchedule must be */15 (or finer) for this job to fire.
   - id: weather_sync
-    enabled: true
+    enabled: false
     schedule: "*/15 * * * *"
     params:
       dry_run: false

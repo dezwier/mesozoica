@@ -10,5 +10,6 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "python -m app.crons.runner"
-cronSchedule = "*/15 * * * *"
+# Scheduler intentionally stopped: every job in app/crons/crons.yaml is disabled.
+# Restore with cronSchedule = "*/15 * * * *" (must be >= the finest job granularity).
 restartPolicyType = "NEVER"

@@ -24,9 +24,9 @@ Image **generation** writes local PNGs to repo folders; **image sync** (`make sy
 | `tool_image_generate` | `30 10 * * 0` (Sun 10:30) | Generate tool card images via Gemini Imagen |
 | `weather_sync` | `*/15 * * * *` | Upsert Open-Meteo 15-minute past+forecast into `weather` for active cells |
 
-Most jobs are `enabled: false` in `crons.yaml` by default — enable individually in YAML, via `CRON_<JOB_ID>_ENABLED`, or run manually with `--job`. `weather_sync` is enabled by default.
+All jobs are `enabled: false` in `crons.yaml` — enable individually in YAML, via `CRON_<JOB_ID>_ENABLED`, or run manually with `--job`.
 
-Railway `cronSchedule` must fire at least as often as the finest job granularity (use `*/15 * * * *` so `weather_sync` can run).
+The Railway cron service currently has **no `cronSchedule`**, so the platform never invokes the runner. To resume scheduling, set `cronSchedule` in [`railway.cron.toml`](../../railway.cron.toml) (and on the `cron` service) to a value that fires at least as often as the finest enabled job's granularity — `*/15 * * * *` if `weather_sync` is re-enabled.
 
 ## Make targets (recommended)
 
