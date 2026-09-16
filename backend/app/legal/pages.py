@@ -20,6 +20,7 @@ PAGES = {
 }
 
 router = APIRouter(tags=["legal"], include_in_schema=False)
+_ORDERED_ITEM = re.compile(r"^\d+\.\s")
 
 
 def _markdown_to_html(source: str) -> str:
@@ -44,9 +45,9 @@ def _markdown_to_html(source: str) -> str:
             items = "".join(f"<li>{_inline(line[2:])}</li>" for line in lines)
             parts.append(f"<ul>{items}</ul>")
             continue
-        if all(re.match(r"^\d+\.\s", line) for line in lines):
+        if all(_ORDERED_ITEM.match(line) for line in lines):
             items = "".join(
-                f"<li>{_inline(re.sub(r'^\d+\.\s', '', line))}</li>" for line in lines
+                f"<li>{_inline(_ORDERED_ITEM.sub('', line))}</li>" for line in lines
             )
             parts.append(f"<ol>{items}</ol>")
             continue
