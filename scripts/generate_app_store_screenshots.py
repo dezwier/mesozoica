@@ -2,6 +2,7 @@
 """Compose Mesozoica App Store Connect screenshots (RGB, no alpha).
 
 iPhone: 6.5" 1284 x 2778 and 6.9" 1320 x 2868.
+iPad 12.9"/13": 2064 x 2752 (also accepted: 2048 x 2732).
 """
 
 from __future__ import annotations
@@ -27,6 +28,10 @@ IPHONE_CANVAS = (1320, 2868)
 IPHONE_OUTPUTS = (
     ((1284, 2778), ROOT / "marketing" / "app-store" / "iphone-6.5"),
     ((1320, 2868), ROOT / "marketing" / "app-store" / "iphone-6.9"),
+)
+IPAD_CANVAS = (2064, 2752)
+IPAD_OUTPUTS = (
+    ((2064, 2752), ROOT / "marketing" / "app-store" / "ipad-13"),
 )
 
 # MesozoicaTheme light/dark surfaces used as a museum frame.
@@ -419,6 +424,12 @@ def main() -> None:
             compose(slide, IPHONE_CANVAS),
             IPHONE_CANVAS,
             IPHONE_OUTPUTS,
+            slide.output,
+        )
+        _write_outputs(
+            compose(slide, IPAD_CANVAS),
+            IPAD_CANVAS,
+            IPAD_OUTPUTS,
             slide.output,
         )
 

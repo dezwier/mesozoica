@@ -13,3 +13,5 @@ From the repository root:
 ```bash
 python3 scripts/generate_app_store_screenshots.py
 ```
+
+Outputs: `iphone-6.9/`, `iphone-6.5/`, and `ipad-13/` (2064×2752 for App Store Connect’s 12.9"/13" slot).

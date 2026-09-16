@@ -78,8 +78,8 @@ First public release: map discovery, fossil and dinosaur catalogs, tools, skills
 | Play icon | `marketing/play-store/icon-512.png` | 512×512 |
 | Feature graphic | `marketing/play-store/feature-graphic.png` | 1024×500 |
 | iOS app icon | `flutter/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png` | 1024×1024 |
-| Phone screenshots | `marketing/app-store/iphone-6.9/` and `iphone-6.5/` | after you capture sources |
-| iPad screenshots | `marketing/app-store/ipad-13/` | after you capture sources |
+| Phone screenshots | `marketing/app-store/iphone-6.9/` and `iphone-6.5/` | 1320×2868 / 1284×2778 |
+| iPad screenshots | `marketing/app-store/ipad-13/` | 2064×2752 |
 
 Regenerate the Play icon and feature graphic:
 
