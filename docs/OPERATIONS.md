@@ -157,4 +157,6 @@ Separate metadata endpoint status/auth from static file status, validate `PUBLIC
 - Game-config version and bundled/active documents are intentional.
 - Cron/worker compatibility is considered with the deployed API version.
 - Cold-start login, map discovery/show-all, tool sessions, catalogs/media, profile, weather, and notifications receive a smoke test proportional to the release.
+- Public legal pages `/privacy`, `/terms`, `/delete-account`, and `/delete-data` load on the deployed API before a store submission. See [`store-launch.md`](store-launch.md).
 - Logs and readiness are monitored after deploy; rollback criteria are known.
+- For a store submission, also complete [`store-launch.md`](store-launch.md).

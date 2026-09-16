@@ -228,6 +228,10 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
 
+    from app.legal.pages import register_legal_routes
+
+    register_legal_routes(app)
+
     images_dir = settings.resolved_dinosaur_images_dir
     images_dir.mkdir(parents=True, exist_ok=True)
     app.mount(

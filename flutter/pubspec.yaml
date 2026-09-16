@@ -83,6 +83,10 @@ flutter:
     - assets/game_config/period_colors.yaml
     - assets/game_config/rock_type_colors.yaml
     - assets/game_config/leveling.yaml
+    - assets/policies/privacy-policy.md
+    - assets/policies/terms-and-conditions.md
+    - assets/policies/delete-account.md
+    - assets/policies/delete-data.md
   fonts:
     - family: tt_ramilas
       fonts:

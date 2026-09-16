@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/map_config.dart';
 import '../../controllers/theme_controller.dart';
+import '../../features/legal/legal.dart';
 import '../../services/location_service.dart';
 import 'settings_form_styles.dart';
 
@@ -99,6 +100,10 @@ class SettingsAppTab extends StatelessWidget {
             control: Switch.adaptive(
               value: locationService.isBackgroundExploring,
               onChanged: (value) async {
+                if (value) {
+                  final accepted = await _confirmBackgroundLocation(context);
+                  if (!accepted || !context.mounted) return;
+                }
                 final ok = await locationService.setBackgroundExploring(value);
                 if (!context.mounted) return;
                 if (value && !ok) {
@@ -115,9 +120,80 @@ class SettingsAppTab extends StatelessWidget {
               },
             ),
           ),
+          const SizedBox(height: 32),
+          Text(
+            'Legal',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _legalTile(
+            context,
+            label: 'Privacy policy',
+            assetPath: kPrivacyPolicyAsset,
+          ),
+          _legalTile(
+            context,
+            label: 'Terms and conditions',
+            assetPath: kTermsAsset,
+          ),
+          _legalTile(
+            context,
+            label: 'Delete account',
+            assetPath: kDeleteAccountAsset,
+          ),
+          _legalTile(
+            context,
+            label: 'Delete data',
+            assetPath: kDeleteDataAsset,
+          ),
           SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
         ],
       ),
     );
   }
+}
+
+Widget _legalTile(
+  BuildContext context, {
+  required String label,
+  required String assetPath,
+}) {
+  return ListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(label),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => LegalDocumentScreen.open(
+      context,
+      title: label,
+      assetPath: assetPath,
+    ),
+  );
+}
+
+Future<bool> _confirmBackgroundLocation(BuildContext context) async {
+  final accepted = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Use location in the background?'),
+      content: const Text(
+        'Mesozoica collects your location while the app is in the '
+        'background so nearby fossil sites can still be discovered, an '
+        'in-range site can keep documenting, and walk XP can continue. '
+        'This uses more battery. You can turn it off here at any time.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Not now'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Continue'),
+        ),
+      ],
+    ),
+  );
+  return accepted == true;
 }

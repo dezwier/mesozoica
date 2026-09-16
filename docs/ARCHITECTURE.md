@@ -34,7 +34,7 @@ The server is authoritative for game outcomes, ownership, permissions, budgets, 
 
 ### Composition and request lifecycle
 
-`backend/app/main.py` exports the app built by `app/core/app_factory.py`. The factory registers exception mapping, CORS, game-config version middleware, health routes, the `/api/v1` router, and static media mounts.
+`backend/app/main.py` exports the app built by `app/core/app_factory.py`. The factory registers exception mapping, CORS, game-config version middleware, health routes, public legal HTML pages (`/privacy`, `/terms`, `/delete-account`, `/delete-data`), the `/api/v1` router, and static media mounts.
 
 ```text
 FastAPI router

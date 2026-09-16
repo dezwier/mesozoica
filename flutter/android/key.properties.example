@@ -1,0 +1,9 @@
+# Copy this file to key.properties and fill in the values.
+# Do not commit key.properties or your keystore file.
+# See docs/play-store-android-release.md for how to create the keystore.
+
+storePassword=your-store-password
+keyPassword=your-key-password
+keyAlias=upload
+# Path relative to flutter/android/app/ (this module). Keystore in flutter/android/:
+storeFile=../upload-keystore.jks

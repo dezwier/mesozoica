@@ -28,6 +28,11 @@ These are canonical for their narrow subsystem:
 | Map site-marker rendering contract | [`../flutter/docs/map_site_markers.md`](../flutter/docs/map_site_markers.md) |
 | Flutter Mapbox setup | [`../flutter/README.md`](../flutter/README.md) |
 | Product direction and historical milestones | [`PRODUCT.md`](PRODUCT.md) |
+| Store launch (App Store / Play) | [`store-launch.md`](store-launch.md) |
+| Store listing copy | [`store_listing.md`](store_listing.md) |
+| Play Store Android release | [`play-store-android-release.md`](play-store-android-release.md) |
+| App Store / Apple Developer setup | [`app-store-apple-developer-setup.md`](app-store-apple-developer-setup.md) |
+| Privacy, terms, and deletion pages | [`legal/README.md`](legal/README.md) |
 
 ## Task-oriented reading paths
 

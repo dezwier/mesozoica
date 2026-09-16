@@ -1,0 +1,17 @@
+#!/bin/sh
+# Build a signed App Bundle for Google Play.
+# Requires:
+#   - flutter/android/key.properties and upload-keystore.jks (see docs/play-store-android-release.md)
+#   - flutter/.dart_defines.json with MAPBOX_ACCESS_TOKEN
+
+cd "$(dirname "$0")"
+if [ ! -f .dart_defines.json ]; then
+  echo "Create flutter/.dart_defines.json with MAPBOX_ACCESS_TOKEN (pk.*)." >&2
+  exit 1
+fi
+if [ ! -f android/key.properties ]; then
+  echo "Create flutter/android/key.properties from key.properties.example and add the upload keystore." >&2
+  exit 1
+fi
+
+exec flutter build appbundle --release --dart-define-from-file=.dart_defines.json
