@@ -20,8 +20,20 @@ class AuthService {
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      var identifier = email.trim();
+      if (!identifier.contains('@')) {
+        final resolved = await _emailForUsername(identifier, password);
+        if (resolved == null) {
+          return {
+            'success': false,
+            'message':
+                'No account found or wrong password. Use the account email, not the username.',
+          };
+        }
+        identifier = resolved;
+      }
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.trim(),
+        email: identifier,
         password: password,
       );
       final idToken = await cred.user?.getIdToken();
@@ -404,6 +416,21 @@ class AuthService {
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     final clean = path.startsWith('/') ? path : '/$path';
     return '${AppConfig.baseApiUrl}$clean';
+  }
+
+  Future<String?> _emailForUsername(String username, String password) async {
+    try {
+      final response = await _transport.post(
+        '/api/v1/auth/login',
+        body: {'username': username, 'password': password},
+        skipAuth: true,
+      );
+      final email = (response['user'] as Map<String, dynamic>?)?['email'];
+      if (email is String && email.contains('@')) return email;
+      return null;
+    } on ApiException {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>> _exchangeFirebaseToken(String idToken) async {
