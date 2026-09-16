@@ -2,7 +2,7 @@ name: mesozoica
 description: "Mesozoica — location-based paleontology game."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+3
 
 environment:
   sdk: ^3.10.4

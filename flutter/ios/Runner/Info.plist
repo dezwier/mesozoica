@@ -71,6 +71,8 @@
 	<string>Mesozoica uses your location in the background so fossil site discovery, walk XP, and site exploration continue while the phone is locked.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Mesozoica reads walking distance to track your field exploration.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Mesozoica does not write health records. This permission is required by HealthKit so the app can read walking distance for field exploration XP.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
