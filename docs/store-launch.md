@@ -6,12 +6,14 @@ Listing copy: [`store_listing.md`](store_listing.md).
 Android build: [`play-store-android-release.md`](play-store-android-release.md).
 iOS build: [`app-store-apple-developer-setup.md`](app-store-apple-developer-setup.md).
 
-Public policy pages (after the current API deploy):
+Public policy pages (canonical; API paths 301 here):
 
-- https://mesozoica-production.up.railway.app/privacy
-- https://mesozoica-production.up.railway.app/terms
-- https://mesozoica-production.up.railway.app/delete-account
-- https://mesozoica-production.up.railway.app/delete-data
+- https://learnfromdata.ai/mesozoica/privacy
+- https://learnfromdata.ai/mesozoica/terms
+- https://learnfromdata.ai/mesozoica/delete-account
+- https://learnfromdata.ai/mesozoica/delete-data
+
+Product / marketing URL: https://learnfromdata.ai/mesozoica
 
 ---
 
@@ -34,7 +36,7 @@ Public policy pages (after the current API deploy):
 - [ ] Replace "the operator of Mesozoica" in the policies with that legal name if you want it public.
 - [ ] Have counsel skim Terms §18 (governing law is Belgium, liability cap EUR 100, 13+).
 - [ ] Confirm `contact@mesozoica.app` receives mail, or change the address in `backend/app/legal/documents/` **and** `flutter/assets/policies/` (they must stay identical).
-- [ ] Optional but recommended: point `mesozoica.app` at the Railway API so store URLs are `https://mesozoica.app/privacy` instead of the Railway hostname.
+- [ ] Store consoles should use `https://learnfromdata.ai/mesozoica/...` policy URLs, not the Railway API hostname.
 
 ### 2. Font license
 
@@ -85,7 +87,7 @@ Play also needs **at least 2 phone screenshots**. You can upload the same 6.9" o
 
 - [ ] Create a non-admin demo account for reviewers and put it in both consoles' review notes.
 - [ ] Smoke-test production: cold-start login, Google, Apple (on a device), map, documentation, catalogs, profile photo, delete-data, delete-account.
-- [ ] Confirm `/privacy` and `/delete-account` load on the **deployed** API after this change ships to Railway. Local files are not enough for store URLs.
+- [ ] Confirm `https://learnfromdata.ai/mesozoica/privacy` and `/delete-account` load. API `/privacy` should 301 there.
 - [ ] Mapbox production token: use a token restricted to the Mesozoica bundle IDs / Android package, with a usage cap you can live with.
 
 ### 7. Reviewer-sensitive product gaps

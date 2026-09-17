@@ -1,1 +1,1 @@
-"""Public legal pages served at /privacy, /terms, /delete-account, and /delete-data."""
+"""Public legal routes that 301 to https://learnfromdata.ai/mesozoica."""

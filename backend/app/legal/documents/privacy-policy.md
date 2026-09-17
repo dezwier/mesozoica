@@ -58,8 +58,8 @@ Depending on your location, you may have rights to access, correct, delete, expo
 
 Public instructions for account and data deletion are also published at:
 
-- https://mesozoica-production.up.railway.app/delete-account
-- https://mesozoica-production.up.railway.app/delete-data
+- https://learnfromdata.ai/mesozoica/delete-account
+- https://learnfromdata.ai/mesozoica/delete-data
 
 ## 6. Security
 

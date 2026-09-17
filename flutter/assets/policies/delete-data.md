@@ -41,7 +41,7 @@ To let you sign in again, Mesozoica keeps your account identity:
 
 ## Other option
 
-If you want complete removal of both account and data, use **Delete account** instead. See https://mesozoica-production.up.railway.app/delete-account.
+If you want complete removal of both account and data, use **Delete account** instead. See https://learnfromdata.ai/mesozoica/delete-account.
 
 ## Contact
 

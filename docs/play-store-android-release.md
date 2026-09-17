@@ -86,9 +86,9 @@ Store listing copy lives in [`store_listing.md`](store_listing.md). Policy URLs:
 
 | Field | URL |
 | --- | --- |
-| Privacy policy | `https://mesozoica-production.up.railway.app/privacy` |
-| Delete account URL | `https://mesozoica-production.up.railway.app/delete-account` |
-| Delete data URL | `https://mesozoica-production.up.railway.app/delete-data` |
+| Privacy policy | `https://learnfromdata.ai/mesozoica/privacy` |
+| Delete account URL | `https://learnfromdata.ai/mesozoica/delete-account` |
+| Delete data URL | `https://learnfromdata.ai/mesozoica/delete-data` |
 
 Complete **Policy → App content**:
 

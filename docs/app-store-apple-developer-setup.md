@@ -38,7 +38,9 @@ If the App ID already exists from earlier development, verify those capabilities
 
 Paste listing copy from [`store_listing.md`](store_listing.md). Set:
 
-- Privacy policy URL: `https://mesozoica-production.up.railway.app/privacy`
+- Privacy policy URL: `https://learnfromdata.ai/mesozoica/privacy`
+- Support URL: `https://learnfromdata.ai/mesozoica`
+- Marketing URL: `https://learnfromdata.ai/mesozoica`
 - Category: Games → Simulation or Adventure (pick one primary, Role Playing as secondary if needed)
 - Age rating questionnaire (13+ expected because of user accounts and location)
 - App Encryption: **ITSAppUsesNonExemptEncryption** is already `false` in `Info.plist` (HTTPS only)

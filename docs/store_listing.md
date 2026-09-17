@@ -2,18 +2,20 @@
 
 Use this file as the single source for App Store Connect and Google Play listing text. Copy-paste into each console.
 
-Public policy URLs after the API is deployed:
+Public policy URLs (canonical on learnfromdata.ai; API routes 301 here):
 
 | Field | URL |
 | --- | --- |
-| Privacy policy | `https://mesozoica-production.up.railway.app/privacy` |
-| Terms | `https://mesozoica-production.up.railway.app/terms` |
-| Delete account URL | `https://mesozoica-production.up.railway.app/delete-account` |
-| Delete data URL | `https://mesozoica-production.up.railway.app/delete-data` |
+| Privacy policy | `https://learnfromdata.ai/mesozoica/privacy` |
+| Terms | `https://learnfromdata.ai/mesozoica/terms` |
+| Delete account URL | `https://learnfromdata.ai/mesozoica/delete-account` |
+| Delete data URL | `https://learnfromdata.ai/mesozoica/delete-data` |
 
-If you attach a custom domain such as `mesozoica.app` to the Railway API, use that host instead and keep the same paths.
+Product page / marketing URL: `https://learnfromdata.ai/mesozoica`.
 
-The same documents are in the app at **Profile → Settings → App → Legal**.
+App Store Connect: Privacy Policy URL, Support URL, and Marketing URL as above. Play Console: Policy → App content for privacy and account-deletion URLs; Store settings → Contact details for the website if set.
+
+The same documents are in the app at **Profile → Settings → App → Legal**. API host paths (`/privacy`, …) remain as redirects and must not be used in store consoles.
 
 ---
 

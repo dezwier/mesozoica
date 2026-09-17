@@ -39,7 +39,7 @@ In limited cases, some shared or system-level records may be retained when requi
 
 ## Need to keep your account?
 
-If you want to remove selected progress but continue using Mesozoica, use **Delete data** in the same settings area. See https://mesozoica-production.up.railway.app/delete-data.
+If you want to remove selected progress but continue using Mesozoica, use **Delete data** in the same settings area. See https://learnfromdata.ai/mesozoica/delete-data.
 
 ## Contact
 
