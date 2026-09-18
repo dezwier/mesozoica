@@ -1,6 +1,6 @@
 # Request account deletion
 
-Last updated: September 16, 2026
+Last updated: September 18, 2026
 
 This page explains how to permanently delete your Mesozoica account and the data associated with it.
 
@@ -14,11 +14,10 @@ In the Mesozoica app:
 
 1. Open **Profile**.
 2. Open **Settings**.
-3. Open the **Account** tab.
-4. Tap **Delete account**.
-5. Confirm **Delete**.
+3. On the **App** tab, tap **Delete account**. You can also open the **Account** tab and tap **Delete account**.
+4. Confirm **Delete**.
 
-After confirmation, deletion starts immediately and cannot be undone. You must be signed in to complete this request.
+You do not need to add a password, email, or contact support. After confirmation, deletion starts immediately and cannot be undone. You must be signed in to complete this request.
 
 ## What we delete
 

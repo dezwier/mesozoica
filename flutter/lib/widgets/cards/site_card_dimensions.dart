@@ -12,11 +12,7 @@ import 'card_section_panel.dart';
 
 /// Site card panel: four horizontal odd_* axes + vertical depth.
 class SiteCardDimensions extends StatelessWidget {
-  const SiteCardDimensions({
-    super.key,
-    required this.site,
-    this.isOpen = true,
-  });
+  const SiteCardDimensions({super.key, required this.site, this.isOpen = true});
 
   final SiteSummary site;
   final bool isOpen;
@@ -121,7 +117,9 @@ class SiteCardDimensions extends StatelessWidget {
           Text(
             'Site dimensions'.toUpperCase(),
             textAlign: TextAlign.center,
-            style: cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
+            style: cardTheme
+                .sectionLabelStyle(fontSize: 8.5)
+                .copyWith(
                   color: cardTheme.cardTextSecondary,
                   letterSpacing: 0.8,
                   fontWeight: FontWeight.bold,
@@ -135,7 +133,7 @@ class SiteCardDimensions extends StatelessWidget {
               message: site.documented == true || averageDocumentation >= 1.0
                   ? 'Site documented'
                   : inRange
-                  ? 'Documenting site'
+                  ? 'Documenting — continues while locked'
                   : 'Move within range to continue',
               active: inRange,
               complete: site.documented == true || averageDocumentation >= 1.0,
@@ -161,7 +159,11 @@ class SiteCardDimensions extends StatelessWidget {
                     Expanded(
                       child: Column(
                         children: [
-                          for (var i = 0; i < horizontalDisplays.length; i++) ...[
+                          for (
+                            var i = 0;
+                            i < horizontalDisplays.length;
+                            i++
+                          ) ...[
                             if (i > 0) const SizedBox(height: 5),
                             Expanded(
                               child: _HorizontalDimensionRow(

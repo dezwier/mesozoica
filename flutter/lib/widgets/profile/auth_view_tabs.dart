@@ -25,7 +25,8 @@ class _SignInTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final signInButtons = _buildSocialButtons(loginOnly: true);
+    final hasSocial =
+        !kIsWeb && (onSignInWithGoogle != null || onSignInWithApple != null);
 
     return SingleChildScrollView(
       child: Column(
@@ -61,18 +62,15 @@ class _SignInTab extends StatelessWidget {
               ),
             ),
           ),
-          if (signInButtons.isNotEmpty) ...[
+          if (hasSocial) ...[
             const SizedBox(height: 12),
             _OrContinueWithDivider(),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                for (var index = 0; index < signInButtons.length; index++) ...[
-                  Expanded(child: signInButtons[index]),
-                  if (index != signInButtons.length - 1)
-                    const SizedBox(width: 10),
-                ],
-              ],
+            _SocialAuthButtons(
+              isLoading: isLoading,
+              loginOnly: true,
+              onSignInWithGoogle: onSignInWithGoogle,
+              onSignInWithApple: onSignInWithApple,
             ),
           ],
           const SizedBox(height: 12),
@@ -119,37 +117,6 @@ class _SignInTab extends StatelessWidget {
       ),
     );
   }
-
-  List<Widget> _buildSocialButtons({required bool loginOnly}) {
-    if (kIsWeb) return const [];
-
-    return [
-      if (onSignInWithGoogle != null)
-        _SocialSignInButton(
-          data: _SocialButtonData(
-            label: 'Google',
-            logoUrl: 'https://img.icons8.com/color/96/google-logo.png',
-            fallbackIcon: Icons.g_mobiledata,
-            fallbackColor: const Color(0xFF4285F4),
-            onPressed: () async =>
-                await onSignInWithGoogle!(loginOnly: loginOnly),
-          ),
-          isLoading: isLoading,
-        ),
-      if (onSignInWithApple != null)
-        _SocialSignInButton(
-          data: _SocialButtonData(
-            label: 'Apple',
-            logoUrl: 'https://img.icons8.com/fluency/96/mac-os.png',
-            fallbackIcon: Icons.apple,
-            fallbackColor: const Color(0xFF8E8E93),
-            onPressed: () async =>
-                await onSignInWithApple!(loginOnly: loginOnly),
-          ),
-          isLoading: isLoading,
-        ),
-    ];
-  }
 }
 
 class _SignUpTab extends StatelessWidget {
@@ -179,7 +146,8 @@ class _SignUpTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final signUpButtons = _buildSocialButtons(loginOnly: false);
+    final hasSocial =
+        !kIsWeb && (onSignInWithGoogle != null || onSignInWithApple != null);
 
     return SingleChildScrollView(
       child: Column(
@@ -209,18 +177,15 @@ class _SignUpTab extends StatelessWidget {
               child: _buildRegisterForm(context),
             ),
           ),
-          if (signUpButtons.isNotEmpty) ...[
+          if (hasSocial) ...[
             const SizedBox(height: 12),
             _OrContinueWithDivider(),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                for (var index = 0; index < signUpButtons.length; index++) ...[
-                  Expanded(child: signUpButtons[index]),
-                  if (index != signUpButtons.length - 1)
-                    const SizedBox(width: 10),
-                ],
-              ],
+            _SocialAuthButtons(
+              isLoading: isLoading,
+              loginOnly: false,
+              onSignInWithGoogle: onSignInWithGoogle,
+              onSignInWithApple: onSignInWithApple,
             ),
           ],
           const SizedBox(height: 12),
@@ -266,37 +231,6 @@ class _SignUpTab extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  List<Widget> _buildSocialButtons({required bool loginOnly}) {
-    if (kIsWeb) return const [];
-
-    return [
-      if (onSignInWithGoogle != null)
-        _SocialSignInButton(
-          data: _SocialButtonData(
-            label: 'Google',
-            logoUrl: 'https://img.icons8.com/color/96/google-logo.png',
-            fallbackIcon: Icons.g_mobiledata,
-            fallbackColor: const Color(0xFF4285F4),
-            onPressed: () async =>
-                await onSignInWithGoogle!(loginOnly: loginOnly),
-          ),
-          isLoading: isLoading,
-        ),
-      if (onSignInWithApple != null)
-        _SocialSignInButton(
-          data: _SocialButtonData(
-            label: 'Apple',
-            logoUrl: 'https://img.icons8.com/fluency/96/mac-os.png',
-            fallbackIcon: Icons.apple,
-            fallbackColor: const Color(0xFF8E8E93),
-            onPressed: () async =>
-                await onSignInWithApple!(loginOnly: loginOnly),
-          ),
-          isLoading: isLoading,
-        ),
-    ];
   }
 
   Widget _buildRegisterForm(BuildContext context) {

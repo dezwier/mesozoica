@@ -1,5 +1,63 @@
 part of 'auth_view.dart';
 
+class _SocialAuthButtons extends StatelessWidget {
+  const _SocialAuthButtons({
+    required this.isLoading,
+    required this.loginOnly,
+    this.onSignInWithGoogle,
+    this.onSignInWithApple,
+  });
+
+  final bool isLoading;
+  final bool loginOnly;
+  final Future<void> Function({bool loginOnly})? onSignInWithGoogle;
+  final Future<void> Function({bool loginOnly})? onSignInWithApple;
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+
+    final appleStyle = Theme.of(context).brightness == Brightness.dark
+        ? SignInWithAppleButtonStyle.white
+        : SignInWithAppleButtonStyle.black;
+    final showApple = onSignInWithApple != null;
+    final showGoogle = onSignInWithGoogle != null;
+    if (!showApple && !showGoogle) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showApple)
+          IgnorePointer(
+            ignoring: isLoading,
+            child: SignInWithAppleButton(
+              onPressed: () {
+                onSignInWithApple!(loginOnly: loginOnly);
+              },
+              text: loginOnly ? 'Sign in with Apple' : 'Sign up with Apple',
+              height: 44,
+              style: appleStyle,
+              borderRadius: const BorderRadius.all(Radius.circular(8)),
+            ),
+          ),
+        if (showApple && showGoogle) const SizedBox(height: 10),
+        if (showGoogle)
+          _SocialSignInButton(
+            data: _SocialButtonData(
+              label: 'Google',
+              logoUrl: 'https://img.icons8.com/color/96/google-logo.png',
+              fallbackIcon: Icons.g_mobiledata,
+              fallbackColor: const Color(0xFF4285F4),
+              onPressed: () async =>
+                  await onSignInWithGoogle!(loginOnly: loginOnly),
+            ),
+            isLoading: isLoading,
+          ),
+      ],
+    );
+  }
+}
+
 class _SocialButtonData {
   const _SocialButtonData({
     required this.label,

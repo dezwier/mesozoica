@@ -17,6 +17,7 @@ class SettingsAccountTab extends StatelessWidget {
     required this.confirmPasswordValidator,
     required this.linkedAccountRows,
     required this.isLoadingLinked,
+    required this.showPasswordFields,
     required this.onRequestDeleteAccount,
     this.onRequestDeleteAllData,
   });
@@ -32,6 +33,7 @@ class SettingsAccountTab extends StatelessWidget {
   final String? Function(String?) confirmPasswordValidator;
   final List<Widget> linkedAccountRows;
   final bool isLoadingLinked;
+  final bool showPasswordFields;
   final VoidCallback onRequestDeleteAccount;
   final VoidCallback? onRequestDeleteAllData;
 
@@ -46,6 +48,31 @@ class SettingsAccountTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 24),
+          Text(
+            'Delete',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onRequestDeleteAccount,
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Delete account'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
           Text(
             'Subscription status',
             style: Theme.of(
@@ -75,52 +102,54 @@ class SettingsAccountTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          Text(
-            'Email and password',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: emailController,
-            decoration: SettingsFormStyles.createStyleDecoration(
-              context,
-              labelText: 'Email',
+          if (showPasswordFields) ...[
+            Text(
+              'Email and password',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            keyboardType: TextInputType.emailAddress,
-            validator: emailValidator,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: currentPasswordController,
-            decoration: SettingsFormStyles.createStyleDecoration(
-              context,
-              labelText: 'Current password',
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: emailController,
+              decoration: SettingsFormStyles.createStyleDecoration(
+                context,
+                labelText: 'Email',
+              ),
+              keyboardType: TextInputType.emailAddress,
+              validator: emailValidator,
             ),
-            obscureText: true,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: newPasswordController,
-            decoration: SettingsFormStyles.createStyleDecoration(
-              context,
-              labelText: 'New password',
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: currentPasswordController,
+              decoration: SettingsFormStyles.createStyleDecoration(
+                context,
+                labelText: 'Current password',
+              ),
+              obscureText: true,
             ),
-            obscureText: true,
-            validator: newPasswordValidator,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: confirmPasswordController,
-            decoration: SettingsFormStyles.createStyleDecoration(
-              context,
-              labelText: 'Confirm new password',
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: newPasswordController,
+              decoration: SettingsFormStyles.createStyleDecoration(
+                context,
+                labelText: 'New password',
+              ),
+              obscureText: true,
+              validator: newPasswordValidator,
             ),
-            obscureText: true,
-            validator: confirmPasswordValidator,
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: confirmPasswordController,
+              decoration: SettingsFormStyles.createStyleDecoration(
+                context,
+                labelText: 'Confirm new password',
+              ),
+              obscureText: true,
+              validator: confirmPasswordValidator,
+            ),
+            const SizedBox(height: 24),
+          ],
           Text(
             'Sign-in methods',
             style: Theme.of(
@@ -136,48 +165,21 @@ class SettingsAccountTab extends StatelessWidget {
           else
             ...linkedAccountRows,
           const SizedBox(height: 20),
-          Text(
-            'Delete',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.error,
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onRequestDeleteAllData,
+              icon: const Icon(Icons.delete_sweep),
+              label: const Text('Delete data'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onRequestDeleteAllData,
-                  icon: const Icon(Icons.delete_sweep),
-                  label: const Text('Delete data'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                    foregroundColor: Theme.of(context).colorScheme.onError,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onRequestDeleteAccount,
-                  icon: const Icon(Icons.delete_forever),
-                  label: const Text('Delete account'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                    foregroundColor: Theme.of(context).colorScheme.onError,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
           SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
         ],

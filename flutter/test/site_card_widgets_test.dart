@@ -89,7 +89,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Documenting site'), findsOneWidget);
+    expect(find.text('Documenting — continues while locked'), findsOneWidget);
     expect(find.text('Explored'), findsNothing);
     controller.dispose();
   });
@@ -414,50 +414,49 @@ void main() {
     },
   );
 
-  testWidgets(
-    'SiteCardBack shows geologic age band after documentation',
-    (tester) async {
-      final documented = SiteSummary(
-        siteId: 1000000067,
-        latitude: 46.8797,
-        longitude: -110.3626,
-        countryCode: 'US',
-        state: 'Montana',
-        rockType: 'sandstone',
-        siteTypePeriod: 'cretaceous',
-        siteTypeRockType: 'sandstone',
-        minAgeMa: 66,
-        maxAgeMa: 68,
-        documented: true,
-        viewerHasDocumented: true,
-        viewerHasIdentified: true,
-        discoveredAt: DateTime.utc(2026, 7, 1, 12),
-      );
+  testWidgets('SiteCardBack shows geologic age band after documentation', (
+    tester,
+  ) async {
+    final documented = SiteSummary(
+      siteId: 1000000067,
+      latitude: 46.8797,
+      longitude: -110.3626,
+      countryCode: 'US',
+      state: 'Montana',
+      rockType: 'sandstone',
+      siteTypePeriod: 'cretaceous',
+      siteTypeRockType: 'sandstone',
+      minAgeMa: 66,
+      maxAgeMa: 68,
+      documented: true,
+      viewerHasDocumented: true,
+      viewerHasIdentified: true,
+      discoveredAt: DateTime.utc(2026, 7, 1, 12),
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 800,
-                child: SiteCardBack(
-                  site: documented,
-                  mapTileLayerBuilder: () => const SizedBox.shrink(),
-                ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: SiteCardBack(
+                site: documented,
+                mapTileLayerBuilder: () => const SizedBox.shrink(),
               ),
             ),
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
 
-      final timeline = tester.widget<GeologicTimeline>(
-        find.byType(GeologicTimeline),
-      );
-      expect(timeline.birth, 68);
-      expect(timeline.death, 66);
-    },
-  );
+    final timeline = tester.widget<GeologicTimeline>(
+      find.byType(GeologicTimeline),
+    );
+    expect(timeline.birth, 68);
+    expect(timeline.death, 66);
+  });
 
   testWidgets('SiteTurnableCard composes front and back', (tester) async {
     await tester.pumpWidget(
@@ -545,7 +544,9 @@ void main() {
     // Now, SiteCardDimensions is open and shows dimension bars.
     expect(find.textContaining('GENERA PRESENCE'), findsOneWidget);
     // PeriodRockTypeBox is now closed, but it still shows the compact timeline (without year labels).
-    final timeline = tester.widget<GeologicTimeline>(find.byType(GeologicTimeline));
+    final timeline = tester.widget<GeologicTimeline>(
+      find.byType(GeologicTimeline),
+    );
     expect(timeline.showYearLabels, isFalse);
   });
 }

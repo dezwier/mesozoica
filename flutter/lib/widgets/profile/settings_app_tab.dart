@@ -8,7 +8,9 @@ import '../../services/location_service.dart';
 import 'settings_form_styles.dart';
 
 class SettingsAppTab extends StatelessWidget {
-  const SettingsAppTab({super.key});
+  const SettingsAppTab({super.key, required this.onRequestDeleteAccount});
+
+  final VoidCallback onRequestDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +26,55 @@ class SettingsAppTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 24),
+          SettingsFormStyles.settingsRow(
+            context: context,
+            label: 'Background location',
+            description:
+                'Keep site discovery, walk XP, and site exploration running '
+                'while the phone is locked. Uses more battery. Requires Always '
+                'location permission.',
+            controlWidth: 56,
+            control: Switch.adaptive(
+              value: locationService.isBackgroundExploring,
+              onChanged: (value) async {
+                if (value) {
+                  final accepted = await _confirmBackgroundLocation(context);
+                  if (!accepted || !context.mounted) return;
+                }
+                final ok = await locationService.setBackgroundExploring(value);
+                if (!context.mounted) return;
+                if (value && !ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        locationService.error ??
+                            'Always location permission is required. '
+                                'Enable it in system Settings.',
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onRequestDeleteAccount,
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Delete account'),
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           SettingsFormStyles.settingsRow(
             context: context,
@@ -88,38 +139,6 @@ class SettingsAppTab extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 24),
-          SettingsFormStyles.settingsRow(
-            context: context,
-            label: 'Explore in background',
-            description:
-                'Keep site discovery, walk XP, and site exploration running '
-                'while the phone is locked. Uses more battery. Requires Always '
-                'location permission.',
-            controlWidth: 56,
-            control: Switch.adaptive(
-              value: locationService.isBackgroundExploring,
-              onChanged: (value) async {
-                if (value) {
-                  final accepted = await _confirmBackgroundLocation(context);
-                  if (!accepted || !context.mounted) return;
-                }
-                final ok = await locationService.setBackgroundExploring(value);
-                if (!context.mounted) return;
-                if (value && !ok) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        locationService.error ??
-                            'Always location permission is required. '
-                                'Enable it in system Settings.',
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-          ),
           const SizedBox(height: 32),
           Text(
             'Legal',
@@ -140,7 +159,7 @@ class SettingsAppTab extends StatelessWidget {
           ),
           _legalTile(
             context,
-            label: 'Delete account',
+            label: 'Account deletion policy',
             assetPath: kDeleteAccountAsset,
           ),
           _legalTile(
@@ -164,11 +183,8 @@ Widget _legalTile(
     contentPadding: EdgeInsets.zero,
     title: Text(label),
     trailing: const Icon(Icons.chevron_right),
-    onTap: () => LegalDocumentScreen.open(
-      context,
-      title: label,
-      assetPath: assetPath,
-    ),
+    onTap: () =>
+        LegalDocumentScreen.open(context, title: label, assetPath: assetPath),
   );
 }
 

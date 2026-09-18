@@ -52,12 +52,57 @@ Paste listing copy from [`store_listing.md`](store_listing.md). Set:
 | Capability | Why Mesozoica has it | What to write in review notes |
 | --- | --- | --- |
 | Location When In Use | Map, nearby sites | Required for the core loop |
-| Location Always | Optional background exploring + in-range site documentation | User opts in from Settings; a disclosure dialog is shown first |
+| Location Always | Optional background exploring + in-range site documentation | User opts in from Settings → App → Background location; a disclosure dialog is shown first |
 | HealthKit | Walking distance / walk XP | Read distance only; not used for clinical advice |
-| Sign in with Apple | Required because Google sign-in is offered | Keep the Apple button on the auth screen |
+| Sign in with Apple | Required because Google sign-in is offered | Official Sign in with Apple button on the auth screen |
 | Push notifications | Site/social/system alerts | User can refuse the system prompt |
 
-App Review notes should include a demo account (email + password) and a short explanation of background location and HealthKit.
+App Review notes must include a demo account (email + password), the background-location steps below, and a physical-iPhone screen recording in **App Review Information → Notes**.
+
+### Review notes to paste
+
+```
+Background location
+Mesozoica uses persistent location for two gameplay features:
+1. Optional Background location (Profile → Settings → App → Background location). Default is off. After an in-app disclosure, the app requests Always so nearby site discovery and walk XP continue while the device is locked.
+2. In-range site documentation. While the player is standing on an identified undocumented site, documentation continues if they lock the phone or switch apps. The site card says "Documenting — continues while locked".
+
+Path on device: Profile → Settings → App → Background location → Continue → grant Always. iOS then shows the blue background-location indicator.
+
+The attached recording is from an iPhone. Wi-Fi iPads have no GPS, so the walking loop is not demonstrable on an iPad Air review device.
+
+HealthKit
+Walking distance / walk XP only. Mesozoica does not write health records and does not give clinical advice.
+
+Account deletion
+Signed-in users can delete the account in-app with no extra steps: Profile → Settings → Delete account (App tab), then confirm. A password is not required (including Sign in with Apple accounts).
+
+Sign in with Apple
+The auth screen uses the official Sign in with Apple button widget. It does not load third-party Apple logo artwork.
+```
+
+### Physical iPhone recording checklist (Guideline 2.5.4)
+
+Record on a physical iPhone, not iPad and not Simulator:
+
+1. Profile → Settings → App → **Background location** → Continue → grant **Always**.
+2. Press Home / lock the phone. Capture the iOS blue **background location indicator**.
+3. Optional: walk into a discovered undocumented site, lock the phone, and show documentation still advancing.
+4. Upload the clip in App Store Connect → App Review Information → **Notes**, and attach it when replying to the review thread.
+
+### Reply to the 1.0 (5) rejection
+
+After uploading **1.0 (6)**, reply on the App Review thread:
+
+```
+Thank you for the review.
+
+1. Sign in with Apple: the button now uses the official Sign in with Apple control. Third-party Apple logo artwork has been removed.
+
+2. Background location: Mesozoica uses persistent location for optional Background location (Profile → Settings → App → Background location) and for in-range site documentation while the device is locked. A physical-iPhone screen recording is attached in App Review Information → Notes. Wi-Fi iPads have no GPS, so this loop is not visible on an iPad Air.
+
+3. Account deletion: signed-in users can delete the account in-app from Profile → Settings → Delete account on the App tab. No password, extra account, or support contact is required, including for Sign in with Apple.
+```
 
 ---
 

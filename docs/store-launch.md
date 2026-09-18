@@ -81,7 +81,8 @@ Play also needs **at least 2 phone screenshots**. You can upload the same 6.9" o
 - [ ] Create the App Store Connect record.
 - [ ] Archive/upload with the Mapbox token (`flutter build ipa --release --dart-define-from-file=.dart_defines.json`).
 - [ ] Attach screenshots, privacy URL, and review notes with a demo login.
-- [ ] Explain HealthKit (walking distance only) and Always location (optional, user-toggled) in the review notes.
+- [ ] Paste the review notes from [`app-store-apple-developer-setup.md`](app-store-apple-developer-setup.md) (Background location path, HealthKit, in-app account deletion, official Sign in with Apple button).
+- [ ] Upload a physical-iPhone screen recording of Background location (Settings disclosure → Always → lock phone → blue indicator) in App Review Information → Notes.
 
 ### 6. Accounts and backend
 
@@ -107,6 +108,6 @@ These are not blockers for *uploading*, but they are common rejection reasons:
 | --- | --- | --- |
 | Android | `com.mesozoica.mesozoica` | Gradle + Firebase Android |
 | iOS | `com.desiredewaele.mesozoica` | Xcode + Firebase iOS |
-| Version | `1.0.0+1` | `flutter/pubspec.yaml` (`versionName` / `CFBundleShortVersionString` + build number) |
+| Version | `1.0.0+6` | `flutter/pubspec.yaml` (`versionName` / `CFBundleShortVersionString` + build number) |
 
 Bump `version:` in `pubspec.yaml` for every store upload (`1.0.0+2`, then `1.0.1+3`, and so on).

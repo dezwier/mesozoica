@@ -101,7 +101,7 @@ Complete **Policy → App content**:
 - Ads: no.
 - **User-generated content**: yes (profiles, photos, social). Point to the in-app report/block flows you have, or add them before production if review asks.
 - **Background location**: restricted permission. You must:
-  1. Keep the in-app disclosure (Settings → Explore in background).
+  1. Keep the in-app disclosure (Settings → Background location).
   2. Upload a short video showing the prominent disclosure, the system Always-location prompt, and the ongoing "Exploring fossil sites" notification.
   3. Explain that background location is optional and used only for nearby site discovery, in-range documentation, and walk XP.
 

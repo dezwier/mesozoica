@@ -229,7 +229,9 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
                   child: TabBarView(
                     controller: controller,
                     children: [
-                      const SettingsAppTab(),
+                      SettingsAppTab(
+                        onRequestDeleteAccount: _confirmDeleteAccount,
+                      ),
                       SettingsProfileTab(
                         currentUser: widget.currentUser,
                         fullNameController: _fullNameController,
@@ -251,8 +253,9 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
                           if (value == null || value.trim().isEmpty) {
                             return 'Email is required';
                           }
-                          if (!value.contains('@'))
+                          if (!value.contains('@')) {
                             return 'Enter a valid email';
+                          }
                           return null;
                         },
                         newPasswordValidator: (value) {
@@ -271,6 +274,9 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
                         },
                         linkedAccountRows: _buildLinkedAccountsRows(context),
                         isLoadingLinked: _isLoadingLinked,
+                        showPasswordFields:
+                            !_isLoadingLinked &&
+                            _linkedProviders.contains('password'),
                         onRequestDeleteAllData: _requestDeleteAllData,
                         onRequestDeleteAccount: _confirmDeleteAccount,
                       ),
