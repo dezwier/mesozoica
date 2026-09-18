@@ -935,11 +935,15 @@ class _AppShellState extends State<AppShell>
             _closeOverlays();
           },
           child: AnnotatedRegion<SystemUiOverlayStyle>(
-            value: _anyOverlayOpen
-                ? (Theme.of(context).brightness == Brightness.dark
-                      ? SystemUiOverlayStyle.light
-                      : SystemUiOverlayStyle.dark)
-                : SystemUiOverlayStyle.light,
+            value: (_anyOverlayOpen
+                    ? (Theme.of(context).brightness == Brightness.dark
+                          ? SystemUiOverlayStyle.light
+                          : SystemUiOverlayStyle.dark)
+                    : SystemUiOverlayStyle.light)
+                .copyWith(
+                  systemStatusBarContrastEnforced: false,
+                  systemNavigationBarContrastEnforced: false,
+                ),
             child: Scaffold(
               // Panel handles keyboard inset itself; Scaffold resize leaves a
               // bright/white band above the profile HUD when the assistant opens.

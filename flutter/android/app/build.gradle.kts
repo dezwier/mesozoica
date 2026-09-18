@@ -32,7 +32,8 @@ android {
 
     defaultConfig {
         applicationId = "com.mesozoica.mesozoica"
-        minSdk = flutter.minSdkVersion
+        // health (Health Connect) requires API 26; Flutter's default is 24.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -56,6 +57,8 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
     }
 }

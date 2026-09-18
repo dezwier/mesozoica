@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +26,10 @@ import 'widgets/xp/xp_award_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Opt into edge-to-edge on Android 14 and below; Android 15+ already
+  // enforces it for targetSdk 35+. Do not set status/navigation bar colors
+  // — those Window APIs are deprecated on API 35.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // Use the native-picked splash dinosaur so system + Flutter match.
   await AppSplashScreen.prepare();
   await GameConfigAssetLoader.load();
