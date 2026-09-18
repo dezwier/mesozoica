@@ -1,4 +1,5 @@
 # Flutter web SPA served at /mesozoica/app/ (proxied from learnfromdata.ai).
+# Railway service root is the repository root so game_config YAML is in context.
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "flutter/Dockerfile"

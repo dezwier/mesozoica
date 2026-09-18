@@ -62,7 +62,7 @@ Mount a persistent volume at `/data` wherever the process must read/write curate
 
 ## Flutter web
 
-The Flutter web image (`flutter/Dockerfile`) builds with `--base-href /mesozoica/app/` and nginx serves that path. learnfromdata.ai reverse-proxies `/mesozoica/app/` to this service (`MESOZOICA_APP_UPSTREAM` on the studio container). Optional build arg `MAPBOX_ACCESS_TOKEN` is unused on web (Carto/`flutter_map` basemap); Google/Apple sign-in stay disabled on web as they do in the Dart client.
+The Flutter web image (`flutter/Dockerfile`) must be built from the **repository root** (`docker build -f flutter/Dockerfile .`) so `flutter/assets/game_config` (a symlink to `backend/app/game_config`) is in the Docker context. The image builds with `--base-href /mesozoica/app/` and nginx serves that path. learnfromdata.ai reverse-proxies `/mesozoica/app/` to this service (`MESOZOICA_APP_UPSTREAM` on the studio container). Optional build arg `MAPBOX_ACCESS_TOKEN` is unused on web (Carto/`flutter_map` basemap); Google/Apple sign-in stay disabled on web as they do in the Dart client. The Railway `web` service uses repo-root context, Dockerfile `flutter/Dockerfile`, and watch patterns `/flutter/**` plus `/backend/app/game_config/**`.
 
 Do not point this service at a custom domain; the studio proxy is the public URL.
 
