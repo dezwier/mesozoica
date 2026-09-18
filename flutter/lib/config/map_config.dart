@@ -138,8 +138,6 @@ class MapConfig {
     return brightness == Brightness.dark ? cartoDark : cartoLight;
   }
 
-  static double clampZoom(double zoom) => zoom.clamp(minZoom, maxZoom);
-
   static double fossilMarkerSize(double zoom, {bool selected = false}) {
     // [selected] kept for call-site compatibility; size no longer grows.
     return (zoom + 3).clamp(12.0, 18.0);

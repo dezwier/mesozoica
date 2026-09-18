@@ -1,7 +1,3 @@
 [[services]]
 name = "backend"
 root = "backend"
-
-[[services]]
-name = "web"
-# Repo-root context: flutter/assets/game_config is a symlink into backend/.

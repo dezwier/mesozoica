@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -46,8 +47,7 @@ class HealthDistanceService {
 
   bool get isSupportedPlatform {
     if (kIsWeb) return false;
-    return defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android;
+    return Platform.isIOS || Platform.isAndroid;
   }
 
   Future<HealthDistancePermission> checkPermission() async {
@@ -56,7 +56,7 @@ class HealthDistanceService {
     }
     try {
       await _ensureConfigured();
-      if (defaultTargetPlatform == TargetPlatform.android) {
+      if (Platform.isAndroid) {
         final available = await _health.isHealthConnectAvailable();
         if (!available) {
           return HealthDistancePermission.unavailable;
@@ -85,7 +85,7 @@ class HealthDistanceService {
     if (!isSupportedPlatform) return false;
     try {
       await _ensureConfigured();
-      if (defaultTargetPlatform == TargetPlatform.android) {
+      if (Platform.isAndroid) {
         final available = await _health.isHealthConnectAvailable();
         if (!available) {
           await _health.installHealthConnect();
@@ -93,7 +93,7 @@ class HealthDistanceService {
         }
       }
       final granted = await _health.requestAuthorization(_types);
-      if (granted && defaultTargetPlatform == TargetPlatform.android) {
+      if (granted && Platform.isAndroid) {
         // Needed to read walking distance older than ~30 days.
         try {
           final historyAvailable = await _health.isHealthDataHistoryAvailable();
@@ -128,7 +128,7 @@ class HealthDistanceService {
     if (!end.isAfter(start)) return 0;
     try {
       await _ensureConfigured();
-      if (defaultTargetPlatform == TargetPlatform.android) {
+      if (Platform.isAndroid) {
         final available = await _health.isHealthConnectAvailable();
         if (!available) return null;
       }

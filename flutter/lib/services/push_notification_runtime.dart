@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -47,7 +47,7 @@ class PushNotificationRuntime {
   }
 
   static Future<void> _requestRuntimeNotificationPermissionIfNeeded() async {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    if (!kIsWeb && Platform.isAndroid) {
       try {
         await Permission.notification.request();
       } catch (_) {}
@@ -55,7 +55,7 @@ class PushNotificationRuntime {
   }
 
   static Future<void> _configureIosForegroundPresentation() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    if (kIsWeb || !Platform.isIOS) return;
     try {
       await FirebaseMessaging.instance
           .setForegroundNotificationPresentationOptions(

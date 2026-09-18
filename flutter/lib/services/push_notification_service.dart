@@ -1,7 +1,8 @@
+import 'dart:io';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../firebase_options.dart';
 import '../core/networking/api_transport.dart';
@@ -25,7 +26,7 @@ class PushNotificationService {
           options: DefaultFirebaseOptions.currentPlatform,
         );
       }
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      if (!kIsWeb && Platform.isIOS) {
         await FirebaseMessaging.instance.requestPermission(
           alert: true,
           badge: true,
@@ -58,7 +59,7 @@ class PushNotificationService {
 
   static String _getPlatform() {
     if (kIsWeb) return 'web';
-    if (defaultTargetPlatform == TargetPlatform.iOS) return 'ios';
+    if (Platform.isIOS) return 'ios';
     return 'android';
   }
 

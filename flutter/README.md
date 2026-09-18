@@ -76,7 +76,3 @@ cd flutter
 flutter pub get
 flutter run
 ```
-
-## Web
-
-`flutter build web --release --base-href /mesozoica/app/` is the hosted SPA. Mapbox Maps SDK v2 has no web renderer, so the field map uses the existing Carto/`flutter_map` tiles. Production image: [`Dockerfile`](Dockerfile), served at `/mesozoica/app/` and proxied from learnfromdata.ai. See [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md).
