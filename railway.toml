@@ -1,3 +1,7 @@
 [[services]]
 name = "backend"
 root = "backend"
+
+[[services]]
+name = "web"
+root = "flutter"

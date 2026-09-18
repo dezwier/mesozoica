@@ -12,7 +12,7 @@ import '../../models/aerial_action_kind.dart';
 import '../../services/location_service.dart';
 import '../common/app_toast.dart';
 import 'active_tool_hud_shell.dart';
-import 'mapbox_camera_coordinator.dart';
+import 'map_camera.dart';
 import 'vintage_guidance_compass.dart';
 
 /// Full-screen draw layer for aerial scout-loop sessions.

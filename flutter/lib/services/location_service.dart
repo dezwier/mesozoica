@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -446,7 +445,7 @@ class LocationService extends ChangeNotifier {
 
     final allowBackground = isBackgroundLocationActive && !_appForeground;
 
-    if (!kIsWeb && Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return AndroidSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
@@ -469,7 +468,7 @@ class LocationService extends ChangeNotifier {
       );
     }
 
-    if (!kIsWeb && Platform.isIOS) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       return AppleSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,

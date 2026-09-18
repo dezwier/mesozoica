@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -48,9 +49,8 @@ import '../../widgets/map/guidance_overlay.dart';
 import '../../widgets/map/map_control_buttons.dart';
 import '../../widgets/map/map_perf_hud.dart';
 import '../../utils/map_visible_bounds.dart';
-import '../../widgets/map/mapbox_camera_coordinator.dart';
-import '../../widgets/map/mapbox_field_map.dart';
-import '../../widgets/map/mapbox_site_annotations.dart';
+import '../../widgets/map/field_map.dart';
+import '../../widgets/map/map_camera.dart';
 import '../../widgets/map/site_filter_sheet.dart';
 import '../../widgets/map/site_map_card_dialog.dart';
 
@@ -91,7 +91,7 @@ class _MapScreenState extends State<MapScreen>
   void initState() {
     super.initState();
     _activateIfNeeded();
-    if (!MapConfig.hasMapboxAccessToken) {
+    if (!kIsWeb && !MapConfig.hasMapboxAccessToken) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _dismissSplash();
@@ -226,7 +226,7 @@ class _MapScreenState extends State<MapScreen>
 
         return Stack(
           children: [
-            if (!MapConfig.hasMapboxAccessToken)
+            if (!kIsWeb && !MapConfig.hasMapboxAccessToken)
               const ColoredBox(
                 color: Color(0xFFE8DFD4),
                 child: Center(

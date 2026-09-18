@@ -1,0 +1,4 @@
+# Flutter web SPA served at /mesozoica/app/ (proxied from learnfromdata.ai).
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"

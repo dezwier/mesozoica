@@ -204,7 +204,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
 
     final zoom = await _mapboxCamera.currentZoom();
     if (!mounted || zoom == null) return;
-    setState(() => _zoomLevel = clampMapboxZoom(zoom));
+    setState(() => _zoomLevel = MapConfig.clampZoom(zoom));
   }
 
   Future<void> _focusToolSession(ToolSession session) async {
@@ -352,7 +352,7 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
 
   void _enterRotationMode() {
     if (_rotateMap) return;
-    if (!MapConfig.hasMapboxAccessToken) {
+    if (!kIsWeb && !MapConfig.hasMapboxAccessToken) {
       setState(() {
         _mapboxBannerMessage =
             'Mapbox token missing — add MAPBOX_ACCESS_TOKEN via ./run.sh';
@@ -461,14 +461,14 @@ mixin _MapScreenCameraMixin on State<MapScreen> {
 
   void _onZoomChanged(double zoom) {
     if (_rotateMap) return;
-    final clamped = clampMapboxZoom(zoom);
+    final clamped = MapConfig.clampZoom(zoom);
     setState(() => _zoomLevel = clamped);
     unawaited(_mapboxCamera.setZoom(clamped));
   }
 
   void _onMapboxZoomChanged(double zoom) {
     if (!mounted || _rotateMap) return;
-    final clamped = clampMapboxZoom(zoom);
+    final clamped = MapConfig.clampZoom(zoom);
     if (clamped == _zoomLevel) return;
     setState(() => _zoomLevel = clamped);
   }

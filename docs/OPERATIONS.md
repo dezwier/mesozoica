@@ -5,10 +5,14 @@ This is the cross-cutting production overview. Detailed flags and job semantics 
 ## Runtime topology
 
 ```text
-Flutter clients
+Flutter clients (iOS/Android) and Flutter web (learnfromdata.ai/mesozoica/app)
   -> Railway API service (FastAPI/uvicorn)
        -> Railway PostgreSQL
        -> mounted /data volume (curated media and coordinate masks)
+
+Railway Flutter web service (flutter/ Dockerfile)
+  -> static nginx SPA at /mesozoica/app/
+  -> reverse-proxied by learnfromdata.ai
 
 Railway cron service (hourly scheduler trigger)
   -> feature-owned ingestion, weather, config, media, and maintenance jobs
@@ -37,23 +41,30 @@ Production settings reject missing `SECRET_KEY`, wildcard/missing `CORS_ORIGINS`
 
 ## Railway service configuration
 
-Root [`../railway.toml`](../railway.toml) points the monorepo service at `backend/`. Backend [`../backend/railway.toml`](../backend/railway.toml) selects the Dockerfile. Separate configs define cron and worker processes:
+Root [`../railway.toml`](../railway.toml) lists the backend and Flutter web services. Backend [`../backend/railway.toml`](../backend/railway.toml) selects the API Dockerfile. Flutter web uses [`../flutter/railway.toml`](../flutter/railway.toml). Separate configs define cron and worker processes:
 
 - [`../backend/railway.cron.toml`](../backend/railway.cron.toml)
 - [`../backend/railway.worker.toml`](../backend/railway.worker.toml)
+- [`../flutter/railway.toml`](../flutter/railway.toml) — static SPA at `/mesozoica/app/`
 
 Typical shared variables:
 
 - `DATABASE_URL`
 - `ENVIRONMENT=production`
 - `SECRET_KEY`
-- explicit `CORS_ORIGINS`
+- explicit `CORS_ORIGINS` (must include `https://learnfromdata.ai` and `https://www.learnfromdata.ai` for the studio phone embed)
 - `PUBLIC_BASE_URL`
 - `CURATED_IMAGES_DATA_ROOT=/data`
 - `FIELD_COORDINATE_DATA_DIR=/data`
 - provider credentials/user agents appropriate to the process
 
 Mount a persistent volume at `/data` wherever the process must read/write curated media or coordinate masks. Use service-scoped variables when a credential is not needed by every role.
+
+## Flutter web
+
+The Flutter web image (`flutter/Dockerfile`) builds with `--base-href /mesozoica/app/` and nginx serves that path. learnfromdata.ai reverse-proxies `/mesozoica/app/` to this service (`MESOZOICA_APP_UPSTREAM` on the studio container). Optional build arg `MAPBOX_ACCESS_TOKEN` is unused on web (Carto/`flutter_map` basemap); Google/Apple sign-in stay disabled on web as they do in the Dart client.
+
+Do not point this service at a custom domain; the studio proxy is the public URL.
 
 ## Database and migrations
 
