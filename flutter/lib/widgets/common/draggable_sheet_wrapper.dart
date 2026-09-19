@@ -67,7 +67,10 @@ class _DraggableSheetWrapperState extends State<DraggableSheetWrapper> {
       initialChildSize: widget.initialChildSize,
       minChildSize: widget.minChildSize,
       maxChildSize: widget.maxChildSize,
-      expand: false,
+      // Fill the modal so height is known on the first frame. `expand: false`
+      // lets the sheet size to its child, which then reads that height — the
+      // header jumps after layout.
+      expand: true,
       snap: true,
       snapSizes: _snapSizes,
       builder: (context, scrollController) =>

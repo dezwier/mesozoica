@@ -935,15 +935,16 @@ class _AppShellState extends State<AppShell>
             _closeOverlays();
           },
           child: AnnotatedRegion<SystemUiOverlayStyle>(
-            value: (_anyOverlayOpen
-                    ? (Theme.of(context).brightness == Brightness.dark
-                          ? SystemUiOverlayStyle.light
-                          : SystemUiOverlayStyle.dark)
-                    : SystemUiOverlayStyle.light)
-                .copyWith(
-                  systemStatusBarContrastEnforced: false,
-                  systemNavigationBarContrastEnforced: false,
-                ),
+            value:
+                (_anyOverlayOpen
+                        ? (Theme.of(context).brightness == Brightness.dark
+                              ? SystemUiOverlayStyle.light
+                              : SystemUiOverlayStyle.dark)
+                        : SystemUiOverlayStyle.light)
+                    .copyWith(
+                      systemStatusBarContrastEnforced: false,
+                      systemNavigationBarContrastEnforced: false,
+                    ),
             child: Scaffold(
               // Panel handles keyboard inset itself; Scaffold resize leaves a
               // bright/white band above the profile HUD when the assistant opens.
@@ -1042,21 +1043,20 @@ class _AppShellState extends State<AppShell>
                     FieldAssistantPanel(
                       topClearance: MapChromeInsets.profileHudBottom(context),
                     ),
-                  if (!_hideChrome) ...[
-                    MapTopChrome(
-                      showNotifications: auth.isLoggedIn,
-                      onTapNotification: _onNotificationTap,
-                      onOpenProfile: _openProfile,
-                      assistantOpen: _assistantOpen,
+                  MapTopChrome(
+                    showNotifications: auth.isLoggedIn,
+                    onTapNotification: _onNotificationTap,
+                    onOpenProfile: _openProfile,
+                    assistantOpen: _assistantOpen,
+                    visible: !_hideChrome,
+                  ),
+                  if (!_hideChrome && !_hideBottomChrome)
+                    MapBottomChrome(
+                      onOpenSites: _openSites,
+                      onOpenFossils: _openFossils,
+                      onOpenDinosaurs: _openDinosaurs,
+                      onOpenTools: _openTools,
                     ),
-                    if (!_hideBottomChrome)
-                      MapBottomChrome(
-                        onOpenSites: _openSites,
-                        onOpenFossils: _openFossils,
-                        onOpenDinosaurs: _openDinosaurs,
-                        onOpenTools: _openTools,
-                      ),
-                  ],
                   if (!splashHold.isInitialPageReady)
                     const Positioned.fill(child: AppSplashScreen()),
                 ],

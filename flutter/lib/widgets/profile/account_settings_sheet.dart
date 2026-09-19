@@ -39,23 +39,23 @@ class AccountSettingsSheet extends StatefulWidget {
 
 class _AccountSettingsSheetState extends State<AccountSettingsSheet>
     with TickerProviderStateMixin, _AccountSettingsSheetLogicMixin {
-  TabController? _tabController;
+  late final TabController _tabController;
   int _selectedTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _tabController!.addListener(() {
-      if (_tabController!.indexIsChanging) return;
-      setState(() => _selectedTabIndex = _tabController!.index);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      setState(() => _selectedTabIndex = _tabController.index);
     });
     _initLogicMixin();
   }
 
   @override
   void dispose() {
-    _tabController?.dispose();
+    _tabController.dispose();
     _disposeLogicMixin();
     super.dispose();
   }
@@ -159,178 +159,173 @@ class _AccountSettingsSheetState extends State<AccountSettingsSheet>
 
   @override
   Widget build(BuildContext context) {
-    final controller = _tabController;
-    if (controller == null) {
-      return const SizedBox.shrink();
-    }
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final height = widget.scrollController != null
+        final height = constraints.maxHeight.isFinite
             ? constraints.maxHeight
-            : MediaQuery.of(context).size.height *
+            : MediaQuery.sizeOf(context).height *
                   DrawerSheetSizes.initialChildSize;
 
-        return Container(
+        return SizedBox(
           height: height,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+          child: Material(
+            color: scheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-                child: Row(
-                  children: [
-                    Text(
-                      'Settings',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-              ),
-              TabBar(
-                controller: controller,
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-                tabs: const [
-                  Tab(text: 'App'),
-                  Tab(text: 'Profile'),
-                  Tab(text: 'Account'),
-                ],
-              ),
-              Flexible(
-                child: Form(
-                  key: _formKey,
-                  child: TabBarView(
-                    controller: controller,
-                    children: [
-                      SettingsAppTab(
-                        onRequestDeleteAccount: _confirmDeleteAccount,
-                      ),
-                      SettingsProfileTab(
-                        currentUser: widget.currentUser,
-                        fullNameController: _fullNameController,
-                        usernameController: _usernameController,
-                        usernameAvailable: _usernameAvailable,
-                        usernameError: _usernameError,
-                        isCheckingUsername: _isCheckingUsername,
-                        isUploadingImage: _isUploadingImage,
-                        onPickImage: _pickImage,
-                      ),
-                      SettingsAccountTab(
-                        currentUser: widget.currentUser,
-                        scrollController: widget.scrollController,
-                        emailController: _emailController,
-                        currentPasswordController: _currentPasswordController,
-                        newPasswordController: _newPasswordController,
-                        confirmPasswordController: _confirmPasswordController,
-                        emailValidator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Email is required';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Enter a valid email';
-                          }
-                          return null;
-                        },
-                        newPasswordValidator: (value) {
-                          if (_newPasswordController.text.isNotEmpty &&
-                              (value == null || value.length < 6)) {
-                            return 'Password must be at least 6 characters';
-                          }
-                          return null;
-                        },
-                        confirmPasswordValidator: (value) {
-                          if (_newPasswordController.text.isNotEmpty &&
-                              value != _newPasswordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
-                        linkedAccountRows: _buildLinkedAccountsRows(context),
-                        isLoadingLinked: _isLoadingLinked,
-                        showPasswordFields:
-                            !_isLoadingLinked &&
-                            _linkedProviders.contains('password'),
-                        onRequestDeleteAllData: _requestDeleteAllData,
-                        onRequestDeleteAccount: _confirmDeleteAccount,
-                      ),
-                    ],
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.onSurface.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-              if (_selectedTabIndex != 0)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_saveError != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                SizedBox(
+                  height: 48,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            _saveError!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
+                            'Settings',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _isSaving
-                                  ? null
-                                  : () => Navigator.pop(context),
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isSaving ? null : _saveSettings,
-                              child: _isSaving
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text('Save'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-            ],
+                TabBar(
+                  controller: _tabController,
+                  labelColor: scheme.primary,
+                  unselectedLabelColor: scheme.onSurface.withValues(alpha: 0.6),
+                  tabAlignment: TabAlignment.fill,
+                  tabs: const [
+                    Tab(text: 'App'),
+                    Tab(text: 'Profile'),
+                    Tab(text: 'Account'),
+                  ],
+                ),
+                Expanded(
+                  child: Form(
+                    key: _formKey,
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        SettingsAppTab(
+                          onRequestDeleteAccount: _confirmDeleteAccount,
+                        ),
+                        SettingsProfileTab(
+                          currentUser: widget.currentUser,
+                          fullNameController: _fullNameController,
+                          usernameController: _usernameController,
+                          usernameAvailable: _usernameAvailable,
+                          usernameError: _usernameError,
+                          isCheckingUsername: _isCheckingUsername,
+                          isUploadingImage: _isUploadingImage,
+                          onPickImage: _pickImage,
+                        ),
+                        SettingsAccountTab(
+                          currentUser: widget.currentUser,
+                          scrollController: widget.scrollController,
+                          emailController: _emailController,
+                          currentPasswordController: _currentPasswordController,
+                          newPasswordController: _newPasswordController,
+                          confirmPasswordController: _confirmPasswordController,
+                          emailValidator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Email is required';
+                            }
+                            if (!value.contains('@')) {
+                              return 'Enter a valid email';
+                            }
+                            return null;
+                          },
+                          newPasswordValidator: (value) {
+                            if (_newPasswordController.text.isNotEmpty &&
+                                (value == null || value.length < 6)) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                          confirmPasswordValidator: (value) {
+                            if (_newPasswordController.text.isNotEmpty &&
+                                value != _newPasswordController.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
+                          linkedAccountRows: _buildLinkedAccountsRows(context),
+                          isLoadingLinked: _isLoadingLinked,
+                          showPasswordFields:
+                              !_isLoadingLinked &&
+                              _linkedProviders.contains('password'),
+                          onRequestDeleteAllData: _requestDeleteAllData,
+                          onRequestDeleteAccount: _confirmDeleteAccount,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_selectedTabIndex != 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_saveError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              _saveError!,
+                              style: TextStyle(color: scheme.error),
+                            ),
+                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _isSaving
+                                    ? null
+                                    : () => Navigator.pop(context),
+                                child: const Text('Cancel'),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isSaving ? null : _saveSettings,
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text('Save'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },

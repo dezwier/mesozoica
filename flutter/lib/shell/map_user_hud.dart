@@ -7,6 +7,7 @@ import '../controllers/auth_controller.dart';
 import '../services/auth_service.dart';
 import '../theme/map_chrome_decorations.dart';
 import '../theme/map_chrome_theme.dart';
+import '../utils/network_image_mem_cache.dart';
 
 /// Top-left map profile chip: avatar, level, name, title, XP bar.
 class MapUserHud extends StatelessWidget {
@@ -225,6 +226,12 @@ class _AvatarWithLevel extends StatelessWidget {
                           ? CachedNetworkImage(
                               imageUrl: imageUrl,
                               fit: BoxFit.cover,
+                              fadeInDuration: Duration.zero,
+                              placeholderFadeInDuration: Duration.zero,
+                              memCacheWidth: networkImageMemCacheExtent(
+                                _size,
+                                MediaQuery.devicePixelRatioOf(context),
+                              ),
                               errorWidget: (context, _, _) => _fallback(),
                             )
                           : _fallback(),

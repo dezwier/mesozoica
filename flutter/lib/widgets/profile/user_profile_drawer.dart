@@ -8,6 +8,7 @@ void showUserProfileSheet(
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => DraggableSheetWrapper(
       childBuilder: (scrollController) => UserProfileDrawer(

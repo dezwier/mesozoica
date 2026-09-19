@@ -55,6 +55,7 @@ class MapboxCameraCoordinator {
   Uint8List? _puckTopImage;
   Uint8List? _puckBearingImage;
   Uint8List? _puckShadowImage;
+  String? _puckAvatarUrl;
 
   /// Bumped on every Mapbox camera frame so Flutter overlays can reproject
   /// in lockstep with pan / FollowPuck (without a slow polling timer).
@@ -81,6 +82,7 @@ class MapboxCameraCoordinator {
     _puckTopImage = null;
     _puckBearingImage = null;
     _puckShadowImage = null;
+    _puckAvatarUrl = null;
   }
 
   MapboxMap? get map => _map;
@@ -451,25 +453,28 @@ class MapboxCameraCoordinator {
       map.scaleBar.updateSettings(ScaleBarSettings(enabled: false)),
     ]);
 
-    final avatar = await _loadLocationPuckAvatar(avatarImageUrl);
-    late final Uint8List puckImage;
-    try {
-      puckImage = await _renderAvatarLocationPuckPng(
-        logicalSize: _locationPuckLogicalSize,
-        avatar: avatar,
-      );
-    } finally {
-      avatar?.dispose();
+    // Reuse the last puck PNGs when the avatar URL is unchanged. Returning
+    // from a catalog/profile overlay re-enables the location component; it
+    // should not re-download or re-rasterize the profile image.
+    final avatarKey = avatarImageUrl ?? '';
+    if (_puckTopImage == null || _puckAvatarUrl != avatarKey) {
+      final avatar = await _loadLocationPuckAvatar(avatarImageUrl);
+      try {
+        _puckTopImage = await _renderAvatarLocationPuckPng(
+          logicalSize: _locationPuckLogicalSize,
+          avatar: avatar,
+        );
+      } finally {
+        avatar?.dispose();
+      }
+      _puckAvatarUrl = avatarKey;
     }
-    final bearingImage = await _renderHeadingArrowPng(
+    _puckBearingImage ??= await _renderHeadingArrowPng(
       logicalSize: _locationPuckLogicalSize,
     );
-    final shadowImage = await _renderLocationPuckShadowPng(
+    _puckShadowImage ??= await _renderLocationPuckShadowPng(
       logicalSize: _locationPuckLogicalSize,
     );
-    _puckTopImage = puckImage;
-    _puckBearingImage = bearingImage;
-    _puckShadowImage = shadowImage;
 
     // Quantised like [syncLocationPuckPulse] so the epsilon check that guards
     // later pushes compares against the same baseline.
