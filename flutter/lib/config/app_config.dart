@@ -11,14 +11,6 @@ class AppConfig {
   static bool isDebugMode = kDebugMode;
   static bool isApiRunning = false;
 
-  /// Debug-only test account (quick fill on Profile auth screen).
-  static const String debugTestEmail = 'dezwier@mesozoica.app';
-  static const String debugTestUsername = 'dezwier';
-  static const String debugTestPassword = 'password123';
-  static const String debugTestFullName = 'Dezwier';
-
-  static bool get showDebugTestAccount => isDebugMode;
-
   /// Sign in with Apple requires a paid Apple Developer Program team in Xcode.
   static const bool enableAppleSignIn = bool.fromEnvironment(
     'ENABLE_APPLE_SIGN_IN',
