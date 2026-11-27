@@ -109,6 +109,7 @@ class SiteCardDimensions extends StatelessWidget {
             .clamp(0.0, 1.0);
 
     return CardSectionPanel(
+      decoration: cardTheme.museumPanelDecoration(),
       labelWidget: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,9 +120,10 @@ class SiteCardDimensions extends StatelessWidget {
             style: cardTheme
                 .sectionLabelStyle(fontSize: 8.5)
                 .copyWith(
-                  color: cardTheme.cardTextSecondary,
-                  letterSpacing: 0.8,
-                  fontWeight: FontWeight.bold,
+                  fontFamily: DinoCardTheme.titleFontFamily,
+                  color: cardTheme.cardAccent,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: 6),
@@ -301,7 +303,9 @@ class _HorizontalDimensionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = cardTheme.statLabelStyle(fontSize: 8.5);
+    final labelStyle = cardTheme
+        .statLabelStyle(fontSize: 8.5)
+        .copyWith(fontFamily: DinoCardTheme.titleFontFamily);
     return Row(
       children: [
         SizedBox(
@@ -349,7 +353,9 @@ class _VerticalDepthAxis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = cardTheme.statLabelStyle(fontSize: 8.5);
+    final labelStyle = cardTheme
+        .statLabelStyle(fontSize: 8.5)
+        .copyWith(fontFamily: DinoCardTheme.titleFontFamily);
     return Column(
       children: [
         Text(

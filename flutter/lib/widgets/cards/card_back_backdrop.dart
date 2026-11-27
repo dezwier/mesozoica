@@ -1,52 +1,54 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 
-/// Same cover illustration as the front face, slightly blurred, plus a soft
-/// glare wash.
+/// Sharp cover hero across the top of a card back, fading into the museum body.
 ///
-/// Card-back content (headers, panels) is layered by callers on top of this.
+/// Card-back content is layered by [MuseumCardFrame] on top of this.
 class CardBackBackdrop extends StatelessWidget {
   const CardBackBackdrop({super.key, required this.image});
 
   final Widget image;
 
-  static const _blurSigma = 3.0;
-
-  /// Oversample so the soft blur fringe is clipped away (avoids a white halo
-  /// on rounded edges, especially while the card rotates).
-  static const _blurOverscale = 1.1;
+  /// Fraction of the card height occupied by the illustration.
+  static const heroFraction = 0.46;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Dark underlay: any residual edge samples dark, not white/transparent.
-        const ColoredBox(color: Color(0xFF0A0A0A)),
-        ClipRect(
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(
-              sigmaX: _blurSigma,
-              sigmaY: _blurSigma,
-              tileMode: TileMode.clamp,
-            ),
-            child: Transform.scale(
-              scale: _blurOverscale,
-              filterQuality: FilterQuality.medium,
+    final body = cardTheme.museumBodyColor;
+    return ColoredBox(
+      color: body,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: FractionallySizedBox(
+              heightFactor: heroFraction,
+              widthFactor: 1,
               child: image,
             ),
           ),
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: cardTheme.backFaceSheenGradient(),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0x59000000),
+                  const Color(0x00000000),
+                  const Color(0x00000000),
+                  body.withValues(alpha: 0.35),
+                  body,
+                  body,
+                ],
+                stops: const [0.0, 0.05, 0.26, 0.36, 0.46, 1.0],
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

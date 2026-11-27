@@ -76,6 +76,11 @@ class DinoCardTheme {
         0.20 + (0.05 * math.sin(flipAngleRadians.abs()).clamp(0.0, 1.0));
     return [
       BoxShadow(
+        color: cardAccent.withValues(alpha: isLight ? 0.22 : 0.40),
+        blurRadius: 18,
+        spreadRadius: 0.4,
+      ),
+      BoxShadow(
         color: shadowColor.withValues(alpha: depth * 0.45),
         blurRadius: 34,
         spreadRadius: 2,
@@ -86,6 +91,43 @@ class DinoCardTheme {
         spreadRadius: 0,
       ),
     ];
+  }
+
+  /// Warm field behind the card-back hero.
+  Color get museumBodyColor =>
+      isLight ? const Color(0xFFF3EBE1) : const Color(0xFF120E0B);
+
+  /// Cream attribute tiles. Same family in both themes so rows stay legible.
+  Color get museumTileColor =>
+      isLight ? const Color(0xFFFFFBF6) : const Color(0xFFF4E6D2);
+
+  Color get museumTileInk => const Color(0xFF3A2A1E);
+
+  Color get museumTileLabel => const Color(0xFF8A6239);
+
+  /// Title sitting on the dark (or parchment) body under the hero.
+  Color get museumTitleColor =>
+      isLight ? const Color(0xFF3E2723) : const Color(0xFFF6EFE4);
+
+  BoxDecoration museumPanelDecoration() {
+    return BoxDecoration(
+      color: isLight ? const Color(0xB3FFFFFF) : const Color(0xE61A1410),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: cardAccent.withValues(alpha: isLight ? 0.5 : 0.72),
+        width: 1,
+      ),
+    );
+  }
+
+  BoxDecoration museumHairlineDecoration() {
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(borderRadius),
+      border: Border.all(
+        color: cardAccent.withValues(alpha: isLight ? 0.75 : 0.92),
+        width: 1.15,
+      ),
+    );
   }
 
   BoxDecoration chromeDecoration({double flipAngleRadians = 0}) {

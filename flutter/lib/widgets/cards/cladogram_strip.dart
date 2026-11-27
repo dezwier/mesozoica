@@ -61,7 +61,7 @@ class CladogramStrip extends StatelessWidget {
               painter: _CladogramConnectorPainter(
                 layout: layout,
                 nodeCount: nodes.length,
-                lineColor: cardTheme.cardAccent.withValues(alpha: 0.18),
+                lineColor: cardTheme.cardAccent.withValues(alpha: 0.9),
               ),
             ),
           ),
@@ -237,6 +237,19 @@ class _CladogramScrollFadeState extends State<_CladogramScrollFade> {
   }
 }
 
+TextStyle _nodeStyle(DinoCardTheme cardTheme, bool isLast, double scale) {
+  return TextStyle(
+    fontFamily: DinoCardTheme.titleFontFamily,
+    color: isLast
+        ? cardTheme.museumTitleColor
+        : cardTheme.cladogramNodeColor(isLast: false),
+    fontSize: (isLast ? 13 : 10.5) * scale,
+    fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
+    letterSpacing: 0.2,
+    height: 1.1,
+  );
+}
+
 class _CladogramNodeRow extends StatelessWidget {
   const _CladogramNodeRow({
     required this.node,
@@ -264,7 +277,12 @@ class _CladogramNodeRow extends StatelessWidget {
             padding: EdgeInsets.only(left: layout.dotSize + layout.dotNameGap),
             child: Text(
               node.rankLabel,
-              style: cardTheme.rankLabelStyle(fontSize: 8 * layout.scale),
+              style: cardTheme
+                  .rankLabelStyle(fontSize: 8 * layout.scale)
+                  .copyWith(
+                    fontFamily: DinoCardTheme.titleFontFamily,
+                    letterSpacing: 0.8,
+                  ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -274,25 +292,34 @@ class _CladogramNodeRow extends StatelessWidget {
             mainAxisSize: centered ? MainAxisSize.min : MainAxisSize.max,
             children: [
               Container(
-                width: layout.dotSize,
-                height: layout.dotSize,
+                width: isLast ? layout.dotSize + 2 : layout.dotSize,
+                height: isLast ? layout.dotSize + 2 : layout.dotSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isLast
-                      ? cardTheme.cardTextPrimary
-                      : cardTheme.cardAccent.withValues(alpha: 0.7),
+                      ? cardTheme.cardAccent
+                      : cardTheme.cardAccent.withValues(alpha: 0.85),
+                  border: Border.all(
+                    color: isLast
+                        ? const Color(0xFFF6E2A8)
+                        : cardTheme.cardAccent.withValues(alpha: 0.4),
+                    width: isLast ? 1.2 : 0,
+                  ),
+                  boxShadow: isLast
+                      ? [
+                          BoxShadow(
+                            color: cardTheme.cardAccent.withValues(alpha: 0.55),
+                            blurRadius: 6,
+                          ),
+                        ]
+                      : null,
                 ),
               ),
               SizedBox(width: layout.dotNameGap),
               if (centered)
                 Text(
                   capitalizeLeadingLetter(node.name),
-                  style: TextStyle(
-                    color: cardTheme.cladogramNodeColor(isLast: isLast),
-                    fontSize: (isLast ? 12 : 10.5) * layout.scale,
-                    fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
-                    letterSpacing: 0.3,
-                  ),
+                  style: _nodeStyle(cardTheme, isLast, layout.scale),
                   maxLines: 1,
                   softWrap: false,
                 )
@@ -300,12 +327,7 @@ class _CladogramNodeRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     capitalizeLeadingLetter(node.name),
-                    style: TextStyle(
-                      color: cardTheme.cladogramNodeColor(isLast: isLast),
-                      fontSize: (isLast ? 12 : 10.5) * layout.scale,
-                      fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
-                      letterSpacing: 0.3,
-                    ),
+                    style: _nodeStyle(cardTheme, isLast, layout.scale),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -335,7 +357,7 @@ class _CladogramConnectorPainter extends CustomPainter {
 
     final linePaint = Paint()
       ..color = lineColor
-      ..strokeWidth = 1
+      ..strokeWidth = 1.6
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;

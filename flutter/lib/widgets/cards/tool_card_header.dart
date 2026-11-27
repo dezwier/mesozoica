@@ -99,25 +99,12 @@ class ToolCardHeader extends StatelessWidget {
       children: [
         Expanded(child: titleBlock),
         const SizedBox(width: 10),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _openSkillSheet(context, tool),
-            customBorder: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SkillIcon(
-              skillId: skillId,
-              size: skillBadgeSize,
-              circular: true,
-            ),
-          ),
-        ),
+        ToolSkillBadge(tool: tool, size: skillBadgeSize),
       ],
     );
   }
 
-  static void _openSkillSheet(BuildContext context, ToolSummary tool) {
+  static void openSkillSheet(BuildContext context, ToolSummary tool) {
     final skillId = tool.skillId;
     if (skillId == null) return;
 
@@ -144,5 +131,29 @@ class ToolCardHeader extends StatelessWidget {
     );
 
     showProfileSkillDetailSheet(context, skill: skill, breakdown: breakdown);
+  }
+}
+
+/// Circular skill avatar used on the tool card.
+class ToolSkillBadge extends StatelessWidget {
+  const ToolSkillBadge({super.key, required this.tool, this.size = 36});
+
+  final ToolSummary tool;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final skillId = tool.skillId;
+    if (skillId == null) return const SizedBox.shrink();
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => ToolCardHeader.openSkillSheet(context, tool),
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SkillIcon(skillId: skillId, size: size, circular: true),
+      ),
+    );
   }
 }

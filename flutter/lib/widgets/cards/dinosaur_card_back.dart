@@ -1,26 +1,24 @@
 import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
-import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
 import '../dino/dinosaur_article_drawer.dart';
 import 'card_attribute_grid.dart';
-import 'card_back_backdrop.dart';
 import 'card_back_body.dart';
-import 'card_back_corner_actions.dart';
 import 'card_history_drawer.dart';
 import 'cladogram_strip.dart';
-import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
 import 'geologic_timeline.dart';
+import 'museum_card_frame.dart';
+import 'museum_card_icons.dart';
 
 class DinosaurCardBack extends StatelessWidget {
   const DinosaurCardBack({
     super.key,
     required this.dinosaur,
     this.showArticleButton = true,
-    this.titleFontSize = 36,
-    this.subtitleFontSize = 10,
+    this.titleFontSize = 28,
+    this.subtitleFontSize = 12,
   });
 
   final DinosaurSummary dinosaur;
@@ -54,111 +52,57 @@ class DinosaurCardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
     final nodes = dinosaur.cladogramNodes();
-
-    return AspectRatio(
-      aspectRatio: DinoCardTheme.cardAspectRatio,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CardBackBackdrop(
-            image: DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
-          ),
-          Positioned(
-            left: 18,
-            right: 18,
-            top: 20,
-            child: DinosaurCardHeader(
-              dinosaur: dinosaur,
-              titleFontSize: titleFontSize,
-              subtitleFontSize: subtitleFontSize,
-              centered: true,
-              overlayOnImage: true,
-              subtitleOverride: '',
+    final period = dinosaur.displayPeriod;
+    final attributes = CardBackSection(
+      title: 'Attributes',
+      expandChild: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              child: CardAttributeGrid(attributes: _attributeItems(dinosaur)),
             ),
-          ),
-          Positioned(
-            left: 18,
-            right: 18,
-            top: 72,
-            // Clear the bottom-right wiki/history row.
-            bottom: 44,
-            child: CardBackBody(
-              children: [
-                CardBackSection(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        dinosaur.displayPeriod,
-                        textAlign: TextAlign.center,
-                        style: cardTheme
-                            .bodyStyle(fontSize: 12.5)
-                            .copyWith(
-                              color: cardTheme.cardTextPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        height: 48,
-                        child: GeologicTimeline(
-                          birth: dinosaur.birth,
-                          death: dinosaur.death,
-                          axis: GeologicTimelineAxis.horizontal,
-                          scale: 1.0,
-                          showYearLabels: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (nodes.isEmpty)
-                  CardBackSection(
-                    title: 'Attributes',
-                    child: CardAttributeGrid(
-                      columns: 1,
-                      attributes: _attributeItems(dinosaur),
-                    ),
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: CardBackSection(
-                          title: 'Attributes',
-                          child: CardAttributeGrid(
-                            columns: 1,
-                            attributes: _attributeItems(dinosaur),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: CardBackSection(
-                          title: 'Cladogram',
-                          child: CladogramStrip(
-                            nodes: nodes,
-                            scale: 0.85,
-                            centered: false,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          CardBackCornerActions(
-            wiki: showArticleButton
-                ? () => DinosaurArticleDrawer.show(context, dinosaur: dinosaur)
-                : null,
-            onHistory: () => _openHistory(context),
-          ),
-        ],
+          );
+        },
       ),
+    );
+
+    return MuseumCardFrame(
+      image: DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
+      emblem: MuseumGlyph.skull,
+      title: dinosaur.name,
+      subtitle: period == '—' ? null : period,
+      titleFontSize: titleFontSize,
+      subtitleFontSize: subtitleFontSize,
+      timeline: GeologicTimeline(
+        birth: dinosaur.birth,
+        death: dinosaur.death,
+        axis: GeologicTimelineAxis.horizontal,
+        scale: 0.92,
+        showYearLabels: true,
+      ),
+      panels: nodes.isEmpty
+          ? attributes
+          : MuseumPanelRow(
+              left: attributes,
+              right: CardBackSection(
+                title: 'Cladogram',
+                expandChild: true,
+                child: CladogramStrip(
+                  nodes: nodes,
+                  scale: 0.78,
+                  centered: false,
+                ),
+              ),
+            ),
+      wiki: showArticleButton
+          ? () => DinosaurArticleDrawer.show(context, dinosaur: dinosaur)
+          : null,
+      onHistory: () => _openHistory(context),
     );
   }
 }

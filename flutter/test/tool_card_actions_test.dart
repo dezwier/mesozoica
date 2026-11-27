@@ -108,6 +108,8 @@ void main() {
     expect(find.text('Info'), findsNothing);
     expect(find.text('15m 0s left'), findsOneWidget);
     expect(find.byIcon(Icons.history), findsOneWidget);
+    expect(find.byTooltip('History'), findsOneWidget);
+    expect(find.byTooltip('Details'), findsNothing);
     await tester.tap(find.byIcon(Icons.history));
     await tester.pumpAndSettle();
     expect(find.text('No history yet'), findsAtLeastNWidgets(1));

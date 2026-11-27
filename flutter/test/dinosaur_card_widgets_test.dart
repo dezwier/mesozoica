@@ -159,7 +159,10 @@ void main() {
       );
 
       expect(find.text('Tyrannosaurus rex'), findsOneWidget);
+      expect(find.textContaining('Late Cretaceous, 68'), findsOneWidget);
       expect(find.byIcon(Icons.info_outline), findsOneWidget);
+      expect(find.byTooltip('Details'), findsOneWidget);
+      expect(find.byTooltip('History'), findsOneWidget);
       expect(find.text('LOCATION'), findsNothing);
       expect(find.text('Triassic'), findsOneWidget);
       expect(find.text('Jurassic'), findsOneWidget);
