@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/tool.dart';
 import '../../theme/dino_card_theme.dart';
+import 'museum_card_frame.dart';
 import 'occurrence_id_badge.dart';
 import 'site_card_header.dart';
 import 'tool_card_header.dart';
@@ -90,6 +91,7 @@ class ToolCardFront extends StatelessWidget {
               ],
             ),
           ),
+          const Positioned.fill(child: MuseumCardHairline()),
         ],
       ),
     );

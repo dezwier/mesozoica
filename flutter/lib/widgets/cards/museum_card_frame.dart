@@ -78,7 +78,13 @@ class MuseumCardFrame extends StatelessWidget {
                       ),
                       if (timeline != null) ...[
                         const SizedBox(height: 6),
-                        SizedBox(height: 50, child: timeline),
+                        DecoratedBox(
+                          decoration: theme.museumPanelDecoration(),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 5),
+                            child: SizedBox(height: 46, child: timeline),
+                          ),
+                        ),
                       ],
                       const SizedBox(height: 8),
                       Expanded(
@@ -111,12 +117,22 @@ class MuseumCardFrame extends StatelessWidget {
             ),
           ),
           CardBackCornerActions(wiki: wiki, onHistory: onHistory),
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(decoration: theme.museumHairlineDecoration()),
-            ),
-          ),
+          const Positioned.fill(child: MuseumCardHairline()),
         ],
+      ),
+    );
+  }
+}
+
+/// Thin gold edge painted over a card face so the photo cannot cover it.
+class MuseumCardHairline extends StatelessWidget {
+  const MuseumCardHairline({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: DinoCardTheme.of(context).museumHairlineDecoration(),
       ),
     );
   }

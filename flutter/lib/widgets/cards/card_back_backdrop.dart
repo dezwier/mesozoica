@@ -27,7 +27,14 @@ class CardBackBackdrop extends StatelessWidget {
             child: FractionallySizedBox(
               heightFactor: heroFraction,
               widthFactor: 1,
-              child: image,
+              child: ClipRect(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(width: 1086, height: 1448, child: image),
+                ),
+              ),
             ),
           ),
           DecoratedBox(

@@ -11,6 +11,7 @@ import 'package:mesozoica/models/site.dart';
 import 'package:mesozoica/models/tool.dart';
 import 'package:mesozoica/theme/mesozoica_theme.dart';
 import 'package:mesozoica/widgets/cards/dinosaur_card_back.dart';
+import 'package:mesozoica/widgets/cards/dinosaur_card_front.dart';
 import 'package:mesozoica/widgets/cards/fossil_card_back.dart';
 import 'package:mesozoica/widgets/cards/site_card_back.dart';
 import 'package:mesozoica/widgets/cards/tool_card_back.dart';
@@ -87,6 +88,11 @@ void main() {
 
   testWidgets('museum card backs paint in the dark theme', (tester) async {
     await tester.runAsync(_loadMuseumFonts);
+    await _paint(
+      tester,
+      const DinosaurCardFront(dinosaur: _dinosaur, titleFontSize: 28),
+      'museum-dinosaur-front',
+    );
     await _paint(
       tester,
       const DinosaurCardBack(dinosaur: _dinosaur),

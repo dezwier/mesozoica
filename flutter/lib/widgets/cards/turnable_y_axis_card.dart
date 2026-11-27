@@ -245,9 +245,9 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
     final gold = DinoCardTheme.of(context).cardAccent;
     return [
       BoxShadow(
-        color: gold.withValues(alpha: 0.30 + depth * 0.14),
-        blurRadius: 16 + depth * 8,
-        spreadRadius: 0.5,
+        color: gold.withValues(alpha: 0.12 + depth * 0.08),
+        blurRadius: 14 + depth * 6,
+        spreadRadius: 0,
       ),
       BoxShadow(
         color: Color.fromRGBO(0, 0, 0, 0.25 + depth * 0.2),
@@ -342,20 +342,13 @@ class _TurnableYAxisCardState extends State<TurnableYAxisCard>
               )
             : faces;
 
-        final gold = DinoCardTheme.of(context).cardAccent;
         final decoration =
             (widget.decoration ??
                     BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(r),
                     ))
-                .copyWith(
-                  boxShadow: _boxShadowForAngle(angle),
-                  border: Border.all(
-                    color: gold.withValues(alpha: 0.88),
-                    width: 1.15,
-                  ),
-                );
+                .copyWith(boxShadow: _boxShadowForAngle(angle));
 
         // Keep chrome + face at image aspect (width/height). A height-only
         // cap with full width leaves empty surface bands beside the art.
