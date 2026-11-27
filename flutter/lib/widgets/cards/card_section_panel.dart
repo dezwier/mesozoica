@@ -14,6 +14,7 @@ class CardSectionPanel extends StatelessWidget {
     this.labelGap = 6,
     this.clipChild = false,
     this.labelFontSize = 9,
+    this.decoration,
   });
 
   final String? label;
@@ -26,6 +27,9 @@ class CardSectionPanel extends StatelessWidget {
   final double labelGap;
   final bool clipChild;
   final double labelFontSize;
+
+  /// When set, replaces the default profile-card wash.
+  final BoxDecoration? decoration;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +67,7 @@ class CardSectionPanel extends StatelessWidget {
     }
 
     final panel = DecoratedBox(
-      decoration: cardTheme.factPanelDecoration(context),
+      decoration: decoration ?? cardTheme.factPanelDecoration(context),
       child: content,
     );
     if (expandChild) {

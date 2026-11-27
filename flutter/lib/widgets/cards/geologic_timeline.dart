@@ -275,11 +275,11 @@ class _HorizontalTimeline extends StatelessWidget {
   double get _horizontalInset => 14.0 * scale;
   double get _periodLabelHeight => 12.0 * scale;
   double get _labelToBarGap => 4.0 * scale;
-  double get _barHeight => 6.0 * scale;
-  double get _rangeIndicatorHeight => 14.0 * scale;
+  double get _barHeight => 8.0 * scale;
+  double get _rangeIndicatorHeight => 16.0 * scale;
   double get _barToMaGap => 4.0 * scale;
   double get _maLabelHeight => 11.0 * scale;
-  double get _minRangeWidth => 12.0 * scale;
+  double get _knobSize => 14.0 * scale;
 
   /// Full visual stack height (period labels → bar → Ma labels).
   double get _contentHeight =>
@@ -292,6 +292,18 @@ class _HorizontalTimeline extends StatelessWidget {
   double _xForMa(double ma, double trackWidth) {
     final pos = positionForMa(ma)!;
     return _horizontalInset + (1 - pos.clamp(0.0, 1.0)) * trackWidth;
+  }
+
+  /// Gold knob sits on the middle of the taxon's range.
+  double? _knobCenterX(double trackWidth) {
+    if (startPos == null && endPos == null) return null;
+    if (sameMa && startPos != null) {
+      return _horizontalInset + (1 - startPos!.clamp(0.0, 1.0)) * trackWidth;
+    }
+    final older = startPos ?? endPos!;
+    final younger = endPos ?? startPos!;
+    final mid = ((older + younger) / 2).clamp(0.0, 1.0);
+    return _horizontalInset + (1 - mid) * trackWidth;
   }
 
   @override
@@ -309,76 +321,54 @@ class _HorizontalTimeline extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          for (var i = 0; i < GeologicTimeline._periods.length; i++)
-            Positioned(
-              left: _xForMa(GeologicTimeline._periods[i].startMa, trackWidth),
-              top: barTop,
-              width:
-                  _xForMa(GeologicTimeline._periods[i].endMa, trackWidth) -
-                  _xForMa(GeologicTimeline._periods[i].startMa, trackWidth),
-              child: Container(
-                height: _barHeight,
-                decoration: BoxDecoration(
-                  color: cardTheme.cardAccent.withValues(
-                    alpha: 0.28 + i * 0.12,
-                  ),
-                  borderRadius: BorderRadius.horizontal(
-                    left: i == 0 ? const Radius.circular(2) : Radius.zero,
-                    right: i == GeologicTimeline._periods.length - 1
-                        ? const Radius.circular(2)
-                        : Radius.zero,
-                  ),
+          Positioned(
+            left: _horizontalInset,
+            top: barTop,
+            width: trackWidth,
+            height: _barHeight,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(99),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF8A627E),
+                    Color(0xFF7E6A86),
+                    Color(0xFF5E7C98),
+                    Color(0xFF7E93A4),
+                    Color(0xFFC5944E),
+                    Color(0xFFE4C57A),
+                  ],
+                  stops: [0.0, 0.22, 0.40, 0.62, 0.82, 1.0],
                 ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x66C5944E),
+                    blurRadius: 6,
+                    spreadRadius: 0.2,
+                  ),
+                ],
               ),
             ),
-          if (sameMa && startPos != null)
+          ),
+          if (_knobCenterX(trackWidth) != null)
             Positioned(
-              left:
-                  _horizontalInset +
-                  (1 - startPos!.clamp(0.0, 1.0)) * trackWidth -
-                  _minRangeWidth / 2,
-              top: barBandTop,
-              width: _minRangeWidth,
+              left: _knobCenterX(trackWidth)! - _knobSize / 2,
+              top: barTop + (_barHeight - _knobSize) / 2,
               child: Container(
-                height: _rangeIndicatorHeight,
+                width: _knobSize,
+                height: _knobSize,
                 decoration: BoxDecoration(
-                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(
-                    color: cardTheme.cardTextPrimary.withValues(alpha: 0.55),
-                  ),
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF6E2A8),
+                  border: Border.all(color: const Color(0xFF8A6424), width: 1),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0xCCC5944E),
+                      blurRadius: 8,
+                      spreadRadius: 0.6,
+                    ),
+                  ],
                 ),
-              ),
-            )
-          else if (startPos != null && endPos != null)
-            Positioned(
-              left:
-                  _horizontalInset +
-                  (1 - startPos!.clamp(0.0, 1.0)) * trackWidth,
-              top: barBandTop,
-              width: ((startPos! - endPos!).clamp(0.0, 1.0)) * trackWidth,
-              child: Container(
-                height: _rangeIndicatorHeight,
-                decoration: BoxDecoration(
-                  color: cardTheme.cardTextPrimary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(
-                    color: cardTheme.cardTextPrimary.withValues(alpha: 0.55),
-                  ),
-                ),
-              ),
-            )
-          else if (startPos != null)
-            Positioned(
-              left:
-                  _horizontalInset +
-                  (1 - startPos!.clamp(0.0, 1.0)) * trackWidth -
-                  5 * scale,
-              top: barBandTop,
-              child: _TimelineDot(
-                scale: scale,
-                color: cardTheme.cardTextPrimary,
-                borderColor: cardTheme.cardTextPrimary,
               ),
             ),
           if (showYearLabels)
@@ -402,6 +392,7 @@ class _HorizontalTimeline extends StatelessWidget {
                   maxLines: 1,
                   softWrap: false,
                   style: TextStyle(
+                    fontFamily: DinoCardTheme.titleFontFamily,
                     color: cardTheme.timelineAnnotationColor(),
                     fontSize: 9 * scale,
                     height: 1.1,
@@ -526,6 +517,7 @@ class _HorizontalPeriodLabel extends StatelessWidget {
       name,
       textAlign: TextAlign.center,
       style: TextStyle(
+        fontFamily: DinoCardTheme.titleFontFamily,
         color: cardTheme.periodLabelColor(),
         fontSize: fontSize,
         fontWeight: FontWeight.w600,

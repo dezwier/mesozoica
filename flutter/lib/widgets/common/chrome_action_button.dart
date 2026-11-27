@@ -10,10 +10,12 @@ class ChromeActionButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.selected = false,
+    this.labelStyle,
   });
 
   final String label;
   final VoidCallback? onPressed;
+  final TextStyle? labelStyle;
 
   /// Stronger pressed look for toggle/selection (e.g. catalog categories).
   final bool selected;
@@ -89,7 +91,7 @@ class ChromeActionButton extends StatelessWidget {
                     ? FontWeight.w700
                     : FontWeight.w600,
                 letterSpacing: 0.3,
-              ),
+              ).merge(labelStyle),
             ),
           ),
         ),

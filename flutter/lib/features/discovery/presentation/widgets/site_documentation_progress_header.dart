@@ -76,14 +76,20 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: cardTheme
                           .sectionLabelStyle(fontSize: fontSize)
-                          .copyWith(fontWeight: FontWeight.w800),
+                          .copyWith(
+                            fontFamily: DinoCardTheme.titleFontFamily,
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
                   ),
                   Text(
                     '${(value * 100).round()}%',
                     style: cardTheme
                         .sectionLabelStyle(fontSize: fontSize)
-                        .copyWith(fontWeight: FontWeight.w900),
+                        .copyWith(
+                          fontFamily: DinoCardTheme.titleFontFamily,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                 ],
               ),

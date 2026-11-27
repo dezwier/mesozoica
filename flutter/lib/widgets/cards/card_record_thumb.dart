@@ -62,7 +62,10 @@ class CardRecordThumb extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: cardTheme
                             .frontOverlaySubtitleStyle(fontSize: labelFontSize)
-                            .copyWith(height: 1.1),
+                            .copyWith(
+                              fontFamily: DinoCardTheme.titleFontFamily,
+                              height: 1.1,
+                            ),
                       ),
                     ),
                   ),

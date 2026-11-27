@@ -248,6 +248,8 @@ void main() {
       expect(find.text('Excellent'), findsNothing);
       expect(find.text('Partial'), findsNothing);
       expect(find.byIcon(Icons.info_outline), findsOneWidget);
+      expect(find.byTooltip('Details'), findsOneWidget);
+      expect(find.byTooltip('History'), findsOneWidget);
       expect(find.text('OCCURRENCE NO'), findsNothing);
     },
   );

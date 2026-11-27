@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../../models/fossil.dart';
-import '../../theme/dino_card_theme.dart';
 import '../../utils/display_text.dart';
 import '../../utils/relative_time.dart';
 import '../fossil/fossil_record_drawer.dart';
 import 'card_attribute_grid.dart';
-import 'card_back_backdrop.dart';
 import 'card_back_body.dart';
-import 'card_back_corner_actions.dart';
 import 'card_history_drawer.dart';
-import 'fossil_card_header.dart';
 import 'fossil_card_image.dart';
 import 'fossil_related_thumbs.dart';
 import 'geologic_timeline.dart';
+import 'museum_card_frame.dart';
+import 'museum_card_icons.dart';
 
 class FossilCardBack extends StatelessWidget {
   const FossilCardBack({
     super.key,
     required this.fossil,
     this.showRecordButton = true,
-    this.titleFontSize = 36,
-    this.subtitleFontSize = 10,
+    this.titleFontSize = 28,
+    this.subtitleFontSize = 12,
   });
 
   final FossilSummary fossil;
@@ -45,78 +43,47 @@ class FossilCardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
     final discoveredSubtitle = fossil.discoveredSubtitle;
     final rockPart = fossil.displayRockType;
     final rockText = rockPart != '—' ? toTitleCase(rockPart.trim()) : '';
     final periodPart = fossil.displayPeriod;
-    final periodLine =
-        rockText.isNotEmpty ? '$periodPart · $rockText' : periodPart;
+    final periodLine = rockText.isNotEmpty
+        ? '$periodPart · $rockText'
+        : periodPart;
+    final subtitle =
+        (discoveredSubtitle != null && discoveredSubtitle.isNotEmpty)
+        ? discoveredSubtitle
+        : (periodLine == '—' ? null : periodLine);
     final showWiki = showRecordButton && !fossil.isField;
 
-    return AspectRatio(
-      aspectRatio: DinoCardTheme.cardAspectRatio,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CardBackBackdrop(
-            image: FossilCardImage(imageUrl: fossil.mainImageUrl),
-          ),
-          Positioned(
-            left: 18,
-            right: 18,
-            top: 20,
-            child: FossilCardHeader(
-              fossil: fossil,
-              titleFontSize: titleFontSize,
-              subtitleFontSize: subtitleFontSize,
-              centered: true,
-              overlayOnImage: true,
-              showOccurrenceSubtitle: false,
-              subtitleOverride: discoveredSubtitle,
-            ),
-          ),
-          Positioned(
-            left: 18,
-            right: 18,
-            top: 72,
-            bottom: 14,
-            child: CardBackBody(
-              children: [
-                CardBackSection(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        periodLine,
-                        textAlign: TextAlign.center,
-                        style: cardTheme.bodyStyle(fontSize: 12.5).copyWith(
-                              color: cardTheme.cardTextPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        height: 48,
-                        child: GeologicTimeline.fromAgeRange(
-                          minAgeMa: fossil.minAgeMa,
-                          maxAgeMa: fossil.maxAgeMa,
-                          axis: GeologicTimelineAxis.horizontal,
-                          scale: 1.0,
-                          showYearLabels: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                CardBackSection(
-                  title: 'Attributes',
+    return MuseumCardFrame(
+      image: FossilCardImage(imageUrl: fossil.mainImageUrl),
+      emblem: MuseumGlyph.bone,
+      title: fossil.displayTitle,
+      subtitle: subtitle,
+      titleFontSize: titleFontSize,
+      subtitleFontSize: subtitleFontSize,
+      timeline: GeologicTimeline.fromAgeRange(
+        minAgeMa: fossil.minAgeMa,
+        maxAgeMa: fossil.maxAgeMa,
+        axis: GeologicTimelineAxis.horizontal,
+        scale: 0.92,
+        showYearLabels: true,
+      ),
+      panels: MuseumPanelRow(
+        left: CardBackSection(
+          title: 'Attributes',
+          expandChild: true,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: constraints.maxWidth,
                   child: CardAttributeGrid(
                     attributes: [
-                      CardAttributeItem(
-                        'Category',
-                        fossil.displayImpCategory,
-                      ),
+                      CardAttributeItem('Category', fossil.displayImpCategory),
                       CardAttributeItem(
                         'Sub category',
                         fossil.displayImpSubcategory,
@@ -132,24 +99,26 @@ class FossilCardBack extends StatelessWidget {
                     ],
                   ),
                 ),
-                CardBackSection(
-                  title: 'Linked cards',
-                  child: SizedBox(
-                    height: 96,
-                    child: FossilRelatedThumbs(fossil: fossil),
-                  ),
-                ),
-              ],
+              );
+            },
+          ),
+        ),
+        right: CardBackSection(
+          title: 'Linked cards',
+          expandChild: true,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 148),
+              child: FossilRelatedThumbs(fossil: fossil),
             ),
           ),
-          CardBackCornerActions(
-            wiki: showWiki
-                ? () => FossilRecordDrawer.show(context, fossil: fossil)
-                : null,
-            onHistory: () => _openHistory(context),
-          ),
-        ],
+        ),
       ),
+      wiki: showWiki
+          ? () => FossilRecordDrawer.show(context, fossil: fossil)
+          : null,
+      onHistory: () => _openHistory(context),
     );
   }
 }

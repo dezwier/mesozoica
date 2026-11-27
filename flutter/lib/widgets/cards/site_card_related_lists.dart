@@ -53,7 +53,9 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
       child: CardRecordThumb(
         image: FossilCardImage(imageUrl: fossil.mainImageUrl),
         label: fossil.displayLabel,
-        onTap: widget.tappable ? () => showFossilCardDialog(context, fossilId: fossil.id) : null,
+        onTap: widget.tappable
+            ? () => showFossilCardDialog(context, fossilId: fossil.id)
+            : null,
       ),
     );
     if (!fossil.isHidden) return thumb;
@@ -132,7 +134,9 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
             child: Text(
               'Could not load site record',
               textAlign: TextAlign.center,
-              style: cardTheme.bodyStyle(fontSize: 10),
+              style: cardTheme.bodyStyle(fontSize: 10).copyWith(
+                fontFamily: DinoCardTheme.titleFontFamily,
+              ),
             ),
           );
         }
@@ -161,6 +165,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
                       style: cardTheme
                           .bodyStyle(fontSize: 13.5)
                           .copyWith(
+                            fontFamily: DinoCardTheme.titleFontFamily,
                             color: cardTheme.cardTextMuted,
                             fontWeight: FontWeight.w600,
                             height: 1.15,
@@ -220,6 +225,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
                       style: cardTheme
                           .bodyStyle(fontSize: 13.5)
                           .copyWith(
+                            fontFamily: DinoCardTheme.titleFontFamily,
                             color: cardTheme.cardTextPrimary,
                             fontWeight: FontWeight.w600,
                             height: 1.15,

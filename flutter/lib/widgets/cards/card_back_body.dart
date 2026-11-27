@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
-import 'card_section_panel.dart';
 
 /// Shared vertical stack for card backs — everything visible, no accordion.
 ///
@@ -57,40 +56,51 @@ class CardBackBody extends StatelessWidget {
   }
 }
 
-/// Compact panel for a back-face section. Omit [title] for an unlabeled card.
+/// Gold-outlined panel for a back-face section. Omit [title] for an unlabeled card.
 class CardBackSection extends StatelessWidget {
   const CardBackSection({
     super.key,
     this.title,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(10, 8, 10, 8),
+    this.padding = const EdgeInsets.fromLTRB(8, 8, 8, 8),
+    this.expandChild = false,
   });
 
   final String? title;
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final bool expandChild;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final label = title?.trim();
-    return CardSectionPanel(
-      labelWidget: (label == null || label.isEmpty)
-          ? null
-          : Text(
-              label.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: cardTheme
-                  .sectionLabelStyle(fontSize: 8.5)
-                  .copyWith(
-                    color: cardTheme.cardTextSecondary,
-                    letterSpacing: 0.8,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-      labelGap: 6,
-      padding: padding,
-      child: child,
+    return DecoratedBox(
+      decoration: cardTheme.museumPanelDecoration(),
+      child: Padding(
+        padding: padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (label != null && label.isNotEmpty) ...[
+              Text(
+                label.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: cardTheme
+                    .sectionLabelStyle(fontSize: 9)
+                    .copyWith(
+                      fontFamily: DinoCardTheme.titleFontFamily,
+                      color: cardTheme.cardAccent,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 6),
+            ],
+            if (expandChild) Expanded(child: child) else child,
+          ],
+        ),
+      ),
     );
   }
 }
