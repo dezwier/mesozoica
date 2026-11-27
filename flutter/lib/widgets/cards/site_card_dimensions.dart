@@ -9,6 +9,7 @@ import '../../controllers/auth_controller.dart';
 import '../../features/discovery/discovery.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_section_panel.dart';
+import 'museum_card_frame.dart';
 
 /// Site card panel: four horizontal odd_* axes + vertical depth.
 class SiteCardDimensions extends StatelessWidget {
@@ -108,76 +109,79 @@ class SiteCardDimensions extends StatelessWidget {
                 dimensionAccuracies.length)
             .clamp(0.0, 1.0);
 
-    return CardSectionPanel(
-      decoration: cardTheme.museumPanelDecoration(),
-      labelWidget: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Site dimensions'.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: cardTheme
-                .sectionLabelStyle(fontSize: 8.5)
-                .copyWith(
-                  fontFamily: DinoCardTheme.titleFontFamily,
-                  color: cardTheme.cardAccent,
-                  letterSpacing: 1.4,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: SiteDocumentationProgressHeader(
-              progress: averageDocumentation,
-              message: site.documented == true || averageDocumentation >= 1.0
-                  ? 'Site documented'
-                  : inRange
-                  ? 'Documenting — continues while locked'
-                  : 'Move within range to continue',
-              active: inRange,
-              complete: site.documented == true || averageDocumentation >= 1.0,
-              cardTheme: cardTheme,
-              height: 18.0,
-            ),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      labelGap: 6,
-      child: SizedBox(
-        height: 108,
-        child: Row(
+    return MuseumInnerCard(
+      child: CardSectionPanel(
+        decoration: const BoxDecoration(),
+        labelWidget: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                children: [
-                  for (var i = 0; i < horizontalDisplays.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 4),
-                    Expanded(
-                      child: _HorizontalDimensionRow(
-                        label: horizontalDisplays[i].$1,
-                        display: horizontalDisplays[i].$2,
-                        cardTheme: cardTheme,
-                        showExactMarker: showExactMarker,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            Text(
+              'Site dimensions'.toUpperCase(),
+              textAlign: TextAlign.center,
+              style: cardTheme
+                  .sectionLabelStyle(fontSize: 8.5)
+                  .copyWith(
+                    fontFamily: DinoCardTheme.titleFontFamily,
+                    color: cardTheme.cardAccent,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 40,
-              child: _VerticalDepthAxis(
-                display: depthDisplay,
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: SiteDocumentationProgressHeader(
+                progress: averageDocumentation,
+                message: site.documented == true || averageDocumentation >= 1.0
+                    ? 'Site documented'
+                    : inRange
+                    ? 'Documenting — continues while locked'
+                    : 'Move within range to continue',
+                active: inRange,
+                complete:
+                    site.documented == true || averageDocumentation >= 1.0,
                 cardTheme: cardTheme,
-                showExactMarker: showExactMarker,
+                height: 18.0,
               ),
             ),
           ],
+        ),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        labelGap: 6,
+        child: SizedBox(
+          height: 108,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < horizontalDisplays.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 4),
+                      Expanded(
+                        child: _HorizontalDimensionRow(
+                          label: horizontalDisplays[i].$1,
+                          display: horizontalDisplays[i].$2,
+                          cardTheme: cardTheme,
+                          showExactMarker: showExactMarker,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 40,
+                child: _VerticalDepthAxis(
+                  display: depthDisplay,
+                  cardTheme: cardTheme,
+                  showExactMarker: showExactMarker,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

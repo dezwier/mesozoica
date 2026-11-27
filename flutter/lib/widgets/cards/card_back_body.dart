@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
+import 'museum_card_frame.dart';
 
 /// Shared vertical stack for card backs — everything visible, no accordion.
 ///
@@ -75,31 +76,29 @@ class CardBackSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final label = title?.trim();
-    return DecoratedBox(
-      decoration: cardTheme.museumPanelDecoration(),
-      child: Padding(
-        padding: padding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (label != null && label.isNotEmpty) ...[
-              Text(
-                label.toUpperCase(),
-                textAlign: TextAlign.center,
-                style: cardTheme
-                    .sectionLabelStyle(fontSize: 8.5)
-                    .copyWith(
-                      fontFamily: DinoCardTheme.titleFontFamily,
-                      color: cardTheme.cardAccent,
-                      letterSpacing: 1.8,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            if (expandChild) Expanded(child: child) else child,
+    return MuseumInnerCard(
+      padding: padding,
+      child: Column(
+        mainAxisSize: expandChild ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (label != null && label.isNotEmpty) ...[
+            Text(
+              label.toUpperCase(),
+              textAlign: TextAlign.center,
+              style: cardTheme
+                  .sectionLabelStyle(fontSize: 8.5)
+                  .copyWith(
+                    fontFamily: DinoCardTheme.titleFontFamily,
+                    color: cardTheme.cardAccent,
+                    letterSpacing: 1.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 8),
           ],
-        ),
+          if (expandChild) Expanded(child: child) else child,
+        ],
       ),
     );
   }

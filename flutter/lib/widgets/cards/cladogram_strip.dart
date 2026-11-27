@@ -105,11 +105,26 @@ class CladogramStrip extends StatelessWidget {
     }
 
     const naturalRow = 28.0;
-    final layout = _CladogramLayout(
-      scale: scale.clamp(0.72, 1),
-      rowHeight: naturalRow * scale.clamp(0.72, 1),
+    final fittedScale = scale.clamp(0.72, 1.0);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        var rowHeight = naturalRow * fittedScale;
+        final bounded =
+            constraints.maxHeight.isFinite && constraints.maxHeight > 0;
+        if (bounded) {
+          rowHeight = constraints.maxHeight / nodes.length;
+          if (rowHeight < 22) rowHeight = 22;
+        }
+        final layout = _CladogramLayout(
+          scale: fittedScale,
+          rowHeight: rowHeight,
+        );
+        final width = !centered && constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : null;
+        return _buildTree(cardTheme: cardTheme, layout: layout, width: width);
+      },
     );
-    return _buildTree(cardTheme: cardTheme, layout: layout, width: null);
   }
 }
 
