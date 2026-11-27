@@ -5,22 +5,24 @@ import '../../theme/dino_card_theme.dart';
 import '../../utils/display_text.dart';
 
 class _CladogramLayout {
-  const _CladogramLayout({required this.scale});
+  const _CladogramLayout({required this.scale, required this.rowHeight});
 
   final double scale;
+  final double rowHeight;
 
-  double get rowHeight => 34 * scale;
-  double get rankLineHeight => 10 * scale;
-  double get labelGap => 2 * scale;
-  double get nameLineHeight => 14 * scale;
-  double get dotSize => 8 * scale;
+  double get rankLineHeight => 9 * scale;
+  double get labelGap => 1 * scale;
+  double get nameLineHeight => 13 * scale;
+  double get dotSize => 6.5 * scale;
   double get dotNameGap => 8 * scale;
 
   double get contentBlockHeight => rankLineHeight + labelGap + nameLineHeight;
 
   double get rowPaddingTop => (rowHeight - contentBlockHeight) / 2;
 
-  double get dotX => dotSize / 2;
+  double get dotSlot => dotSize + 2;
+
+  double get dotX => dotSlot / 2;
 
   double dotYForIndex(int index) =>
       index * rowHeight +
@@ -90,7 +92,6 @@ class CladogramStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final layout = _CladogramLayout(scale: scale);
 
     if (nodes.isEmpty) {
       return Align(
@@ -103,150 +104,26 @@ class CladogramStrip extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final contentHeight = nodes.length * layout.rowHeight;
-        final maxHeight = constraints.maxHeight;
-        final maxWidth = constraints.maxWidth;
-        final needsScroll =
-            maxHeight.isFinite && contentHeight > maxHeight + 0.5;
-
-        final tree = _buildTree(
-          cardTheme: cardTheme,
-          layout: layout,
-          width: centered ? null : maxWidth,
-        );
-
-        if (needsScroll) {
-          return _CladogramScrollFade(
-            height: maxHeight,
-            centered: centered,
-            width: centered ? null : maxWidth,
-            child: tree,
-          );
-        }
-
-        return Align(
-          alignment: centered ? Alignment.topCenter : Alignment.topLeft,
-          child: centered
-              ? IntrinsicWidth(child: tree)
-              : SizedBox(width: maxWidth, child: tree),
-        );
-      },
+    const naturalRow = 28.0;
+    final layout = _CladogramLayout(
+      scale: scale.clamp(0.72, 1),
+      rowHeight: naturalRow * scale.clamp(0.72, 1),
     );
-  }
-}
-
-const _cladogramScrollFadeHeight = 12.0;
-
-class _CladogramScrollFade extends StatefulWidget {
-  const _CladogramScrollFade({
-    required this.height,
-    required this.centered,
-    required this.child,
-    this.width,
-  });
-
-  final double height;
-  final bool centered;
-  final double? width;
-  final Widget child;
-
-  @override
-  State<_CladogramScrollFade> createState() => _CladogramScrollFadeState();
-}
-
-class _CladogramScrollFadeState extends State<_CladogramScrollFade> {
-  final ScrollController _controller = ScrollController();
-  bool _showTopFade = false;
-  bool _showBottomFade = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_updateFades);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateFades());
-  }
-
-  @override
-  void didUpdateWidget(covariant _CladogramScrollFade oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateFades());
-  }
-
-  @override
-  void dispose() {
-    _controller.removeListener(_updateFades);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _updateFades() {
-    if (!_controller.hasClients) return;
-
-    final position = _controller.position;
-    final showTop = position.pixels > 0.5;
-    final showBottom = position.pixels < position.maxScrollExtent - 0.5;
-
-    if (showTop == _showTopFade && showBottom == _showBottomFade) return;
-
-    setState(() {
-      _showTopFade = showTop;
-      _showBottomFade = showBottom;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Widget scrollChild = widget.child;
-    if (widget.centered) {
-      scrollChild = Align(
-        alignment: Alignment.topCenter,
-        child: IntrinsicWidth(child: widget.child),
-      );
-    } else if (widget.width != null) {
-      scrollChild = SizedBox(width: widget.width, child: widget.child);
-    }
-
-    return SizedBox(
-      height: widget.height,
-      child: ShaderMask(
-        shaderCallback: (bounds) {
-          final fadeFraction = (_cladogramScrollFadeHeight / widget.height)
-              .clamp(0.0, 0.5);
-          return LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              _showTopFade ? Colors.transparent : Colors.white,
-              Colors.white,
-              Colors.white,
-              _showBottomFade ? Colors.transparent : Colors.white,
-            ],
-            stops: [0.0, fadeFraction, 1.0 - fadeFraction, 1.0],
-          ).createShader(bounds);
-        },
-        blendMode: BlendMode.dstIn,
-        child: SingleChildScrollView(
-          controller: _controller,
-          physics: const ClampingScrollPhysics(),
-          child: scrollChild,
-        ),
-      ),
-    );
+    return _buildTree(cardTheme: cardTheme, layout: layout, width: null);
   }
 }
 
 TextStyle _nodeStyle(DinoCardTheme cardTheme, bool isLast, double scale) {
+  final color = cardTheme.isLight
+      ? cardTheme.museumTileInk
+      : (isLast ? const Color(0xFFF0D7A4) : const Color(0xFFE6D3BE));
   return TextStyle(
     fontFamily: DinoCardTheme.titleFontFamily,
-    color: isLast
-        ? cardTheme.museumTitleColor
-        : cardTheme.cladogramNodeColor(isLast: false),
-    fontSize: (isLast ? 13 : 10.5) * scale,
+    color: color,
+    fontSize: (isLast ? 12.5 : 11) * scale,
     fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
-    letterSpacing: 0.2,
-    height: 1.1,
+    letterSpacing: 0.1,
+    height: 1.05,
   );
 }
 
@@ -274,14 +151,17 @@ class _CladogramNodeRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.only(left: layout.dotSize + layout.dotNameGap),
+            padding: EdgeInsets.only(left: layout.dotSlot + layout.dotNameGap),
             child: Text(
               node.rankLabel,
               style: cardTheme
-                  .rankLabelStyle(fontSize: 8 * layout.scale)
+                  .rankLabelStyle(fontSize: 7 * layout.scale)
                   .copyWith(
                     fontFamily: DinoCardTheme.titleFontFamily,
-                    letterSpacing: 0.8,
+                    color: cardTheme.cardAccent.withValues(alpha: 0.92),
+                    letterSpacing: 1.15,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
                   ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -291,28 +171,28 @@ class _CladogramNodeRow extends StatelessWidget {
           Row(
             mainAxisSize: centered ? MainAxisSize.min : MainAxisSize.max,
             children: [
-              Container(
-                width: isLast ? layout.dotSize + 2 : layout.dotSize,
-                height: isLast ? layout.dotSize + 2 : layout.dotSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isLast
-                      ? cardTheme.cardAccent
-                      : cardTheme.cardAccent.withValues(alpha: 0.85),
-                  border: Border.all(
-                    color: isLast
-                        ? const Color(0xFFF6E2A8)
-                        : cardTheme.cardAccent.withValues(alpha: 0.4),
-                    width: isLast ? 1.2 : 0,
-                  ),
-                  boxShadow: isLast
-                      ? [
-                          BoxShadow(
-                            color: cardTheme.cardAccent.withValues(alpha: 0.55),
-                            blurRadius: 6,
+              SizedBox(
+                width: layout.dotSlot,
+                height: layout.dotSlot,
+                child: Center(
+                  child: Container(
+                    width: isLast ? layout.dotSize + 1.4 : layout.dotSize,
+                    height: isLast ? layout.dotSize + 1.4 : layout.dotSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isLast
+                          ? const Color(0xFFF6E2A8)
+                          : cardTheme.cardAccent,
+                      boxShadow: [
+                        BoxShadow(
+                          color: cardTheme.cardAccent.withValues(
+                            alpha: isLast ? 0.7 : 0.35,
                           ),
-                        ]
-                      : null,
+                          blurRadius: isLast ? 6 : 2,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               SizedBox(width: layout.dotNameGap),
@@ -355,9 +235,14 @@ class _CladogramConnectorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (nodeCount <= 1) return;
 
+    final glow = Paint()
+      ..color = lineColor.withValues(alpha: 0.28)
+      ..strokeWidth = 3.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
     final linePaint = Paint()
       ..color = lineColor
-      ..strokeWidth = 1.6
+      ..strokeWidth = 1.15
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -367,6 +252,7 @@ class _CladogramConnectorPainter extends CustomPainter {
       final parentY = layout.dotYForIndex(i);
       final childY = layout.dotYForIndex(i + 1);
 
+      canvas.drawLine(Offset(x, parentY), Offset(x, childY), glow);
       canvas.drawLine(Offset(x, parentY), Offset(x, childY), linePaint);
     }
   }

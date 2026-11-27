@@ -62,7 +62,7 @@ class CardBackSection extends StatelessWidget {
     super.key,
     this.title,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(8, 8, 8, 8),
+    this.padding = const EdgeInsets.fromLTRB(10, 9, 10, 10),
     this.expandChild = false,
   });
 
@@ -87,15 +87,15 @@ class CardBackSection extends StatelessWidget {
                 label.toUpperCase(),
                 textAlign: TextAlign.center,
                 style: cardTheme
-                    .sectionLabelStyle(fontSize: 9)
+                    .sectionLabelStyle(fontSize: 8.5)
                     .copyWith(
                       fontFamily: DinoCardTheme.titleFontFamily,
                       color: cardTheme.cardAccent,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.8,
+                      fontWeight: FontWeight.w600,
                     ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
             ],
             if (expandChild) Expanded(child: child) else child,
           ],

@@ -123,20 +123,39 @@ class MuseumCardFrame extends StatelessWidget {
 }
 
 class MuseumPanelRow extends StatelessWidget {
-  const MuseumPanelRow({super.key, required this.left, required this.right});
+  const MuseumPanelRow({
+    super.key,
+    required this.left,
+    required this.right,
+    this.matchHeight = false,
+  });
 
   final Widget left;
   final Widget right;
 
+  /// Give both panels the height of the taller one.
+  final bool matchHeight;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(child: left),
-        const SizedBox(width: 8),
-        Expanded(child: right),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final half = constraints.maxWidth.isFinite
+            ? (constraints.maxWidth - gap) / 2
+            : null;
+        final row = Row(
+          crossAxisAlignment: matchHeight
+              ? CrossAxisAlignment.stretch
+              : CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: half, child: left),
+            const SizedBox(width: gap),
+            SizedBox(width: half, child: right),
+          ],
+        );
+        return matchHeight ? IntrinsicHeight(child: row) : row;
+      },
     );
   }
 }
