@@ -99,11 +99,11 @@ class DinoCardTheme {
 
   /// Cream attribute tiles. Same family in both themes so rows stay legible.
   Color get museumTileColor =>
-      isLight ? const Color(0xFFFFFBF6) : const Color(0xFFF4E6D2);
+      isLight ? const Color(0xFFFFFBF6) : const Color(0xFFF6E7D4);
 
   Color get museumTileInk => const Color(0xFF3A2A1E);
 
-  Color get museumTileLabel => const Color(0xFF8A6239);
+  Color get museumTileLabel => const Color(0xFF8C6232);
 
   /// Title sitting on the dark (or parchment) body under the hero.
   Color get museumTitleColor =>
@@ -111,12 +111,26 @@ class DinoCardTheme {
 
   BoxDecoration museumPanelDecoration() {
     return BoxDecoration(
-      color: isLight ? const Color(0xB3FFFFFF) : const Color(0xE61A1410),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: cardAccent.withValues(alpha: isLight ? 0.5 : 0.72),
-        width: 1,
+      borderRadius: BorderRadius.circular(16),
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: isLight
+            ? const [Color(0xF2FFFFFF), Color(0xE6F4EADF)]
+            : const [Color(0xF2261C16), Color(0xF2120E0B)],
       ),
+      border: Border.all(
+        color: cardAccent.withValues(alpha: isLight ? 0.42 : 0.58),
+        width: 0.8,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: cardAccent.withValues(alpha: isLight ? 0.10 : 0.18),
+          blurRadius: 12,
+          spreadRadius: -3,
+          offset: const Offset(0, 2),
+        ),
+      ],
     );
   }
 

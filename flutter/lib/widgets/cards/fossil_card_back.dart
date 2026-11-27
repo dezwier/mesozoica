@@ -63,6 +63,7 @@ class FossilCardBack extends StatelessWidget {
       subtitle: subtitle,
       titleFontSize: titleFontSize,
       subtitleFontSize: subtitleFontSize,
+      fillBody: false,
       timeline: GeologicTimeline.fromAgeRange(
         minAgeMa: fossil.minAgeMa,
         maxAgeMa: fossil.maxAgeMa,
@@ -73,39 +74,20 @@ class FossilCardBack extends StatelessWidget {
       panels: MuseumPanelRow(
         left: CardBackSection(
           title: 'Attributes',
-          expandChild: true,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  child: CardAttributeGrid(
-                    attributes: [
-                      CardAttributeItem('Category', fossil.displayImpCategory),
-                      CardAttributeItem(
-                        'Sub category',
-                        fossil.displayImpSubcategory,
-                      ),
-                      CardAttributeItem(
-                        'Preservation',
-                        fossil.displayImpPreservationQuality,
-                      ),
-                      CardAttributeItem(
-                        'Completeness',
-                        fossil.displayImpCompleteness,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: CardAttributeGrid(
+            attributes: [
+              CardAttributeItem('Category', fossil.displayImpCategory),
+              CardAttributeItem('Sub category', fossil.displayImpSubcategory),
+              CardAttributeItem(
+                'Preservation',
+                fossil.displayImpPreservationQuality,
+              ),
+              CardAttributeItem('Completeness', fossil.displayImpCompleteness),
+            ],
           ),
         ),
         right: CardBackSection(
           title: 'Linked cards',
-          expandChild: true,
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
