@@ -5,10 +5,11 @@ import '../../models/tool_session.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
 import '../common/chrome_action_button.dart';
-import 'card_accordion_layout.dart';
 import 'card_attribute_grid.dart';
 import 'card_back_backdrop.dart';
-import 'card_section_panel.dart';
+import 'card_back_body.dart';
+import 'card_back_corner_actions.dart';
+import 'card_history_drawer.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
@@ -50,6 +51,18 @@ class ToolCardBack extends StatelessWidget {
 
   static const double _actionHeight = 44;
 
+  void _openHistory(BuildContext context) {
+    CardHistoryDrawer.show(
+      context,
+      title: 'History',
+      child: ToolCardHistoryList(
+        history: history,
+        loading: historyLoading,
+        onHistoryTap: onHistoryTap,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final remaining = remainingDurationS ?? tool.remainingDurationS;
@@ -69,12 +82,9 @@ class ToolCardBack extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
           );
 
-    final cardTheme = DinoCardTheme.of(context);
-    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
-          color: cardTheme.cardTextSecondary,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.bold,
-        );
+    final params =
+        tool.isOwned && tool.params.isNotEmpty ? tool.params : tool.baseParams;
+    final formatted = _formatToolParams(params);
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -92,152 +102,77 @@ class ToolCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               overlayOnImage: true,
               showSkillBadge: true,
-              showScientificSubtitle: false, // Drop subtitle for tool cards
+              showScientificSubtitle: false,
             ),
           ),
           Positioned(
             left: 18,
             right: 18,
-            top: 72, // Align the top offset of the accordion layout to exactly 72
+            top: 72,
             bottom: 14,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: CardAccordionLayout(
-                    initialIndex: 0,
-                    items: [
-                      // Element 0: Tool parameters (no inner cards, 3 column wrap)
-                      CardAccordionItem(
-                        builder: (context, isOpen, curvedT, lerpFn) {
-                          final params = tool.isOwned && tool.params.isNotEmpty ? tool.params : tool.baseParams;
-                          final formatted = _formatToolParams(params);
-                          return CardSectionPanel(
-                            labelWidget: Text(
-                              'Tool parameters'.toUpperCase(),
-                              textAlign: TextAlign.center,
-                              style: titleStyle,
+            child: CardBackBody(
+              bottom: showActionButtons
+                  ? SizedBox(
+                      height: _actionHeight,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: ChromeActionButton(
+                              label: actionLabel,
+                              onPressed: actionEnabled ? onAction : null,
                             ),
-                            labelGap: 6,
-                            expandChild: true,
-                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.center,
-                              child: SizedBox(
-                                height: isOpen ? 112.0 : 44.0,
-                                width: 340,
-                                child: Stack(
-                                  children: [
-                                    Center(
-                                      child: CardAttributeGrid(
-                                        attributes: [
-                                          for (final entry in formatted.entries)
-                                            CardAttributeItem(entry.key, entry.value),
-                                        ],
-                                        isOpen: isOpen,
-                                      ),
+                          ),
+                          if (remaining != null) ...[
+                            const SizedBox(width: 8),
+                            Center(
+                              child: Text(
+                                _formatRemaining(remaining),
+                                style: DinoCardTheme.of(context)
+                                    .bodyStyle(fontSize: 13)
+                                    .copyWith(
+                                      color: const Color(0xFFF0EBE3),
+                                      shadows: const [
+                                        Shadow(
+                                          color: Color(0x99000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 1),
+                                        ),
+                                      ],
                                     ),
-                                    if (editButton != null)
-                                      Positioned(top: 2, right: 2, child: editButton),
-                                  ],
-                                ),
                               ),
                             ),
-                          );
-                        },
+                          ],
+                        ],
                       ),
-                      // Element 1: Tool timeline history
-                      CardAccordionItem(
-                        builder: (context, isOpen, curvedT, lerpFn) {
-                          return CardSectionPanel(
-                            labelWidget: Text(
-                              'Tool timeline history'.toUpperCase(),
-                              textAlign: TextAlign.center,
-                              style: titleStyle,
-                            ),
-                            labelGap: 6,
-                            expandChild: true,
-                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                            child: isOpen
-                                ? FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.center,
-                                    child: SizedBox(
-                                      height: 112,
-                                      width: 340,
-                                      child: _HistoryList(
-                                        history: history,
-                                        loading: historyLoading,
-                                        onHistoryTap: onHistoryTap,
-                                      ),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                          );
-                        },
+                    )
+                  : null,
+              children: [
+                CardBackSection(
+                  title: 'Parameters',
+                  child: Stack(
+                    children: [
+                      CardAttributeGrid(
+                        attributes: [
+                          for (final entry in formatted.entries)
+                            CardAttributeItem(entry.key, entry.value),
+                        ],
                       ),
+                      if (editButton != null)
+                        Positioned(top: 0, right: 0, child: editButton),
                     ],
                   ),
                 ),
-                if (showActionButtons) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: _actionHeight,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: ChromeActionButton(
-                            label: actionLabel,
-                            onPressed: actionEnabled ? onAction : null,
-                          ),
-                        ),
-                        if (remaining != null) ...[
-                          const SizedBox(width: 8),
-                          Center(
-                            child: Text(
-                              _formatRemaining(remaining),
-                              style: DinoCardTheme.of(context)
-                                  .bodyStyle(fontSize: 13)
-                                  .copyWith(
-                                    color: const Color(0xFFF0EBE3),
-                                    shadows: const [
-                                      Shadow(
-                                        color: Color(0x99000000),
-                                        blurRadius: 4,
-                                        offset: Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+                ?statsChild,
               ],
             ),
+          ),
+          CardBackCornerActions(
+            onHistory: () => _openHistory(context),
           ),
         ],
       ),
     );
-  }
-
-  static String _formatLatestHistoryEntry(ToolHistoryEntry entry) {
-    final when = formatRelativeWhen(entry.at);
-    if (entry.isRole) {
-      final label = entry.roleAction == 'owned' ? 'Obtained' : 'Role change';
-      return '$label · $when';
-    }
-    final session = entry.session;
-    if (session != null) {
-      final dur = _HistoryRow._formatDuration(session.durationS);
-      final status = _HistoryRow._statusLabel(session);
-      return 'Used · $when · $dur · $status';
-    }
-    return '—';
   }
 
   static Map<String, String> _formatToolParams(Map<String, dynamic> params) {
@@ -249,8 +184,7 @@ class ToolCardBack extends StatelessWidget {
       final value = entry.value;
       final label = _humanizeKey(key);
 
-      // Format value
-      String valueStr = '';
+      var valueStr = '';
       if (value is num) {
         if (key.endsWith('_kmh')) {
           valueStr = '${value.toStringAsFixed(0)} km/h';
@@ -261,7 +195,9 @@ class ToolCardBack extends StatelessWidget {
         } else if (key.endsWith('_chance')) {
           valueStr = '${(value * 100).toStringAsFixed(0)}%';
         } else {
-          valueStr = value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+          valueStr = value == value.roundToDouble()
+              ? value.toStringAsFixed(0)
+              : value.toStringAsFixed(1);
         }
       } else {
         valueStr = value?.toString() ?? '—';
@@ -290,8 +226,9 @@ class ToolCardBack extends StatelessWidget {
   }
 }
 
-class _HistoryList extends StatelessWidget {
-  const _HistoryList({
+class ToolCardHistoryList extends StatelessWidget {
+  const ToolCardHistoryList({
+    super.key,
     required this.history,
     required this.loading,
     this.onHistoryTap,
@@ -306,46 +243,43 @@ class _HistoryList extends StatelessWidget {
     final cardTheme = DinoCardTheme.of(context);
     if (loading && history.isEmpty) {
       return const SizedBox(
-        height: 22,
+        height: 40,
         child: Center(
           child: SizedBox(
-            width: 18,
-            height: 18,
+            width: 22,
+            height: 22,
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
       );
     }
     if (history.isEmpty) {
-      return Center(
-        child: Text(
-          'No history yet',
-          style: cardTheme
-              .bodyStyle(fontSize: 12)
-              .copyWith(color: cardTheme.cardTextMuted),
-        ),
+      return Text(
+        'No history yet',
+        style: cardTheme
+            .bodyStyle(fontSize: 14)
+            .copyWith(color: cardTheme.cardTextMuted),
       );
     }
 
-    final divider = Divider(
-      height: 1,
-      thickness: 0.5,
-      color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
-    );
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemCount: history.length,
-      separatorBuilder: (_, _) => divider,
-      itemBuilder: (context, i) {
-        return _HistoryRow(
-          entry: history[i],
-          onTap: onHistoryTap == null || history[i].session == null
-              ? null
-              : () => onHistoryTap!(history[i].session!),
-        );
-      },
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < history.length; i++) ...[
+          if (i > 0)
+            Divider(
+              height: 12,
+              thickness: 0.5,
+              color: cardTheme.cardTextMuted.withValues(alpha: 0.22),
+            ),
+          _HistoryRow(
+            entry: history[i],
+            onTap: onHistoryTap == null || history[i].session == null
+                ? null
+                : () => onHistoryTap!(history[i].session!),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -359,14 +293,14 @@ class _HistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final primary = cardTheme.bodyStyle(fontSize: 11);
+    final primary = cardTheme.bodyStyle(fontSize: 13);
     final muted = primary.copyWith(color: cardTheme.cardTextMuted);
     final when = formatRelativeWhen(entry.at);
 
     if (entry.isRole) {
       final label = _roleLabel(entry.roleAction);
-      return SizedBox(
-        height: 22,
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
             Text(when, style: muted, maxLines: 1),
@@ -374,11 +308,13 @@ class _HistoryRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 5),
               child: Text('·', style: muted),
             ),
-            Text(
-              label,
-              style: primary.copyWith(fontWeight: FontWeight.w600),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            Flexible(
+              child: Text(
+                label,
+                style: primary.copyWith(fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -395,12 +331,11 @@ class _HistoryRow extends StatelessWidget {
         ? '$discovered site${discovered == 1 ? '' : 's'}'
         : null;
 
-    final statusColor = session.isActive
-        ? cardTheme.cardAccent
-        : cardTheme.cardTextMuted;
+    final statusColor =
+        session.isActive ? cardTheme.cardAccent : cardTheme.cardTextMuted;
 
-    final row = SizedBox(
-      height: 22,
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Text(when, style: muted, maxLines: 1),
@@ -430,7 +365,7 @@ class _HistoryRow extends StatelessWidget {
             style: muted.copyWith(
               color: statusColor,
               fontWeight: session.isActive ? FontWeight.w600 : FontWeight.w400,
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: 0.3,
             ),
             maxLines: 1,

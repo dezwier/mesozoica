@@ -54,7 +54,7 @@ class ShellOverlayPanel extends StatelessWidget {
           children: [
             if (!opaque)
               const Positioned.fill(
-                child: ColoredBox(color: Color(0x8A000000)), // ~black54
+                child: ColoredBox(color: Color(0xCC000000)), // ~black80
               ),
             SafeArea(bottom: false, child: child),
             if (showDismiss)

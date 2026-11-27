@@ -229,23 +229,17 @@ void main() {
       expect(find.text('RECORD'), findsNothing);
       expect(find.byType(GeologicTimeline), findsOneWidget);
 
-      // Tap Fossil attributes to open it
-      await tester.tap(find.text('FOSSIL ATTRIBUTES'));
-      await tester.pumpAndSettle();
-
+      expect(find.text('ATTRIBUTES'), findsOneWidget);
       expect(find.text('CATEGORY'), findsOneWidget);
       expect(find.text('SUB CATEGORY'), findsOneWidget);
-      expect(find.text('PRESERVATION QUALITY'), findsOneWidget);
+      expect(find.text('PRESERVATION'), findsOneWidget);
       expect(find.text('COMPLETENESS'), findsOneWidget);
       expect(find.text('Body'), findsOneWidget);
       expect(find.text('Teeth'), findsOneWidget);
       expect(find.text('Good'), findsOneWidget);
       expect(find.text('Isolated Element'), findsOneWidget);
 
-      // Tap Fossil linked cards to open it
-      await tester.tap(find.text('FOSSIL LINKED CARDS'));
-      await tester.pumpAndSettle();
-
+      expect(find.text('LINKED CARDS'), findsOneWidget);
       expect(find.byType(SiteCardImage), findsOneWidget);
       expect(find.byType(DinosaurCardImage), findsOneWidget);
       expect(find.text('Hell Creek Formation'), findsWidgets);

@@ -13,7 +13,7 @@ from app.features.media.infrastructure.image_generation.batch_types import (
 from app.features.media.infrastructure.image_generation.client import (
     IMAGEN_ULTRA_COST_USD_PER_IMAGE,
     ImageGenerationError,
-    generate_image_with_gemini,
+    generate_image_with_openai,
 )
 from app.features.media.infrastructure.image_generation.postprocess import save_processed_png
 
@@ -43,7 +43,7 @@ def generate_with_retries(
     last_error = "unknown error"
     for attempt in range(1, attempts + 1):
         try:
-            image_bytes, usage = generate_image_with_gemini(prompt)
+            image_bytes, usage = generate_image_with_openai(prompt)
             save_processed_png(image_bytes, output_path)
             cost_usd = float(usage.get("cost_usd", IMAGEN_ULTRA_COST_USD_PER_IMAGE))
             return GenerationAttemptOutcome(succeeded=True, cost_usd=cost_usd)

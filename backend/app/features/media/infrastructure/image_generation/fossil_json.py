@@ -97,7 +97,11 @@ def fossil_to_image_prompt_json(
     max_chars: int | None = None,
 ) -> str:
     """Compact JSON for fossil image prompts."""
-    cap = max_chars if max_chars is not None else settings.gemini_image_max_fossil_json_chars
+    cap = (
+        max_chars
+        if max_chars is not None
+        else settings.resolved_image_max_fossil_json_chars
+    )
     payload = fossil_to_image_prompt_dict(fossil)
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(text) <= cap:

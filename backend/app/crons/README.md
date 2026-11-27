@@ -249,12 +249,14 @@ make run-fossil-image-generate CRON_EXTRA='--version Original --max-items 10'
 
 Catalog dinosaur/tool cards always use `Original`. Occurrences store a `version` string and resolve that folder. New occurrences are assigned the newest folder by `meta.yaml` `run_date`.
 
-Requires `GOOGLE_GEMINI_API_KEY`. Default model: `imagen-4.0-ultra-generate-001` (`GEMINI_IMAGE_MODEL`).
+Image generation always calls public OpenAI (`https://api.openai.com/v1/images/generations`),
+same as learnfromai — not Azure Foundry. Requires `OPENAI_API_KEY`.
+Defaults: `gpt-image-2.5-flare`, size `1024x1024`, quality `low`.
 
-The client retries transient failures (503, capacity, timeouts) with exponential backoff, then falls back to **`imagen-4.0-fast-generate-001`** when Ultra cannot complete. Override the primary model:
+The client retries transient failures (503, capacity, timeouts) with exponential backoff, then falls back to **`gpt-image-1-mini`**. Override the primary model:
 
 ```bash
-GEMINI_IMAGE_MODEL=imagen-4.0-fast-generate-001 \
+OPENAI_IMAGE_MODEL=gpt-image-1-mini \
   make run-tool-image-generate-local CRON_EXTRA='--version Original --max-items 5'
 ```
 

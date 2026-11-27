@@ -1,18 +1,23 @@
-import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 
-/// Blurred card illustration + subtle wash and brushed-metal grain.
+/// Same cover illustration as the front face, slightly blurred, plus a soft
+/// glare wash.
+///
+/// Card-back content (headers, panels) is layered by callers on top of this.
 class CardBackBackdrop extends StatelessWidget {
   const CardBackBackdrop({super.key, required this.image});
 
   final Widget image;
 
-  /// Heavy blur so the illustration reads as atmosphere, not detail.
-  static const double blurSigma = 32;
+  static const _blurSigma = 3.0;
+
+  /// Oversample so the soft blur fringe is clipped away (avoids a white halo
+  /// on rounded edges, especially while the card rotates).
+  static const _blurOverscale = 1.1;
 
   @override
   Widget build(BuildContext context) {
@@ -20,20 +25,20 @@ class CardBackBackdrop extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Slight scale avoids transparent edges after blur.
+        // Dark underlay: any residual edge samples dark, not white/transparent.
+        const ColoredBox(color: Color(0xFF0A0A0A)),
         ClipRect(
           child: ImageFiltered(
             imageFilter: ImageFilter.blur(
-              sigmaX: blurSigma,
-              sigmaY: blurSigma,
+              sigmaX: _blurSigma,
+              sigmaY: _blurSigma,
               tileMode: TileMode.clamp,
             ),
-            child: Transform.scale(scale: 1.12, child: image),
-          ),
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: cardTheme.backFaceImageOverlayGradient(),
+            child: Transform.scale(
+              scale: _blurOverscale,
+              filterQuality: FilterQuality.medium,
+              child: image,
+            ),
           ),
         ),
         DecoratedBox(
@@ -41,41 +46,7 @@ class CardBackBackdrop extends StatelessWidget {
             gradient: cardTheme.backFaceSheenGradient(),
           ),
         ),
-        const CustomPaint(painter: _BrushedMetalPainter()),
       ],
     );
   }
-}
-
-class _BrushedMetalPainter extends CustomPainter {
-  const _BrushedMetalPainter();
-
-  static const _lineSpacing = 4.25;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final light = Paint()
-      ..color = const Color(0x05FFFFFF)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-    final dark = Paint()
-      ..color = const Color(0x04000000)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-
-    canvas.save();
-    canvas.translate(size.width / 2, size.height / 2);
-    canvas.rotate(-0.07);
-    final pad = math.max(size.width, size.height) * 0.35;
-    canvas.translate(-size.width / 2, -size.height / 2);
-
-    for (var y = -pad; y < size.height + pad; y += _lineSpacing) {
-      final paint = ((y + pad) / _lineSpacing).floor().isEven ? light : dark;
-      canvas.drawLine(Offset(-pad, y), Offset(size.width + pad, y), paint);
-    }
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _BrushedMetalPainter oldDelegate) => false;
 }

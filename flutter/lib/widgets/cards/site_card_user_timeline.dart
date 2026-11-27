@@ -6,7 +6,7 @@ import '../../models/site.dart';
 import '../../theme/dino_card_theme.dart';
 import '../../utils/relative_time.dart';
 import '../common/app_toast.dart';
-import 'card_section_panel.dart';
+import 'card_history_drawer.dart';
 
 /// A single moment on a site's user-relation timeline.
 class SiteTimelineEntry {
@@ -25,7 +25,7 @@ class SiteTimelineEntry {
   final VoidCallback? onHowTap;
 }
 
-/// Compact list of user moments for a site (discovery / documentation).
+/// Site history body for [CardHistoryDrawer].
 class SiteCardUserTimeline extends StatelessWidget {
   const SiteCardUserTimeline({
     super.key,
@@ -35,8 +35,18 @@ class SiteCardUserTimeline extends StatelessWidget {
   });
 
   final SiteSummary site;
+
+  /// Kept for call-site compatibility.
   final bool isOpen;
   final double? height;
+
+  static Future<void> showDrawer(BuildContext context, {required SiteSummary site}) {
+    return CardHistoryDrawer.show(
+      context,
+      title: 'History',
+      child: SiteCardUserTimeline(site: site),
+    );
+  }
 
   static List<SiteTimelineEntry> entriesFor(
     SiteSummary site, {
@@ -104,57 +114,31 @@ class SiteCardUserTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
     final entries = entriesFor(
       site,
       onAerialTap: site.discoveringSessionId == null
           ? null
           : () => _focusAerial(context, site.discoveringSessionId!),
     );
-    if (entries.isEmpty) return const SizedBox.shrink();
+    if (entries.isEmpty) {
+      return Text(
+        'No history yet',
+        style: cardTheme
+            .bodyStyle(fontSize: 14)
+            .copyWith(color: cardTheme.cardTextMuted),
+      );
+    }
 
-    final displayedEntries = isOpen ? entries : [entries.last];
-
-    final cardTheme = DinoCardTheme.of(context);
-    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
-          color: cardTheme.cardTextSecondary,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.bold,
-        );
-
-    final double resolvedHeight = height ?? (isOpen ? 44.0 : 22.0);
-
-    return CardSectionPanel(
-      labelWidget: Text(
-        'Site history timeline'.toUpperCase(),
-        textAlign: TextAlign.center,
-        style: titleStyle,
-      ),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      labelGap: 6,
-      expandChild: true,
-      child: SizedBox(
-        height: resolvedHeight,
-        width: 340,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-          child: IntrinsicWidth(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < displayedEntries.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 4),
-                  _EntryRow(
-                    entry: displayedEntries[i],
-                    isClosed: !isOpen,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < entries.length; i++) ...[
+          if (i > 0) const SizedBox(height: 10),
+          _EntryRow(entry: entries[i]),
+        ],
+      ],
     );
   }
 
@@ -166,7 +150,6 @@ class SiteCardUserTimeline extends StatelessWidget {
       AppToast.warning(context, 'Could not find that recon flight');
       return;
     }
-    // Close site sheet / dialog if presented as a modal.
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();
@@ -175,15 +158,14 @@ class SiteCardUserTimeline extends StatelessWidget {
 }
 
 class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry, this.isClosed = false});
+  const _EntryRow({required this.entry});
 
   final SiteTimelineEntry entry;
-  final bool isClosed;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
-    final body = cardTheme.bodyStyle(fontSize: isClosed ? 12.5 : 11);
+    final body = cardTheme.bodyStyle(fontSize: 14);
     final howStyle = entry.onHowTap != null
         ? body.copyWith(
             color: Theme.of(context).colorScheme.primary,
@@ -197,7 +179,10 @@ class _EntryRow extends StatelessWidget {
       TextSpan(
         style: body,
         children: [
-          TextSpan(text: entry.moment),
+          TextSpan(
+            text: entry.moment,
+            style: body.copyWith(fontWeight: FontWeight.w700),
+          ),
           const TextSpan(text: ' · '),
           TextSpan(text: entry.whenLabel),
           if (entry.wasFirst && entry.howLabel != 'First') ...[

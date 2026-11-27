@@ -73,10 +73,10 @@ def _seed_fossil(
 
 
 @pytest.fixture(autouse=True)
-def gemini_key(monkeypatch):
-    monkeypatch.setenv("GOOGLE_GEMINI_API_KEY", "test-key")
+def openai_key(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(
-        "app.services.fossil_enrichment_service.sync.settings.google_gemini_api_key",
+        "app.services.fossil_enrichment_service.sync.settings.openai_api_key",
         "test-key",
     )
 
@@ -85,7 +85,7 @@ def test_enrich_writes_fields_and_sets_flag(session: Session):
     fossil, _dinosaur = _seed_fossil(session)
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {"prompt_tokens": 100, "output_tokens": 50}),
     ):
         summary = enrich_fossils(session, dry_run=False)
@@ -111,7 +111,7 @@ def test_enrich_disables_gemini_thinking(session: Session):
     _seed_fossil(session)
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {"prompt_tokens": 100, "output_tokens": 50}),
     ) as mock_api:
         enrich_fossils(session, dry_run=False)
@@ -124,7 +124,7 @@ def test_enrich_disables_gemini_thinking(session: Session):
 def test_enrich_skips_already_enriched(session: Session):
     _seed_fossil(session, llm_enriched=True)
 
-    with patch("app.services.fossil_enrichment_service.sync.call_gemini_api") as mock_api:
+    with patch("app.services.fossil_enrichment_service.sync.call_openai_api") as mock_api:
         summary = enrich_fossils(session, dry_run=False)
 
     mock_api.assert_not_called()
@@ -136,7 +136,7 @@ def test_enrich_overwrite_refreshes_enriched(session: Session):
     fossil, _dinosaur = _seed_fossil(session, llm_enriched=True)
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {}),
     ):
         summary = enrich_fossils(session, dry_run=False, overwrite=True)
@@ -150,7 +150,7 @@ def test_enrich_failure_does_not_set_flag(session: Session):
     fossil, _dinosaur = _seed_fossil(session, fossil_id=100002)
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         side_effect=RuntimeError("API failed"),
     ):
         summary = enrich_fossils(session, dry_run=False)
@@ -176,10 +176,10 @@ def test_enrich_exit_code_threshold():
 
 def test_enrich_requires_api_key(monkeypatch, session: Session):
     monkeypatch.setattr(
-        "app.services.fossil_enrichment_service.sync.settings.google_gemini_api_key",
+        "app.services.fossil_enrichment_service.sync.settings.resolved_openai_api_key",
         "",
     )
-    with pytest.raises(RuntimeError, match="GOOGLE_GEMINI_API_KEY"):
+    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
         enrich_fossils(session)
 
 
@@ -208,7 +208,7 @@ def test_enrich_prioritizes_custom_image_candidates(session: Session):
     )
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {}),
     ) as mock_api:
         summary = enrich_fossils(session, dry_run=False, max_records=1)
@@ -236,7 +236,7 @@ def test_enrich_prioritizes_fossils_synced_before_custom_image(session: Session)
     )
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {}),
     ) as mock_api:
         summary = enrich_fossils(session, dry_run=False, max_records=1)
@@ -255,7 +255,7 @@ def test_enrich_overwrite_resets_flags_before_processing(session: Session):
     )
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {}),
     ) as mock_api:
         summary = enrich_fossils(session, dry_run=False, overwrite=True, max_records=1)
@@ -278,7 +278,7 @@ def test_enrich_resume_after_interrupted_overwrite(session: Session):
     )
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {}),
     ):
         enrich_fossils(session, dry_run=False, overwrite=True, max_records=1)
@@ -286,7 +286,7 @@ def test_enrich_resume_after_interrupted_overwrite(session: Session):
     session.refresh(fossil_done)
     session.refresh(fossil_pending)
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {}),
     ) as mock_api:
         summary = enrich_fossils(session, dry_run=False)
@@ -304,7 +304,7 @@ def test_enrich_dinos_limits_candidates(session: Session):
     _seed_fossil(session, fossil_id=300002, dinosaur_name="Velociraptor")
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=(_llm_response(), {}),
     ) as mock_api:
         summary = enrich_fossils(session, dry_run=False, dinos=["Velociraptor"])
@@ -335,7 +335,7 @@ def test_enrich_applies_pbdb_hints_when_llm_subcategory_unknown(session: Session
     session.commit()
 
     with patch(
-        "app.services.fossil_enrichment_service.sync.call_gemini_api",
+        "app.services.fossil_enrichment_service.sync.call_openai_api",
         return_value=({"llm_subcategory": "unknown"}, {}),
     ):
         enrich_fossils(session, dry_run=False, max_records=1)

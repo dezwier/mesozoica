@@ -63,7 +63,12 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
 
   /// Fraction of card height between neighbors (positive = higher index below).
   static const double _spacingFactor = 0.42;
-  static const double _sideDim = 0.82;
+
+  /// Brightness at |delta| == 1 (opaque darken, not transparency).
+  static const double _nearBrightness = 0.38;
+
+  /// Brightness at |delta| >= 2 — much darker so far cards don't compete.
+  static const double _farBrightness = 0.16;
   static const int _visibleRadius = 2;
 
   /// px/s — beyond this, fling advances at least one page.
@@ -266,9 +271,42 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
       ..scale(scale);
   }
 
-  double _dimForDelta(double delta) {
-    final abs = delta.abs().clamp(0.0, 1.0);
-    return 1.0 - ((1.0 - _sideDim) * abs);
+  /// Opaque brightness for off-focus cards. Focused = 1; near ≈ [_nearBrightness];
+  /// two away ≈ [_farBrightness]. Never drops alpha — see-through stacking was
+  /// making the card two away show through the neighbor.
+  double _brightnessForDelta(double delta) {
+    final abs = delta.abs();
+    if (abs <= 1.0) {
+      return 1.0 - ((1.0 - _nearBrightness) * abs);
+    }
+    final t = ((abs - 1.0) / 1.0).clamp(0.0, 1.0);
+    return _nearBrightness + (_farBrightness - _nearBrightness) * t;
+  }
+
+  ColorFilter _dimFilter(double brightness) {
+    final b = brightness.clamp(0.0, 1.0);
+    return ColorFilter.matrix(<double>[
+      b,
+      0,
+      0,
+      0,
+      0,
+      0,
+      b,
+      0,
+      0,
+      0,
+      0,
+      0,
+      b,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+    ]);
   }
 
   @override
@@ -348,9 +386,12 @@ class CoverFlowCarouselState extends State<CoverFlowCarousel> {
                           return Transform(
                             alignment: Alignment.center,
                             transform: _transformForDelta(delta, cardHeight),
-                            // Always wrap Opacity so focus changes do not remount.
-                            child: Opacity(
-                              opacity: _dimForDelta(delta),
+                            // ColorFiltered (not Opacity) so cards stay opaque —
+                            // neighbors no longer show through each other.
+                            child: ColorFiltered(
+                              colorFilter: _dimFilter(
+                                _brightnessForDelta(delta),
+                              ),
                               child: child,
                             ),
                           );

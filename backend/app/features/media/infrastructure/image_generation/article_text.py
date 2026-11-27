@@ -15,7 +15,11 @@ def extract_article_text(html: str, *, max_chars: int | None = None) -> str:
 
     Imagen prompts are capped at ~480 tokens; keep the excerpt short.
     """
-    cap = max_chars if max_chars is not None else settings.gemini_image_max_article_chars
+    cap = (
+        max_chars
+        if max_chars is not None
+        else settings.resolved_image_max_article_chars
+    )
     if not html or not html.strip():
         return ""
 

@@ -1,4 +1,4 @@
-"""Orchestrate Gemini enrichment of fossil occurrence records."""
+"""Orchestrate OpenAI enrichment of fossil occurrence records."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from app.features.ingestion.application.fossil_enrichment.impute import impute_l
 from app.features.ingestion.application.fossil_enrichment.pbdb_hints import apply_pbdb_hints
 from app.features.ingestion.application.fossil_enrichment.prompt import build_enrichment_prompt
 from app.features.ingestion.application.fossil_enrichment.validate import validate_llm_enrichment
-from app.features.ingestion.infrastructure.llm.client import call_gemini_api
+from app.features.ingestion.infrastructure.llm.client import call_openai_api
 
 logger = logging.getLogger("fossil_enrich")
 
@@ -139,9 +139,9 @@ def enrich_fossils(
     max_records: int | None = None,
     dinos: list[str] | None = None,
 ) -> EnrichSummary:
-    """Enrich fossil occurrence records via Gemini API."""
-    if not settings.google_gemini_api_key:
-        raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for fossil enrichment")
+    """Enrich fossil occurrence records via OpenAI API."""
+    if not settings.resolved_openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY (or AZURE_OPENAI_API_KEY) is required for fossil enrichment")
 
     cap = max_records if max_records is not None else settings.fossil_enrich_max_records
     delay_s = settings.fossil_enrich_request_delay_ms / 1000.0
@@ -190,7 +190,7 @@ def enrich_fossils(
                 period=revision.period if revision else None,
                 short_description=revision.short_description if revision else None,
             )
-            raw, _usage = call_gemini_api(
+            raw, _usage = call_openai_api(
                 user_prompt,
                 system_instruction=system_instruction,
                 response_mime_type_json=True,

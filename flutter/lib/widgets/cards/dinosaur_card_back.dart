@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
-import '../../utils/display_text.dart';
 import '../../utils/relative_time.dart';
 import '../dino/dinosaur_article_drawer.dart';
-import 'card_accordion_layout.dart';
 import 'card_attribute_grid.dart';
 import 'card_back_backdrop.dart';
-import 'card_section_panel.dart';
+import 'card_back_body.dart';
+import 'card_back_corner_actions.dart';
+import 'card_history_drawer.dart';
 import 'cladogram_strip.dart';
 import 'dinosaur_card_header.dart';
 import 'dinosaur_card_image.dart';
@@ -28,17 +28,34 @@ class DinosaurCardBack extends StatelessWidget {
   final double titleFontSize;
   final double subtitleFontSize;
 
-  static const _contentScale = 1.15;
+  static List<CardAttributeItem> _attributeItems(DinosaurSummary dinosaur) => [
+    CardAttributeItem(
+      'Period',
+      dinosaur.displayPeriodName == '—' ? '—' : dinosaur.displayPeriodName,
+    ),
+    CardAttributeItem('Diet', dinosaur.dietType ?? '—'),
+    CardAttributeItem('Mass', dinosaur.mass ?? '—'),
+    CardAttributeItem('Length', dinosaur.length ?? '—'),
+  ];
+
+  void _openHistory(BuildContext context) {
+    final whenLabel = dinosaur.createdAt != null
+        ? formatRelativeWhen(dinosaur.createdAt!)
+        : '—';
+    CardHistoryDrawer.show(
+      context,
+      title: 'History',
+      child: Text(
+        'Reconstructed · $whenLabel',
+        style: Theme.of(context).textTheme.bodyLarge,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final nodes = dinosaur.cladogramNodes();
     final cardTheme = DinoCardTheme.of(context);
-    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
-          color: cardTheme.cardTextSecondary,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.bold,
-        );
+    final nodes = dinosaur.cladogramNodes();
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
@@ -58,252 +75,89 @@ class DinosaurCardBack extends StatelessWidget {
               subtitleFontSize: subtitleFontSize,
               centered: true,
               overlayOnImage: true,
-              subtitleOverride: "", // Drop subtitle for dinosaur cards on back
+              subtitleOverride: '',
             ),
           ),
-          if (showArticleButton)
-            Positioned(
-              top: 14,
-              right: 10,
-              child: IconButton(
-                onPressed: () =>
-                    DinosaurArticleDrawer.show(context, dinosaur: dinosaur),
-                icon: const Icon(Icons.info_outline, size: 18),
-                color: const Color(0xE6F5F0E8),
-                tooltip: 'Read article',
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              ),
-            ),
           Positioned(
             left: 18,
             right: 18,
-            top: 72, // Align the top offset of the accordion layout to exactly 72
-            bottom: 14,
-            child: CardAccordionLayout(
-              initialIndex: 0,
-              items: [
-                // Element 0: Dinosaur period and rock type
-                CardAccordionItem(
-                  builder: (context, isOpen, curvedT, lerpFn) {
-                    return _DinosaurPeriodRockTypeBox(
-                      dinosaur: dinosaur,
-                      isOpen: isOpen,
-                      curvedT: curvedT,
-                      lerpFn: lerpFn,
-                    );
-                  },
-                ),
-                // Element 1: Dinosaur attributes (generalized CardAttributeGrid)
-                CardAccordionItem(
-                  builder: (context, isOpen, curvedT, lerpFn) {
-                    final attributesList = [
-                      CardAttributeItem('Period', dinosaur.displayPeriodName == '—' ? '—' : dinosaur.displayPeriodName),
-                      CardAttributeItem('Diet', dinosaur.dietType ?? '—'),
-                      CardAttributeItem('Mass', dinosaur.mass ?? '—'),
-                      CardAttributeItem('Length', dinosaur.length ?? '—'),
-                    ];
-                    return CardSectionPanel(
-                      labelWidget: Text(
-                        'Dinosaur attributes'.toUpperCase(),
+            top: 72,
+            // Clear the bottom-right wiki/history row.
+            bottom: 44,
+            child: CardBackBody(
+              children: [
+                CardBackSection(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        dinosaur.displayPeriod,
                         textAlign: TextAlign.center,
-                        style: titleStyle,
-                      ),
-                      labelGap: 6,
-                      expandChild: true,
-                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: SizedBox(
-                          height: isOpen ? 112.0 : 44.0,
-                          width: 340,
-                          child: Center(
-                            child: CardAttributeGrid(
-                              attributes: attributesList,
-                              isOpen: isOpen,
+                        style: cardTheme
+                            .bodyStyle(fontSize: 12.5)
+                            .copyWith(
+                              color: cardTheme.cardTextPrimary,
+                              fontWeight: FontWeight.w600,
                             ),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 48,
+                        child: GeologicTimeline(
+                          birth: dinosaur.birth,
+                          death: dinosaur.death,
+                          axis: GeologicTimelineAxis.horizontal,
+                          scale: 1.0,
+                          showYearLabels: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (nodes.isEmpty)
+                  CardBackSection(
+                    title: 'Attributes',
+                    child: CardAttributeGrid(
+                      columns: 1,
+                      attributes: _attributeItems(dinosaur),
+                    ),
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: CardBackSection(
+                          title: 'Attributes',
+                          child: CardAttributeGrid(
+                            columns: 1,
+                            attributes: _attributeItems(dinosaur),
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
-                // Element 2: Dinosaur cladogram
-                CardAccordionItem(
-                  builder: (context, isOpen, curvedT, lerpFn) {
-                    return CardSectionPanel(
-                      labelWidget: Text(
-                        'Dinosaur cladogram'.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        style: titleStyle,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CardBackSection(
+                          title: 'Cladogram',
+                          child: CladogramStrip(
+                            nodes: nodes,
+                            scale: 0.85,
+                            centered: false,
+                          ),
+                        ),
                       ),
-                      labelGap: 6,
-                      expandChild: true,
-                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                      child: isOpen
-                          ? FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.center,
-                              child: SizedBox(
-                                height: 112,
-                                width: 340,
-                                child: CladogramStrip(
-                                  nodes: nodes,
-                                  scale: _contentScale,
-                                  centered: true,
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    );
-                  },
-                ),
-                // Element 3: Dinosaur timeline history
-                CardAccordionItem(
-                  builder: (context, isOpen, curvedT, lerpFn) {
-                    final timelineHeight = lerpFn(22.0, 44.0);
-                    return DinosaurCardUserTimeline(
-                      dinosaur: dinosaur,
-                      isOpen: isOpen,
-                      height: timelineHeight,
-                    );
-                  },
-                ),
+                    ],
+                  ),
               ],
             ),
           ),
+          CardBackCornerActions(
+            wiki: showArticleButton
+                ? () => DinosaurArticleDrawer.show(context, dinosaur: dinosaur)
+                : null,
+            onHistory: () => _openHistory(context),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _DinosaurPeriodRockTypeBox extends StatelessWidget {
-  const _DinosaurPeriodRockTypeBox({
-    required this.dinosaur,
-    required this.isOpen,
-    required this.curvedT,
-    required this.lerpFn,
-  });
-
-  final DinosaurSummary dinosaur;
-  final bool isOpen;
-  final double curvedT;
-  final double Function(double start, double end) lerpFn;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
-          color: cardTheme.cardTextSecondary,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.bold,
-        );
-
-    final String explanation = dinosaur.displayPeriod;
-
-    return CardSectionPanel(
-      labelWidget: Text(
-        'Dinosaur period and rock type'.toUpperCase(),
-        textAlign: TextAlign.center,
-        style: titleStyle,
-      ),
-      labelGap: 6,
-      expandChild: true,
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      child: FittedBox(
-        key: ValueKey(isOpen),
-        fit: BoxFit.scaleDown,
-        alignment: isOpen ? Alignment.topCenter : Alignment.center,
-        child: SizedBox(
-          width: 340,
-          child: Column(
-            mainAxisAlignment: isOpen ? MainAxisAlignment.start : MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 4),
-              Center(
-                child: SizedBox(
-                  height: 52,
-                  child: GeologicTimeline(
-                    birth: dinosaur.birth,
-                    death: dinosaur.death,
-                    axis: GeologicTimelineAxis.horizontal,
-                    scale: 1.1,
-                    showYearLabels: isOpen,
-                  ),
-                ),
-              ),
-              if (isOpen) ...[
-                const SizedBox(height: 8),
-                Text(
-                  explanation,
-                  textAlign: TextAlign.center,
-                  style: cardTheme.bodyStyle(fontSize: 13.5).copyWith(
-                        color: cardTheme.cardTextPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class DinosaurCardUserTimeline extends StatelessWidget {
-  const DinosaurCardUserTimeline({
-    super.key,
-    required this.dinosaur,
-    this.isOpen = true,
-    this.height,
-  });
-
-  final DinosaurSummary dinosaur;
-  final bool isOpen;
-  final double? height;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
-    final titleStyle = cardTheme.sectionLabelStyle(fontSize: 8.5).copyWith(
-          color: cardTheme.cardTextSecondary,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.bold,
-        );
-
-    final resolvedHeight = height ?? (isOpen ? 44.0 : 22.0);
-    final at = dinosaur.createdAt;
-    final whenLabel = at != null ? formatRelativeWhen(at) : '—';
-
-    return CardSectionPanel(
-      labelWidget: Text(
-        'Dinosaur timeline history'.toUpperCase(),
-        textAlign: TextAlign.center,
-        style: titleStyle,
-      ),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      labelGap: 6,
-      expandChild: true,
-      child: SizedBox(
-        height: resolvedHeight,
-        width: 340,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-          child: Text(
-            'Reconstructed · $whenLabel',
-            style: cardTheme.bodyStyle(fontSize: isOpen ? 12.0 : 12.5).copyWith(
-                  fontWeight: isOpen ? FontWeight.normal : FontWeight.w600,
-                  color: isOpen ? null : cardTheme.cardTextSecondary,
-                ),
-          ),
-        ),
       ),
     );
   }

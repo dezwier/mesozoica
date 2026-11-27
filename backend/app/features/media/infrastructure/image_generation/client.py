@@ -1,4 +1,7 @@
-"""Gemini Imagen client (OpenAI-compatible endpoint)."""
+"""OpenAI-compatible image generation client (public OpenAI or Azure Foundry).
+
+Request shape matches learnfromai `OpenAIImageLLM`.
+"""
 
 from __future__ import annotations
 
@@ -13,65 +16,75 @@ from PIL import Image as PILImage
 from PIL import ImageOps
 
 from app.core.config import settings
-from app.features.media.infrastructure.image_generation.postprocess import crop_to_portrait_3_4, resize_portrait_cap
+from app.features.media.infrastructure.image_generation.postprocess import (
+    crop_to_portrait_3_4,
+    resize_portrait_cap,
+)
 
 logger = logging.getLogger(__name__)
 
-IMAGEN_ULTRA_MODEL_NAME = "imagen-4.0-ultra-generate-001"
-IMAGEN_FAST_MODEL_NAME = "imagen-4.0-fast-generate-001"
-IMAGEN_ULTRA_COST_USD_PER_IMAGE = 0.06
-IMAGEN_FAST_COST_USD_PER_IMAGE = 0.02
-IMAGEN_REQUEST_TIMEOUT_SECONDS = 120
-IMAGEN_PORTRAIT_SIZE = "896x1280"
-IMAGEN_MAX_ATTEMPTS = 5
-IMAGEN_RETRY_BASE_SECONDS = 5.0
+OPENAI_IMAGE_PRIMARY_FALLBACK = "gpt-image-1-mini"
+OPENAI_IMAGE_COST_USD_DEFAULT = 0.04
+OPENAI_IMAGE_COST_USD_MINI = 0.02
+OPENAI_REQUEST_TIMEOUT_SECONDS = 120
+OPENAI_MAX_ATTEMPTS = 5
+OPENAI_RETRY_BASE_SECONDS = 5.0
 INTER_GENERATION_DELAY_SECONDS = 3.0
+
+# Kept for import compatibility with older runner/tests.
+IMAGEN_ULTRA_COST_USD_PER_IMAGE = OPENAI_IMAGE_COST_USD_DEFAULT
+IMAGEN_FAST_COST_USD_PER_IMAGE = OPENAI_IMAGE_COST_USD_MINI
 
 
 class ImageGenerationError(RuntimeError):
-    """Raised when Imagen image generation fails."""
+    """Raised when OpenAI image generation fails."""
 
 
-def generate_image_with_gemini(prompt: str) -> tuple[bytes, dict[str, Any]]:
+def generate_image_with_openai(prompt: str) -> tuple[bytes, dict[str, Any]]:
     """
-    Generate a 3:4 portrait image using Gemini Imagen.
+    Generate a portrait image via OpenAI images/generations.
 
     Returns PNG bytes and a usage dict with cost_usd and model_name.
-    Retries transient API failures with exponential backoff, then falls back
-    from Ultra to Imagen Fast when Ultra cannot complete the request.
+    Retries transient API failures, then falls back to a cheaper model.
     """
-    primary_model = settings.gemini_image_model.strip() or IMAGEN_ULTRA_MODEL_NAME
+    primary_model = settings.openai_image_model.strip() or "gpt-image-2.5-flare"
     try:
         return _generate_with_retries(prompt, model_name=primary_model)
     except ImageGenerationError as primary_exc:
-        if primary_model == IMAGEN_FAST_MODEL_NAME:
+        if primary_model == OPENAI_IMAGE_PRIMARY_FALLBACK:
             raise
         if not _should_fallback_model(str(primary_exc)):
             raise
         logger.warning(
-            "Primary Imagen model %s failed (%s); trying fallback %s",
+            "Primary image model %s failed (%s); trying fallback %s",
             primary_model,
             short_generation_error(str(primary_exc)),
-            IMAGEN_FAST_MODEL_NAME,
+            OPENAI_IMAGE_PRIMARY_FALLBACK,
         )
-        return _generate_with_retries(prompt, model_name=IMAGEN_FAST_MODEL_NAME)
+        return _generate_with_retries(
+            prompt, model_name=OPENAI_IMAGE_PRIMARY_FALLBACK
+        )
+
+
+# Back-compat alias while call sites / tests migrate.
+generate_image_with_gemini = generate_image_with_openai
 
 
 def _generate_with_retries(prompt: str, *, model_name: str) -> tuple[bytes, dict[str, Any]]:
     last_error: ImageGenerationError | None = None
-    for attempt in range(1, IMAGEN_MAX_ATTEMPTS + 1):
+    for attempt in range(1, OPENAI_MAX_ATTEMPTS + 1):
         try:
             return _generate_image_once(prompt, model_name=model_name)
         except ImageGenerationError as exc:
             last_error = exc
-            if attempt >= IMAGEN_MAX_ATTEMPTS or not is_retryable_generation_error(str(exc)):
+            if attempt >= OPENAI_MAX_ATTEMPTS or not is_retryable_generation_error(str(exc)):
                 raise
-            delay = IMAGEN_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            delay = OPENAI_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
             logger.warning(
-                "Imagen %s attempt %d/%d failed (%s); retrying in %.0fs",
+                "OpenAI image %s attempt %d/%d failed (%s); retrying in %.0fs",
                 model_name,
                 attempt,
-                IMAGEN_MAX_ATTEMPTS,
+                OPENAI_MAX_ATTEMPTS,
                 short_generation_error(str(exc)),
                 delay,
             )
@@ -82,45 +95,55 @@ def _generate_with_retries(prompt: str, *, model_name: str) -> tuple[bytes, dict
 
 
 def _model_cost_usd(model_name: str) -> float:
-    if model_name == IMAGEN_FAST_MODEL_NAME:
-        return IMAGEN_FAST_COST_USD_PER_IMAGE
-    return IMAGEN_ULTRA_COST_USD_PER_IMAGE
+    lower = model_name.lower()
+    if "mini" in lower or "flash" in lower:
+        return OPENAI_IMAGE_COST_USD_MINI
+    return OPENAI_IMAGE_COST_USD_DEFAULT
 
 
 def _generate_image_once(prompt: str, *, model_name: str) -> tuple[bytes, dict[str, Any]]:
-    """Single Imagen API request without retries."""
-    api_key = settings.google_gemini_api_key.strip()
+    """Single images/generations request without retries.
+
+    Always uses public OpenAI (`api.openai.com`), same as learnfromai — not Azure Foundry.
+    """
+    api_key = settings.openai_api_key.strip()
     if not api_key:
         raise ImageGenerationError(
-            "Google Gemini API key not configured. Set GOOGLE_GEMINI_API_KEY."
+            "OPENAI_API_KEY is required for image generation (public OpenAI, not Foundry)."
         )
 
-    model_name = model_name.strip() or IMAGEN_ULTRA_MODEL_NAME
-    base_url = "https://generativelanguage.googleapis.com/v1beta/openai/images/generations"
+    model_name = model_name.strip() or "gpt-image-2.5-flare"
+    # Fixed public OpenAI endpoint — do not route images through Azure Foundry.
+    url = "https://api.openai.com/v1/images/generations"
+    size = (settings.openai_image_size or "1024x1024").strip()
+    quality = (settings.openai_image_quality or "low").strip()
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    payload = {
+    # GPT image models always return b64_json; do not send response_format.
+    payload: dict[str, Any] = {
         "model": model_name,
         "prompt": prompt,
         "n": 1,
-        "response_format": "b64_json",
-        "size": IMAGEN_PORTRAIT_SIZE,
+        "size": size,
+        "quality": quality,
     }
 
     try:
         logger.debug(
-            "Imagen request model=%s prompt_len=%d size=%s",
+            "OpenAI image request model=%s prompt_len=%d size=%s quality=%s",
             model_name,
             len(prompt),
-            IMAGEN_PORTRAIT_SIZE,
+            size,
+            quality,
         )
         response = requests.post(
-            f"{base_url}?key={api_key}",
+            url,
             json=payload,
             headers=headers,
-            timeout=IMAGEN_REQUEST_TIMEOUT_SECONDS,
+            timeout=OPENAI_REQUEST_TIMEOUT_SECONDS,
         )
         if not response.ok:
             error_msg = _extract_error_message(response)
@@ -133,7 +156,7 @@ def _generate_image_once(prompt: str, *, model_name: str) -> tuple[bytes, dict[s
                 message = error_info.get("message", "Unknown error")
             else:
                 message = str(error_info)
-            raise ImageGenerationError(f"Gemini API error: {message}")
+            raise ImageGenerationError(f"OpenAI API error: {message}")
 
         if "data" not in data or not data["data"]:
             raise ImageGenerationError(
@@ -156,7 +179,7 @@ def _generate_image_once(prompt: str, *, model_name: str) -> tuple[bytes, dict[s
         return image_bytes, usage
 
     except requests.exceptions.RequestException as exc:
-        raise ImageGenerationError(f"Gemini API request failed: {exc}") from exc
+        raise ImageGenerationError(f"OpenAI API request failed: {exc}") from exc
     except ImageGenerationError:
         raise
     except Exception as exc:
@@ -193,7 +216,7 @@ def _extract_error_message(response: requests.Response) -> str:
 
 
 def is_retryable_generation_error(message: str) -> bool:
-    """True for transient Gemini/HTTP failures worth retrying."""
+    """True for transient OpenAI/HTTP failures worth retrying."""
     lower = message.lower()
     if any(code in message for code in ("429", "500", "502", "503", "504")):
         return True
@@ -211,8 +234,6 @@ def is_retryable_generation_error(message: str) -> bool:
             "internal error",
             "bad gateway",
             "gateway timeout",
-            "fail to execute model",
-            "flow-vertex-juno",
             "image generation failed",
             "out of capacity",
             "temporarily out of capacity",
@@ -223,7 +244,7 @@ def is_retryable_generation_error(message: str) -> bool:
 
 
 def _should_fallback_model(message: str) -> bool:
-    """Fallback only when Ultra failed for transient/execution reasons."""
+    """Fallback only when primary failed for transient/execution reasons."""
     lower = message.lower()
     if any(token in message for token in ("401", "403")):
         return False
@@ -249,6 +270,8 @@ def short_generation_error(message: str) -> str:
     text = message.strip()
     for prefix in (
         "Failed to generate image: ",
+        "OpenAI API error: ",
+        "OpenAI API request failed: ",
         "Gemini API error: ",
         "Gemini API request failed: ",
     ):
@@ -259,8 +282,6 @@ def short_generation_error(message: str) -> str:
         return "quota exceeded"
     if "503" in text or "service unavailable" in lower:
         return "service unavailable"
-    if "fail to execute model" in lower:
-        return "model execution failed"
     if "out of capacity" in lower:
         return "out of capacity"
     if "deadline expired" in lower:

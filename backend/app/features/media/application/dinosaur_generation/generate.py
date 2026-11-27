@@ -1,4 +1,4 @@
-"""Batch-generate dinosaur card images via Gemini Imagen."""
+"""Batch-generate dinosaur card images via OpenAI image."""
 
 from __future__ import annotations
 
@@ -120,8 +120,8 @@ def generate_dinosaur_images(
 
     ``version`` is a required folder name (e.g. ``Original``, ``Summer 26``).
     """
-    if not settings.google_gemini_api_key.strip():
-        raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for dinosaur image generation")
+    if not settings.openai_api_key.strip():
+        raise RuntimeError("OPENAI_API_KEY is required for dinosaur image generation")
 
     root_dir = resolve_local_source_dir_for_sync()
     version_name = require_generation_version(version)
@@ -237,7 +237,7 @@ def _log_header(
     logger.info("=== dinosaur_image_generate ===")
     logger.info("version: %s", version)
     logger.info("output_dir: %s", output_dir)
-    logger.info("model: %s", settings.gemini_image_model)
+    logger.info("model: %s", settings.openai_image_model)
     logger.info(
         "candidates: %d (skipped_existing: %d)",
         candidates,

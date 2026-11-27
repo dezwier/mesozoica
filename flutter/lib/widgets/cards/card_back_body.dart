@@ -1,0 +1,96 @@
+import 'package:flutter/material.dart';
+
+import '../../theme/dino_card_theme.dart';
+import 'card_section_panel.dart';
+
+/// Shared vertical stack for card backs — everything visible, no accordion.
+///
+/// Scales down as a unit if content is taller than the slot. Linked-card
+/// rows inside sections may still scroll horizontally on their own.
+class CardBackBody extends StatelessWidget {
+  const CardBackBody({
+    super.key,
+    required this.children,
+    this.bottom,
+    this.gap = 8,
+  });
+
+  final List<Widget> children;
+
+  /// Pinned under the scaled stack (e.g. tool action row).
+  final Widget? bottom;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    final stack = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) SizedBox(height: gap),
+          children[i],
+        ],
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Align(
+                alignment: Alignment.topCenter,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(width: constraints.maxWidth, child: stack),
+                ),
+              );
+            },
+          ),
+        ),
+        if (bottom != null) ...[SizedBox(height: gap), bottom!],
+      ],
+    );
+  }
+}
+
+/// Compact panel for a back-face section. Omit [title] for an unlabeled card.
+class CardBackSection extends StatelessWidget {
+  const CardBackSection({
+    super.key,
+    this.title,
+    required this.child,
+    this.padding = const EdgeInsets.fromLTRB(10, 8, 10, 8),
+  });
+
+  final String? title;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardTheme = DinoCardTheme.of(context);
+    final label = title?.trim();
+    return CardSectionPanel(
+      labelWidget: (label == null || label.isEmpty)
+          ? null
+          : Text(
+              label.toUpperCase(),
+              textAlign: TextAlign.center,
+              style: cardTheme
+                  .sectionLabelStyle(fontSize: 8.5)
+                  .copyWith(
+                    color: cardTheme.cardTextSecondary,
+                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+      labelGap: 6,
+      padding: padding,
+      child: child,
+    );
+  }
+}

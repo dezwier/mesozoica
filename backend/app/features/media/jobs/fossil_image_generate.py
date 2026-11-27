@@ -28,7 +28,7 @@ def run_generate_job(
     dinos: list[str] | None = None,
     version: str,
 ) -> int:
-    _require_gemini_key_in_production()
+    _require_openai_key_in_production()
     with Session(engine) as session:
         summary = generate_fossil_images(
             session,
@@ -40,11 +40,11 @@ def run_generate_job(
     return generate_exit_code(summary)
 
 
-def _require_gemini_key_in_production() -> None:
+def _require_openai_key_in_production() -> None:
     env = os.getenv("ENVIRONMENT", "production").strip().lower()
     is_production = env not in ("development", "dev", "local")
-    if is_production and not settings.google_gemini_api_key.strip():
+    if is_production and not settings.openai_api_key.strip():
         raise RuntimeError(
-            "GOOGLE_GEMINI_API_KEY environment variable is required in production "
+            "OPENAI_API_KEY environment variable is required in production "
             "for fossil image generation."
         )

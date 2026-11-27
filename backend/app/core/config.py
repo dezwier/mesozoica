@@ -75,12 +75,41 @@ class Settings(BaseSettings):
     openalex_api_key: str = Field(default="", validation_alias="OPENALEX_API_KEY")
     openalex_max_works: int = Field(default=10, validation_alias="OPENALEX_MAX_WORKS")
 
-    google_gemini_api_key: str = Field(default="", validation_alias="GOOGLE_GEMINI_API_KEY")
-    gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
-    gemini_image_model: str = Field(
-        default="imagen-4.0-ultra-generate-001",
-        validation_alias="GEMINI_IMAGE_MODEL",
+    # OpenAI-compatible LLM (public OpenAI or Azure Foundry `/openai/v1`).
+    # When OPENAI_* is blank, falls back to AZURE_OPENAI_* (already used by RAG).
+    openai_api_key: str = Field(default="", validation_alias="OPENAI_API_KEY")
+    openai_base_url: str = Field(default="", validation_alias="OPENAI_BASE_URL")
+    openai_model: str = Field(default="gpt-5-mini", validation_alias="OPENAI_MODEL")
+    openai_temperature: float = Field(default=0.0, validation_alias="OPENAI_TEMPERATURE")
+    openai_image_model: str = Field(
+        default="gpt-image-2.5-flare",
+        validation_alias="OPENAI_IMAGE_MODEL",
     )
+    openai_image_quality: str = Field(default="low", validation_alias="OPENAI_IMAGE_QUALITY")
+    openai_image_size: str = Field(
+        default="1024x1024",
+        validation_alias="OPENAI_IMAGE_SIZE",
+    )
+    openai_image_max_article_chars: int = Field(
+        default=1200,
+        validation_alias="OPENAI_IMAGE_MAX_ARTICLE_CHARS",
+    )
+    openai_image_max_fossil_json_chars: int = Field(
+        default=3500,
+        validation_alias="OPENAI_IMAGE_MAX_FOSSIL_JSON_CHARS",
+    )
+    azure_openai_api_key: str = Field(default="", validation_alias="AZURE_OPENAI_API_KEY")
+    azure_openai_endpoint: str = Field(default="", validation_alias="AZURE_OPENAI_ENDPOINT")
+    azure_openai_chat_deployment: str = Field(
+        default="",
+        validation_alias="AZURE_OPENAI_CHAT_DEPLOYMENT",
+    )
+
+    # Legacy Gemini env names still accepted so old shells don't crash; unused.
+    google_gemini_api_key: str = Field(default="", validation_alias="GOOGLE_GEMINI_API_KEY")
+    gemini_model: str = Field(default="", validation_alias="GEMINI_MODEL")
+    gemini_image_model: str = Field(default="", validation_alias="GEMINI_IMAGE_MODEL")
+    gemini_temperature: float = Field(default=0.0, validation_alias="GEMINI_TEMPERATURE")
     gemini_image_max_article_chars: int = Field(
         default=1200,
         validation_alias="GEMINI_IMAGE_MAX_ARTICLE_CHARS",
@@ -89,7 +118,6 @@ class Settings(BaseSettings):
         default=3500,
         validation_alias="GEMINI_IMAGE_MAX_FOSSIL_JSON_CHARS",
     )
-    gemini_temperature: float = Field(default=0.0, validation_alias="GEMINI_TEMPERATURE")
     dinosaur_enrich_max_records: int | None = Field(
         default=None,
         validation_alias="DINOSAUR_ENRICH_MAX_RECORDS",
@@ -247,6 +275,46 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() in ("production", "prod")
+
+    @property
+    def resolved_openai_api_key(self) -> str:
+        return self.openai_api_key.strip() or self.azure_openai_api_key.strip()
+
+    @property
+    def resolved_openai_base_url(self) -> str:
+        raw = (
+            self.openai_base_url.strip()
+            or self.azure_openai_endpoint.strip()
+            or "https://api.openai.com/v1"
+        )
+        raw = raw.rstrip("/")
+        if raw.endswith("/openai/v1"):
+            return raw
+        if "openai.azure.com" in raw or "cognitiveservices.azure.com" in raw:
+            return raw if raw.endswith("/openai/v1") else f"{raw}/openai/v1"
+        return raw
+
+    @property
+    def resolved_openai_model(self) -> str:
+        # Explicit OPENAI_MODEL wins; else Azure chat deployment; else field default.
+        env_model = os.getenv("OPENAI_MODEL", "").strip()
+        if env_model:
+            return env_model
+        chat = self.azure_openai_chat_deployment.strip()
+        if chat:
+            return chat
+        return self.openai_model.strip() or "gpt-5-mini"
+
+    @property
+    def resolved_image_max_article_chars(self) -> int:
+        return self.openai_image_max_article_chars or self.gemini_image_max_article_chars
+
+    @property
+    def resolved_image_max_fossil_json_chars(self) -> int:
+        return (
+            self.openai_image_max_fossil_json_chars
+            or self.gemini_image_max_fossil_json_chars
+        )
 
     @field_validator("database_url", mode="before")
     @classmethod

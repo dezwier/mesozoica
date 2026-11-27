@@ -167,19 +167,13 @@ void main() {
       expect(find.text('252 Ma'), findsOneWidget);
       expect(find.text('66 Ma'), findsOneWidget);
 
-      // Tap Dinosaur attributes to open it
-      await tester.tap(find.text('DINOSAUR ATTRIBUTES'));
-      await tester.pumpAndSettle();
-
+      expect(find.text('ATTRIBUTES'), findsOneWidget);
       expect(find.text('PERIOD'), findsOneWidget);
       expect(find.text('DIET'), findsOneWidget);
       expect(find.text('MASS'), findsOneWidget);
       expect(find.text('LENGTH'), findsOneWidget);
 
-      // Tap Dinosaur cladogram to open it
-      await tester.tap(find.text('DINOSAUR CLADOGRAM'));
-      await tester.pumpAndSettle();
-
+      expect(find.text('CLADOGRAM'), findsOneWidget);
       expect(find.text('CLADE'), findsNWidgets(2));
       expect(find.text('FAMILY'), findsOneWidget);
       expect(find.text('GENUS'), findsOneWidget);
@@ -211,8 +205,8 @@ void main() {
       ),
     );
 
-    // Tap Dinosaur timeline history to expand it
-    await tester.tap(find.text('DINOSAUR TIMELINE HISTORY'));
+    expect(find.byIcon(Icons.history), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.history));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Reconstructed'), findsOneWidget);

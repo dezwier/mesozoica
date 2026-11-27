@@ -12,10 +12,9 @@ import 'card_section_panel.dart';
 
 /// Site card panel: four horizontal odd_* axes + vertical depth.
 class SiteCardDimensions extends StatelessWidget {
-  const SiteCardDimensions({super.key, required this.site, this.isOpen = true});
+  const SiteCardDimensions({super.key, required this.site});
 
   final SiteSummary site;
-  final bool isOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -138,59 +137,47 @@ class SiteCardDimensions extends StatelessWidget {
               active: inRange,
               complete: site.documented == true || averageDocumentation >= 1.0,
               cardTheme: cardTheme,
-              height: 22.0,
+              height: 18.0,
             ),
           ),
         ],
       ),
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       labelGap: 6,
-      expandChild: true,
-      child: isOpen
-          ? FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: SizedBox(
-                height: 112,
-                width: 340,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+      child: SizedBox(
+        height: 108,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  for (var i = 0; i < horizontalDisplays.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 4),
                     Expanded(
-                      child: Column(
-                        children: [
-                          for (
-                            var i = 0;
-                            i < horizontalDisplays.length;
-                            i++
-                          ) ...[
-                            if (i > 0) const SizedBox(height: 5),
-                            Expanded(
-                              child: _HorizontalDimensionRow(
-                                label: horizontalDisplays[i].$1,
-                                display: horizontalDisplays[i].$2,
-                                cardTheme: cardTheme,
-                                showExactMarker: showExactMarker,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 42,
-                      child: _VerticalDepthAxis(
-                        display: depthDisplay,
+                      child: _HorizontalDimensionRow(
+                        label: horizontalDisplays[i].$1,
+                        display: horizontalDisplays[i].$2,
                         cardTheme: cardTheme,
                         showExactMarker: showExactMarker,
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-            )
-          : const SizedBox.shrink(),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 40,
+              child: _VerticalDepthAxis(
+                display: depthDisplay,
+                cardTheme: cardTheme,
+                showExactMarker: showExactMarker,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

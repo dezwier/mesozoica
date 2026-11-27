@@ -1,4 +1,4 @@
-"""Orchestrate Gemini enrichment of dinosaur content revisions."""
+"""Orchestrate OpenAI enrichment of dinosaur content revisions."""
 
 from __future__ import annotations
 
@@ -20,11 +20,11 @@ from app.features.ingestion.application.enrichment_common import (
     EnrichSummary,
     enrich_exit_code as shared_enrich_exit_code,
 )
-from app.features.ingestion.infrastructure.llm.client import call_gemini_api
+from app.features.ingestion.infrastructure.llm.client import call_openai_api
 
 logger = logging.getLogger("dinosaur_enrich")
 
-# Small JSON payload; disable Gemini 2.5 thinking so output tokens are not consumed
+# Small JSON payload; thinking_budget kept for call-site compat (ignored by OpenAI)
 # by internal reasoning (which caused truncated JSON at the old 2048 cap).
 _DINOSAUR_ENRICH_MAX_OUTPUT_TOKENS = 4096
 
@@ -142,9 +142,9 @@ def enrich_dinosaurs(
     max_records: int | None = None,
     dinos: list[str] | None = None,
 ) -> EnrichSummary:
-    """Enrich dinosaur content revisions via Gemini API."""
-    if not settings.google_gemini_api_key:
-        raise RuntimeError("GOOGLE_GEMINI_API_KEY is required for dinosaur enrichment")
+    """Enrich dinosaur content revisions via OpenAI API."""
+    if not settings.resolved_openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY (or AZURE_OPENAI_API_KEY) is required for dinosaur enrichment")
 
     cap = max_records if max_records is not None else settings.dinosaur_enrich_max_records
     delay_s = settings.dinosaur_enrich_request_delay_ms / 1000.0
@@ -190,7 +190,7 @@ def enrich_dinosaurs(
                 name=dino_type.name,
                 article=revision.article,
             )
-            raw, _usage = call_gemini_api(
+            raw, _usage = call_openai_api(
                 user_prompt,
                 system_instruction=system_instruction,
                 response_mime_type_json=True,

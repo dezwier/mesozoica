@@ -263,17 +263,7 @@ class DinoCardTheme {
     );
   }
 
-  /// Darkening wash over the blurred back image (darker at top for light titles).
-  LinearGradient backFaceImageOverlayGradient() {
-    return const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [Color(0xA64C4643), Color(0x447E7671), Color(0x33B4ADA7)],
-      stops: [0.0, 0.28, 1.0],
-    );
-  }
-
-  /// Soft metallic highlight washed across the back face.
+  /// Soft glare washed across the back face over the cover image.
   LinearGradient backFaceSheenGradient() {
     return LinearGradient(
       begin: Alignment.topLeft,

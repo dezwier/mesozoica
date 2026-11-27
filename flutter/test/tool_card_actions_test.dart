@@ -107,18 +107,17 @@ void main() {
     expect(find.text('Deploy'), findsOneWidget);
     expect(find.text('Info'), findsNothing);
     expect(find.text('15m 0s left'), findsOneWidget);
-    expect(find.text('TOOL TIMELINE HISTORY'), findsOneWidget);
-
-    // Tap Tool timeline history to expand it
-    await tester.tap(find.text('TOOL TIMELINE HISTORY'));
+    expect(find.byIcon(Icons.history), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.history));
     await tester.pumpAndSettle();
-
     expect(find.text('No history yet'), findsAtLeastNWidgets(1));
     expect(find.text('Helicopter'), findsNothing);
     expect(find.textContaining('Site Discovery'), findsNothing);
     expect(find.text('Rarity'), findsNothing);
     expect(find.byIcon(Icons.star_rounded), findsNothing);
 
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Deploy'));
     await tester.pump();
     expect(tapped, isTrue);
@@ -219,10 +218,9 @@ void main() {
       ),
     );
 
-    // Tap Tool timeline history to expand it
-    await tester.tap(find.text('TOOL TIMELINE HISTORY'));
+    expect(find.byIcon(Icons.history), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.history));
     await tester.pumpAndSettle();
-
     expect(find.text('done'), findsOneWidget);
     expect(find.text('45m'), findsOneWidget);
     expect(find.textContaining('2 sites'), findsOneWidget);
