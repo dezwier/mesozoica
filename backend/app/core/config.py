@@ -251,8 +251,16 @@ class Settings(BaseSettings):
     @field_validator("database_url", mode="before")
     @classmethod
     def normalize_database_url(cls, value: Any) -> Any:
-        if isinstance(value, str) and value.startswith("postgres://"):
-            return value.replace("postgres://", "postgresql://", 1)
+        # SQLAlchemy 2.1+ defaults postgresql:// to psycopg (v3). We ship
+        # psycopg2-binary, so pin the dialect explicitly.
+        if not isinstance(value, str) or not value:
+            return value
+        if value.startswith("postgres://"):
+            value = "postgresql://" + value[len("postgres://") :]
+        if value.startswith("postgresql+psycopg://"):
+            return "postgresql+psycopg2://" + value[len("postgresql+psycopg://") :]
+        if value.startswith("postgresql://"):
+            return "postgresql+psycopg2://" + value[len("postgresql://") :]
         return value
 
     @field_validator("wikipedia_sync_max_pages", mode="before")
