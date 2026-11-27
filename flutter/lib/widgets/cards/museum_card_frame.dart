@@ -61,7 +61,7 @@ class MuseumCardFrame extends StatelessWidget {
             bottom: 8,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final top = constraints.maxHeight * 0.355;
+                final top = constraints.maxHeight * 0.15;
                 return Padding(
                   padding: EdgeInsets.only(top: top),
                   child: Column(
@@ -78,12 +78,9 @@ class MuseumCardFrame extends StatelessWidget {
                       ),
                       if (timeline != null) ...[
                         const SizedBox(height: 6),
-                        DecoratedBox(
-                          decoration: theme.museumPanelDecoration(),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 5),
-                            child: SizedBox(height: 46, child: timeline),
-                          ),
+                        MuseumInnerCard(
+                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 5),
+                          child: SizedBox(height: 46, child: timeline),
                         ),
                       ],
                       const SizedBox(height: 8),
@@ -138,6 +135,70 @@ class MuseumCardHairline extends StatelessWidget {
   }
 }
 
+/// Inner plaque: a thin gold rim that catches light along the top edge.
+class MuseumInnerCard extends StatelessWidget {
+  const MuseumInnerCard({super.key, required this.child, this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = DinoCardTheme.of(context);
+    final gold = theme.cardAccent;
+    final lip = Color.lerp(gold, const Color(0xFFFFF1D0), 0.42)!;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            lip.withValues(alpha: theme.isLight ? 0.62 : 0.88),
+            gold.withValues(alpha: theme.isLight ? 0.24 : 0.34),
+            gold.withValues(alpha: theme.isLight ? 0.10 : 0.14),
+            gold.withValues(alpha: theme.isLight ? 0.20 : 0.30),
+          ],
+          stops: const [0.0, 0.14, 0.58, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: gold.withValues(alpha: theme.isLight ? 0.08 : 0.14),
+            blurRadius: 6,
+            spreadRadius: -2,
+            offset: const Offset(0, 1),
+          ),
+          BoxShadow(
+            color: const Color(
+              0xFF000000,
+            ).withValues(alpha: theme.isLight ? 0.05 : 0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(0.9),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15.4),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: theme.isLight
+                  ? const [Color(0xF7FFFFFF), Color(0xEBF4EADF)]
+                  : const [Color(0xF21E1814), Color(0xF2100C0A)],
+            ),
+          ),
+          child: padding == null
+              ? child
+              : Padding(padding: padding!, child: child),
+        ),
+      ),
+    );
+  }
+}
+
 class MuseumPanelRow extends StatelessWidget {
   const MuseumPanelRow({
     super.key,
@@ -154,24 +215,15 @@ class MuseumPanelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 10.0;
-        final half = constraints.maxWidth.isFinite
-            ? (constraints.maxWidth - gap) / 2
-            : null;
-        final row = Row(
-          crossAxisAlignment: matchHeight
-              ? CrossAxisAlignment.stretch
-              : CrossAxisAlignment.start,
-          children: [
-            SizedBox(width: half, child: left),
-            const SizedBox(width: gap),
-            SizedBox(width: half, child: right),
-          ],
-        );
-        return matchHeight ? IntrinsicHeight(child: row) : row;
-      },
+    return Row(
+      crossAxisAlignment: matchHeight
+          ? CrossAxisAlignment.stretch
+          : CrossAxisAlignment.start,
+      children: [
+        Expanded(child: left),
+        const SizedBox(width: 10),
+        Expanded(child: right),
+      ],
     );
   }
 }

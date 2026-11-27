@@ -120,14 +120,15 @@ class DinoCardTheme {
             : const [Color(0xF2261C16), Color(0xF2120E0B)],
       ),
       border: Border.all(
-        color: cardAccent.withValues(alpha: isLight ? 0.42 : 0.58),
-        width: 0.8,
+        color: cardAccent.withValues(alpha: isLight ? 0.22 : 0.28),
+        width: 0.6,
       ),
       boxShadow: [
         BoxShadow(
-          color: cardAccent.withValues(alpha: isLight ? 0.10 : 0.18),
-          blurRadius: 12,
-          spreadRadius: -3,
+          color: const Color(
+            0xFF000000,
+          ).withValues(alpha: isLight ? 0.05 : 0.22),
+          blurRadius: 8,
           offset: const Offset(0, 2),
         ),
       ],

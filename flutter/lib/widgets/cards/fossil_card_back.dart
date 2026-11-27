@@ -63,7 +63,6 @@ class FossilCardBack extends StatelessWidget {
       subtitle: subtitle,
       titleFontSize: titleFontSize,
       subtitleFontSize: subtitleFontSize,
-      fillBody: false,
       timeline: GeologicTimeline.fromAgeRange(
         minAgeMa: fossil.minAgeMa,
         maxAgeMa: fossil.maxAgeMa,
@@ -72,9 +71,12 @@ class FossilCardBack extends StatelessWidget {
         showYearLabels: true,
       ),
       panels: MuseumPanelRow(
+        matchHeight: true,
         left: CardBackSection(
+          expandChild: true,
           title: 'Attributes',
           child: CardAttributeGrid(
+            fill: true,
             attributes: [
               CardAttributeItem('Category', fossil.displayImpCategory),
               CardAttributeItem('Sub category', fossil.displayImpSubcategory),
@@ -88,6 +90,7 @@ class FossilCardBack extends StatelessWidget {
         ),
         right: CardBackSection(
           title: 'Linked cards',
+          expandChild: true,
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(

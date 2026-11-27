@@ -56,7 +56,11 @@ class DinosaurCardBack extends StatelessWidget {
     final period = dinosaur.displayPeriod;
     final attributes = CardBackSection(
       title: 'Attributes',
-      child: CardAttributeGrid(attributes: _attributeItems(dinosaur)),
+      expandChild: true,
+      child: CardAttributeGrid(
+        attributes: _attributeItems(dinosaur),
+        fill: true,
+      ),
     );
 
     return MuseumCardFrame(
@@ -66,7 +70,6 @@ class DinosaurCardBack extends StatelessWidget {
       subtitle: period == '—' ? null : period,
       titleFontSize: titleFontSize,
       subtitleFontSize: subtitleFontSize,
-      fillBody: false,
       timeline: GeologicTimeline(
         birth: dinosaur.birth,
         death: dinosaur.death,
@@ -81,6 +84,7 @@ class DinosaurCardBack extends StatelessWidget {
               left: attributes,
               right: CardBackSection(
                 title: 'Cladogram',
+                expandChild: true,
                 child: CladogramStrip(nodes: nodes, centered: false),
               ),
             ),
