@@ -138,8 +138,8 @@ class DinoCardTheme {
     return BoxDecoration(
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: cardAccent.withValues(alpha: isLight ? 0.75 : 0.92),
-        width: 1.15,
+        color: cardAccent.withValues(alpha: isLight ? 0.32 : 0.40),
+        width: 0.7,
       ),
     );
   }

@@ -29,17 +29,19 @@ class DinosaurCardImage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final dpr = MediaQuery.devicePixelRatioOf(context);
+        final cache = networkImageMemCacheBox(
+          logicalWidth: constraints.maxWidth,
+          logicalHeight: constraints.maxHeight,
+          dpr: dpr,
+        );
         return CachedNetworkImage(
           imageUrl: curatedUrl,
           fit: BoxFit.cover,
           fadeInDuration: _fadeInDuration,
           fadeInCurve: Curves.easeIn,
           placeholderFadeInDuration: Duration.zero,
-          memCacheWidth: networkImageMemCacheExtent(constraints.maxWidth, dpr),
-          memCacheHeight: networkImageMemCacheExtent(
-            constraints.maxHeight,
-            dpr,
-          ),
+          memCacheWidth: cache.width,
+          memCacheHeight: cache.height,
           httpHeaders: const {
             'User-Agent': 'Mesozoica/1.0 (mobile app; dinosaur catalog)',
           },

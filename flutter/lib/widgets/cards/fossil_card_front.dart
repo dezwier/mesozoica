@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/fossil.dart';
 import '../../theme/dino_card_theme.dart';
 import 'fossil_card_header.dart';
+import 'museum_card_frame.dart';
 import 'fossil_card_image.dart';
 import 'fossil_status_badge.dart';
 import 'occurrence_id_badge.dart';
@@ -80,6 +81,7 @@ class FossilCardFront extends StatelessWidget {
               showOccurrenceSubtitle: true,
             ),
           ),
+          const Positioned.fill(child: MuseumCardHairline()),
         ],
       ),
     );

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/dinosaur.dart';
 import '../../theme/dino_card_theme.dart';
 import 'dinosaur_card_header.dart';
+import 'museum_card_frame.dart';
 import 'dinosaur_card_image.dart';
 import 'dinosaur_status_badge.dart';
 import 'occurrence_id_badge.dart';
@@ -99,6 +100,7 @@ class DinosaurCardFront extends StatelessWidget {
               ],
             ),
           ),
+          const Positioned.fill(child: MuseumCardHairline()),
         ],
       ),
     );
