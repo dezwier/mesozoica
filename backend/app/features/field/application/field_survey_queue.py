@@ -56,7 +56,7 @@ def enqueue_field_survey(
         site_id=site_id,
         initiated_by_user_id=user_id,
         status=STATUS_PENDING,
-        created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        created_at=datetime.now(timezone.utc),
     )
     session.add(job)
     try:
@@ -89,7 +89,7 @@ def recover_stale_running_survey_jobs(
     *,
     stale_after: timedelta = timedelta(minutes=30),
 ) -> int:
-    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - stale_after
+    cutoff = datetime.now(timezone.utc) - stale_after
     stale_jobs = session.exec(
         select(FieldSurveyJob).where(
             col(FieldSurveyJob.status) == STATUS_RUNNING,
@@ -139,7 +139,7 @@ def claim_next_survey_job(
 
     job.status = STATUS_RUNNING
     job.worker_id = worker_id
-    job.started_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.started_at = datetime.now(timezone.utc)
     job.attempts += 1
     session.add(job)
     session.commit()
@@ -154,7 +154,7 @@ def mark_survey_job_done(
     fossil_count: int,
 ) -> None:
     job.status = STATUS_DONE
-    job.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.finished_at = datetime.now(timezone.utc)
     job.error_message = None
     job.fossil_count = fossil_count
     session.add(job)
@@ -165,7 +165,7 @@ def mark_survey_job_failed(
     session: Session, job: FieldSurveyJob, error_message: str
 ) -> None:
     job.status = STATUS_FAILED
-    job.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.finished_at = datetime.now(timezone.utc)
     job.error_message = error_message[:2000]
     session.add(job)
     session.commit()

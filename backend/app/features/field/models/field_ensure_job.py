@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class FieldEnsureJob(SQLModel, table=True):
@@ -24,6 +28,6 @@ class FieldEnsureJob(SQLModel, table=True):
     attempts: int = Field(default=0)
     worker_id: Optional[str] = Field(default=None, max_length=64)
     error_message: Optional[str] = Field(default=None, max_length=2000)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utc_now)
     started_at: Optional[datetime] = Field(default=None)
     finished_at: Optional[datetime] = Field(default=None)

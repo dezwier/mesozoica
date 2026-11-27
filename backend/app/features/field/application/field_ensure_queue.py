@@ -80,7 +80,7 @@ def enqueue_field_site_ensure(
         missing_count=0,
         reason=trigger,
         status=STATUS_PENDING,
-        created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        created_at=datetime.now(timezone.utc),
     )
     session.add(job)
     try:
@@ -129,7 +129,7 @@ def recover_stale_running_jobs(
     *,
     stale_after: timedelta = timedelta(minutes=30),
 ) -> int:
-    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - stale_after
+    cutoff = datetime.now(timezone.utc) - stale_after
     stale_jobs = session.exec(
         select(FieldEnsureJob).where(
             col(FieldEnsureJob.status) == STATUS_RUNNING,
@@ -178,7 +178,7 @@ def claim_next_job(session: Session, *, worker_id: str) -> FieldEnsureJob | None
 
     job.status = STATUS_RUNNING
     job.worker_id = worker_id
-    job.started_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.started_at = datetime.now(timezone.utc)
     job.attempts += 1
     session.add(job)
     session.commit()
@@ -194,7 +194,7 @@ def mark_job_done(
     total_in_radius: int | None = None,
 ) -> None:
     job.status = STATUS_DONE
-    job.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.finished_at = datetime.now(timezone.utc)
     job.error_message = None
     if generated_count is not None:
         job.generated_count = generated_count
@@ -210,7 +210,7 @@ def get_field_ensure_job(session: Session, job_id: int) -> FieldEnsureJob | None
 
 def mark_job_failed(session: Session, job: FieldEnsureJob, error_message: str) -> None:
     job.status = STATUS_FAILED
-    job.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.finished_at = datetime.now(timezone.utc)
     job.error_message = error_message[:2000]
     session.add(job)
     session.commit()
