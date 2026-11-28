@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
@@ -195,7 +197,7 @@ class MuseumInnerCard extends StatelessWidget {
   }
 }
 
-/// Left-inset section title tab with a diagonal cut on the right
+/// Left-inset section title tab — wider on top, tapering on the right
 /// (Attributes / Cladogram plaque labels).
 class MuseumSectionTab extends StatelessWidget {
   const MuseumSectionTab({super.key, required this.label});
@@ -218,6 +220,7 @@ class MuseumSectionTab extends StatelessWidget {
         child: ColoredBox(
           color: fill,
           child: Padding(
+            // Extra right inset so label clears the bottom taper.
             padding: const EdgeInsets.fromLTRB(10, 5, 18, 5),
             child: Text(
               label.toUpperCase(),
@@ -237,20 +240,49 @@ class MuseumSectionTab extends StatelessWidget {
   }
 }
 
+Path _museumSectionTabPath(Size size) {
+  const cut = 12.0;
+  const radius = 5.0;
+  final corners = <Offset>[
+    Offset.zero,
+    Offset(size.width, 0),
+    Offset(size.width - cut, size.height),
+    Offset(0, size.height),
+  ];
+  return _roundedPolygon(corners, radius);
+}
+
+Path _roundedPolygon(List<Offset> corners, double radius) {
+  final path = Path();
+  final n = corners.length;
+  for (var i = 0; i < n; i++) {
+    final prev = corners[(i - 1 + n) % n];
+    final curr = corners[i];
+    final next = corners[(i + 1) % n];
+    final toPrev = prev - curr;
+    final toNext = next - curr;
+    final dPrev = toPrev.distance;
+    final dNext = toNext.distance;
+    if (dPrev == 0 || dNext == 0) continue;
+    final r = radius.clamp(0.0, math.min(dPrev, dNext) / 2.0);
+    final p1 = curr + toPrev * (r / dPrev);
+    final p2 = curr + toNext * (r / dNext);
+    if (i == 0) {
+      path.moveTo(p1.dx, p1.dy);
+    } else {
+      path.lineTo(p1.dx, p1.dy);
+    }
+    path.quadraticBezierTo(curr.dx, curr.dy, p2.dx, p2.dy);
+  }
+  path.close();
+  return path;
+}
+
 class _MuseumSectionTabClipper extends CustomClipper<Path> {
   const _MuseumSectionTabClipper();
 
-  static const _cut = 12.0;
-
   @override
-  Path getClip(Size size) {
-    return Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width - _cut, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-  }
+  Path getClip(Size size) => _museumSectionTabPath(size);
 
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
@@ -261,21 +293,13 @@ class _MuseumSectionTabBorderPainter extends CustomPainter {
 
   final Color color;
 
-  static const _cut = 12.0;
-
   @override
   void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width - _cut, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
     final paint = Paint()
       ..color = color.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-    canvas.drawPath(path, paint);
+    canvas.drawPath(_museumSectionTabPath(size), paint);
   }
 
   @override
