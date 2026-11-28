@@ -18,6 +18,32 @@ enum MuseumGlyph {
   dial,
 }
 
+/// Bronze 3D attribute icons (transparent PNGs), matching map-nav chrome style.
+String? museumAttributeIconAsset(String label) {
+  switch (label.trim().toLowerCase()) {
+    case 'period':
+      return 'assets/images/cards/icons/attr_period.png';
+    case 'diet':
+      return 'assets/images/cards/icons/attr_diet.png';
+    case 'mass':
+      return 'assets/images/cards/icons/attr_mass.png';
+    case 'length':
+      return 'assets/images/cards/icons/attr_length.png';
+    case 'category':
+      return 'assets/images/cards/icons/attr_category.png';
+    case 'sub category':
+    case 'subcategory':
+      return 'assets/images/cards/icons/attr_subcategory.png';
+    case 'preservation':
+    case 'preservation quality':
+      return 'assets/images/cards/icons/attr_preservation.png';
+    case 'completeness':
+      return 'assets/images/cards/icons/attr_completeness.png';
+    default:
+      return null;
+  }
+}
+
 MuseumGlyph museumGlyphForAttribute(String label) {
   switch (label.trim().toLowerCase()) {
     case 'period':

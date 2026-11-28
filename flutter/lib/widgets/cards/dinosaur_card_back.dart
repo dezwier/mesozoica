@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/dinosaur.dart';
+import '../../utils/display_text.dart';
 import '../../utils/relative_time.dart';
 import '../dino/dinosaur_article_drawer.dart';
 import 'card_attribute_grid.dart';
@@ -30,7 +31,12 @@ class DinosaurCardBack extends StatelessWidget {
       'Period',
       dinosaur.displayPeriodName == '—' ? '—' : dinosaur.displayPeriodName,
     ),
-    CardAttributeItem('Diet', dinosaur.dietType ?? '—'),
+    CardAttributeItem(
+      'Diet',
+      dinosaur.dietType == null || dinosaur.dietType!.trim().isEmpty
+          ? '—'
+          : toTitleCase(dinosaur.dietType!),
+    ),
     CardAttributeItem('Mass', dinosaur.mass ?? '—'),
     CardAttributeItem('Length', dinosaur.length ?? '—'),
   ];
