@@ -5,11 +5,11 @@
 site_markers:
   cretaceous: "#8D6E63"
   # Soft mid green — readable pins, not too dark
-  jurassic: "#4F8F68"
-  triassic: "#DD8500"
+  jurassic: "#DD8500"
+  triassic: "#4F8F68"
 
 orbit_survey:
   cretaceous: "#A86B45"
   # Muted moss — low chroma so Mapbox wash stays soft
-  jurassic: "#356848"
-  triassic: "#DD8500"
+  jurassic: "#DD8500"
+  triassic: "#356848"

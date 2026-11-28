@@ -19,9 +19,9 @@ Color _pinColor(String period) {
   } on StateError {
     switch (key) {
       case 'jurassic':
-        return const Color(0xFF4F8F68);
-      case 'triassic':
         return const Color(0xFFDD8500);
+      case 'triassic':
+        return const Color(0xFF4F8F68);
       default:
         return const Color(0xFF8F6145);
     }
