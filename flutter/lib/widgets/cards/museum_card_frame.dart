@@ -195,6 +195,94 @@ class MuseumInnerCard extends StatelessWidget {
   }
 }
 
+/// Left-inset section title tab with a diagonal cut on the right
+/// (Attributes / Cladogram plaque labels).
+class MuseumSectionTab extends StatelessWidget {
+  const MuseumSectionTab({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = DinoCardTheme.of(context);
+    final gold = theme.cardAccent;
+    final fill = Color.alphaBlend(
+      gold.withValues(alpha: theme.isLight ? 0.10 : 0.16),
+      theme.isLight ? const Color(0xE6221C18) : const Color(0xF214100E),
+    );
+
+    return CustomPaint(
+      painter: _MuseumSectionTabBorderPainter(color: gold),
+      child: ClipPath(
+        clipper: const _MuseumSectionTabClipper(),
+        child: ColoredBox(
+          color: fill,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 5, 18, 5),
+            child: Text(
+              label.toUpperCase(),
+              style: theme
+                  .sectionLabelStyle(fontSize: 8)
+                  .copyWith(
+                    color: Color.lerp(gold, const Color(0xFFF5E6C8), 0.35),
+                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MuseumSectionTabClipper extends CustomClipper<Path> {
+  const _MuseumSectionTabClipper();
+
+  static const _cut = 12.0;
+
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width - _cut, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _MuseumSectionTabBorderPainter extends CustomPainter {
+  const _MuseumSectionTabBorderPainter({required this.color});
+
+  final Color color;
+
+  static const _cut = 12.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width - _cut, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MuseumSectionTabBorderPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 class MuseumPanelRow extends StatelessWidget {
   const MuseumPanelRow({
     super.key,

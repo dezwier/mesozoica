@@ -325,6 +325,13 @@ class _HorizontalTimeline extends StatelessWidget {
     return _horizontalInset + (1 - mid) * trackWidth;
   }
 
+  /// Left→right fraction for an age (older left). Matches Ma tick positions.
+  double _leftFractionForMa(double ma) {
+    final span = minMa - maxMa;
+    if (span <= 0) return 0;
+    return ((minMa - ma) / span).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final trackWidth = width - _horizontalInset * 2;
@@ -333,6 +340,13 @@ class _HorizontalTimeline extends StatelessWidget {
     final barBandTop = y0 + _periodLabelHeight + _labelToBarGap;
     final barTop = barBandTop + (_rangeIndicatorHeight - _barHeight) / 2;
     final maTop = barBandTop + _rangeIndicatorHeight + _barToMaGap;
+
+    // Hard color cuts at Triassic/Jurassic (201) and Jurassic/Cretaceous (145).
+    final t201 = _leftFractionForMa(201);
+    final t145 = _leftFractionForMa(145);
+    final triassic = _pinColor('triassic');
+    final jurassic = _pinColor('jurassic');
+    final cretaceous = _pinColor('cretaceous');
 
     return SizedBox(
       width: width,
@@ -349,18 +363,21 @@ class _HorizontalTimeline extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(99),
                 // Left = older (Triassic) → right = younger (Cretaceous),
-                // same hues as map period pins (`period_colors.yaml`).
+                // same hues as map period pins; transitions at 201 & 145 Ma.
                 gradient: LinearGradient(
                   colors: [
-                    _pinColor('triassic'),
-                    _pinColor('jurassic'),
-                    _pinColor('cretaceous'),
+                    triassic,
+                    triassic,
+                    jurassic,
+                    jurassic,
+                    cretaceous,
+                    cretaceous,
                   ],
-                  stops: const [0.0, 0.40, 1.0],
+                  stops: [0.0, t201, t201, t145, t145, 1.0],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _pinColor('jurassic').withValues(alpha: 0.35),
+                    color: jurassic.withValues(alpha: 0.35),
                     blurRadius: 6,
                     spreadRadius: 0.2,
                   ),

@@ -58,6 +58,9 @@ class CardBackBody extends StatelessWidget {
 }
 
 /// Gold-outlined panel for a back-face section. Omit [title] for an unlabeled card.
+///
+/// When [title] is set, a left-inset diagonal tab sits on the top rim
+/// (Attributes / Cladogram style).
 class CardBackSection extends StatelessWidget {
   const CardBackSection({
     super.key,
@@ -72,34 +75,35 @@ class CardBackSection extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final bool expandChild;
 
+  static const _tabOverlap = 9.0;
+
   @override
   Widget build(BuildContext context) {
-    final cardTheme = DinoCardTheme.of(context);
     final label = title?.trim();
-    return MuseumInnerCard(
+    final hasTab = label != null && label.isNotEmpty;
+    final panel = MuseumInnerCard(
       padding: padding,
       child: Column(
         mainAxisSize: expandChild ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (label != null && label.isNotEmpty) ...[
-            Text(
-              label.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: cardTheme
-                  .sectionLabelStyle(fontSize: 8.5)
-                  .copyWith(
-                    fontFamily: DinoCardTheme.titleFontFamily,
-                    color: cardTheme.cardAccent,
-                    letterSpacing: 1.8,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 8),
-          ],
+          if (hasTab) const SizedBox(height: 6),
           if (expandChild) Expanded(child: child) else child,
         ],
       ),
+    );
+
+    if (!hasTab) return panel;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: _tabOverlap),
+          child: panel,
+        ),
+        Positioned(left: 0, top: 0, child: MuseumSectionTab(label: label)),
+      ],
     );
   }
 }
