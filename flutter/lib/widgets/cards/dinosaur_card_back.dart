@@ -10,7 +10,6 @@ import 'cladogram_strip.dart';
 import 'dinosaur_card_image.dart';
 import 'geologic_timeline.dart';
 import 'museum_card_frame.dart';
-import 'museum_card_icons.dart';
 
 class DinosaurCardBack extends StatelessWidget {
   const DinosaurCardBack({
@@ -65,7 +64,6 @@ class DinosaurCardBack extends StatelessWidget {
 
     return MuseumCardFrame(
       image: DinosaurCardImage(imageUrl: dinosaur.mainImageUrl),
-      emblem: MuseumGlyph.skull,
       title: dinosaur.name,
       subtitle: period == '—' ? null : period,
       titleFontSize: titleFontSize,

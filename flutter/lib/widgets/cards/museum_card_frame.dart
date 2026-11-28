@@ -4,7 +4,6 @@ import '../../theme/dino_card_theme.dart';
 import 'card_adaptive_title_text.dart';
 import 'card_back_backdrop.dart';
 import 'card_back_corner_actions.dart';
-import 'museum_card_icons.dart';
 
 /// Shared museum plaque: sharp hero, serif title, optional age bar, panels.
 class MuseumCardFrame extends StatelessWidget {
@@ -15,7 +14,6 @@ class MuseumCardFrame extends StatelessWidget {
     required this.panels,
     required this.onHistory,
     this.subtitle,
-    this.emblem = MuseumGlyph.skull,
     this.timeline,
     this.bottom,
     this.wiki,
@@ -28,7 +26,6 @@ class MuseumCardFrame extends StatelessWidget {
   final Widget image;
   final String title;
   final String? subtitle;
-  final MuseumGlyph emblem;
   final Widget? timeline;
   final Widget panels;
   final Widget? bottom;
@@ -70,7 +67,6 @@ class MuseumCardFrame extends StatelessWidget {
                       _MuseumTitle(
                         title: title,
                         subtitle: showSubtitle ? subtitleText : null,
-                        emblem: emblem,
                         trailing: trailing,
                         titleFontSize: titleFontSize,
                         subtitleFontSize: subtitleFontSize,
@@ -232,7 +228,6 @@ class _MuseumTitle extends StatelessWidget {
   const _MuseumTitle({
     required this.title,
     required this.subtitle,
-    required this.emblem,
     required this.trailing,
     required this.titleFontSize,
     required this.subtitleFontSize,
@@ -241,7 +236,6 @@ class _MuseumTitle extends StatelessWidget {
 
   final String title;
   final String? subtitle;
-  final MuseumGlyph emblem;
   final Widget? trailing;
   final double titleFontSize;
   final double subtitleFontSize;
@@ -249,46 +243,48 @@ class _MuseumTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: CardAdaptiveTitleText(
+            text: title,
+            textAlign: TextAlign.center,
+            style: theme.titleStyle(
+              fontSize: titleFontSize,
+              color: theme.museumTitleColor,
+            ),
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 5),
+          Text(
+            subtitle!,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme
+                .bodyStyle(fontSize: subtitleFontSize + 1)
+                .copyWith(
+                  color: theme.cardTextPrimary,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.15,
+                  height: 1.25,
+                ),
+          ),
+        ],
+      ],
+    );
+
+    if (trailing == null) return titleBlock;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        MuseumGlyphIcon(glyph: emblem, size: 26),
+        Expanded(child: titleBlock),
         const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CardAdaptiveTitleText(
-                text: title,
-                textAlign: TextAlign.start,
-                style: theme.titleStyle(
-                  fontSize: titleFontSize,
-                  color: theme.museumTitleColor,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme
-                      .titleStyle(
-                        fontSize: subtitleFontSize,
-                        color: theme.cardAccent,
-                      )
-                      .copyWith(
-                        fontWeight: FontWeight.w500,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 0.2,
-                        height: 1.2,
-                      ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        trailing!,
       ],
     );
   }

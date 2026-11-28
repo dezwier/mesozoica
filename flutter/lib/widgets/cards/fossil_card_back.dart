@@ -11,7 +11,6 @@ import 'fossil_card_image.dart';
 import 'fossil_related_thumbs.dart';
 import 'geologic_timeline.dart';
 import 'museum_card_frame.dart';
-import 'museum_card_icons.dart';
 
 class FossilCardBack extends StatelessWidget {
   const FossilCardBack({
@@ -58,7 +57,6 @@ class FossilCardBack extends StatelessWidget {
 
     return MuseumCardFrame(
       image: FossilCardImage(imageUrl: fossil.mainImageUrl),
-      emblem: MuseumGlyph.bone,
       title: fossil.displayTitle,
       subtitle: subtitle,
       titleFontSize: titleFontSize,

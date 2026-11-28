@@ -6,7 +6,6 @@ import 'card_back_body.dart';
 import 'card_world_map.dart';
 import 'geologic_timeline.dart';
 import 'museum_card_frame.dart';
-import 'museum_card_icons.dart';
 import 'site_card_dimensions.dart';
 import 'site_card_image.dart';
 import 'site_card_related_lists.dart';
@@ -41,7 +40,6 @@ class SiteCardBack extends StatelessWidget {
 
     return MuseumCardFrame(
       image: SiteCardImage(imageUrl: site.mainImageUrl),
-      emblem: MuseumGlyph.landscape,
       title: site.displayTitle,
       subtitle: periodLine,
       titleFontSize: titleFontSize,

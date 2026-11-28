@@ -2,8 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../../config/geologic_timeline_constants.dart' as timeline_constants;
 import '../../theme/dino_card_theme.dart';
+import '../map/period_marker_color.dart';
 
 enum GeologicTimelineAxis { vertical, horizontal }
+
+/// Map pin hues from `period_colors.yaml` `site_markers`, with a static
+/// fallback for widget tests that have not loaded [GameConfig].
+Color _pinColor(String period) {
+  try {
+    return periodMarkerColor(period);
+  } on StateError {
+    switch (period.toLowerCase()) {
+      case 'jurassic':
+        return const Color(0xFF4F8F68);
+      case 'triassic':
+        return const Color(0xFFDD8500);
+      case 'cretaceous':
+      default:
+        return const Color(0xFF8D6E63);
+    }
+  }
+}
 
 /// Deep-time scale from 252 Ma (Triassic start) to 66 Ma (Cretaceous end).
 class GeologicTimeline extends StatelessWidget {
@@ -152,9 +171,9 @@ class _VerticalTimeline extends StatelessWidget {
               child: Container(
                 width: _barWidth,
                 decoration: BoxDecoration(
-                  color: cardTheme.cardAccent.withValues(
-                    alpha: 0.28 + i * 0.12,
-                  ),
+                  color: _pinColor(
+                    GeologicTimeline._periods[i].name,
+                  ).withValues(alpha: 0.78),
                   borderRadius: BorderRadius.vertical(
                     top: i == 0 ? const Radius.circular(2) : Radius.zero,
                     bottom: i == GeologicTimeline._periods.length - 1
@@ -329,20 +348,19 @@ class _HorizontalTimeline extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(99),
-                gradient: const LinearGradient(
+                // Left = older (Triassic) → right = younger (Cretaceous),
+                // same hues as map period pins (`period_colors.yaml`).
+                gradient: LinearGradient(
                   colors: [
-                    Color(0xFF8A627E),
-                    Color(0xFF7E6A86),
-                    Color(0xFF5E7C98),
-                    Color(0xFF7E93A4),
-                    Color(0xFFC5944E),
-                    Color(0xFFE4C57A),
+                    _pinColor('triassic'),
+                    _pinColor('jurassic'),
+                    _pinColor('cretaceous'),
                   ],
-                  stops: [0.0, 0.22, 0.40, 0.62, 0.82, 1.0],
+                  stops: const [0.0, 0.40, 1.0],
                 ),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x66C5944E),
+                    color: _pinColor('jurassic').withValues(alpha: 0.35),
                     blurRadius: 6,
                     spreadRadius: 0.2,
                   ),

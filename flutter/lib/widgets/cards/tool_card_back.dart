@@ -9,7 +9,6 @@ import 'card_attribute_grid.dart';
 import 'card_back_body.dart';
 import 'card_history_drawer.dart';
 import 'museum_card_frame.dart';
-import 'museum_card_icons.dart';
 import 'tool_card_header.dart';
 import 'tool_card_image.dart';
 
@@ -124,7 +123,6 @@ class ToolCardBack extends StatelessWidget {
 
     return MuseumCardFrame(
       image: ToolCardImage(imageUrl: tool.mainImageUrl),
-      emblem: MuseumGlyph.tool,
       title: tool.name,
       titleFontSize: titleFontSize,
       subtitleFontSize: subtitleFontSize,
