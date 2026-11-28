@@ -68,6 +68,7 @@ class FossilCardBack extends StatelessWidget {
         scale: 0.92,
         showYearLabels: true,
       ),
+      fillBody: true,
       panels: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

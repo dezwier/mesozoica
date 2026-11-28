@@ -130,6 +130,7 @@ class ToolCardBack extends StatelessWidget {
           ? null
           : ToolSkillBadge(tool: tool, size: 34),
       bottom: actionRow,
+      fillBody: true,
       panels: CardBackSection(
         title: 'Parameters',
         expandChild: true,

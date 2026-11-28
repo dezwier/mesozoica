@@ -8,6 +8,9 @@ import 'card_back_backdrop.dart';
 import 'card_back_corner_actions.dart';
 
 /// Shared museum plaque: sharp hero, serif title, optional age bar, panels.
+///
+/// [fillBody] true (dino/fossil/tool): fixed [heroFraction], panels expand.
+/// [fillBody] false (site): subcards stack from the bottom; hero fills the rest.
 class MuseumCardFrame extends StatelessWidget {
   const MuseumCardFrame({
     super.key,
@@ -37,12 +40,7 @@ class MuseumCardFrame extends StatelessWidget {
   final VoidCallback onHistory;
   final double titleFontSize;
   final double subtitleFontSize;
-
-  /// When true, [panels] receives a bounded height and should stretch.
-  /// When false, panels keep their intrinsic height and scale down to fit.
   final bool fillBody;
-
-  /// Fraction of card height used by the top hero image.
   final double heroFraction;
 
   @override
@@ -50,79 +48,122 @@ class MuseumCardFrame extends StatelessWidget {
     final theme = DinoCardTheme.of(context);
     final subtitleText = subtitle?.trim();
     final showSubtitle = subtitleText != null && subtitleText.isNotEmpty;
-    final hero = heroFraction.clamp(0.08, 0.4);
+    final hero = heroFraction.clamp(0.08, 0.45);
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CardBackBackdrop(image: image, heroFraction: hero),
-          Positioned(
-            left: 12,
-            right: 12,
-            top: 0,
-            bottom: 8,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Title sits in the lower hero band; shrink with heroFraction.
-                final top = constraints.maxHeight * (hero * 0.58).clamp(0.08, 0.16);
-                return Padding(
-                  padding: EdgeInsets.only(top: top),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _MuseumTitle(
-                        title: title,
-                        // Period/subtitle becomes the timeline section tab.
-                        subtitle: timeline != null
-                            ? null
-                            : (showSubtitle ? subtitleText : null),
-                        trailing: trailing,
-                        titleFontSize: titleFontSize,
-                        subtitleFontSize: subtitleFontSize,
-                        theme: theme,
-                      ),
-                      if (timeline != null) ...[
-                        const SizedBox(height: 6),
-                        _TimelineSection(
-                          title: showSubtitle ? subtitleText : null,
-                          child: SizedBox(height: 46, child: timeline),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: fillBody
-                            ? panels
-                            : LayoutBuilder(
-                                builder: (context, panelConstraints) {
-                                  return Align(
-                                    alignment: Alignment.topCenter,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topCenter,
-                                      child: SizedBox(
-                                        width: panelConstraints.maxWidth,
-                                        child: panels,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                      if (bottom != null) ...[
-                        const SizedBox(height: 6),
-                        bottom!,
-                      ],
-                    ],
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cardSize = Size(constraints.maxWidth, constraints.maxHeight);
+          final titleWidget = _MuseumTitle(
+            title: title,
+            subtitle: timeline != null
+                ? null
+                : (showSubtitle ? subtitleText : null),
+            trailing: trailing,
+            titleFontSize: titleFontSize,
+            subtitleFontSize: subtitleFontSize,
+            theme: theme,
+          );
+          final timelineBlock = timeline == null
+              ? null
+              : _TimelineSection(
+                  title: showSubtitle ? subtitleText : null,
+                  child: SizedBox(height: 46, child: timeline),
                 );
-              },
-            ),
-          ),
-          CardBackCornerActions(wiki: wiki, onHistory: onHistory),
-          const Positioned.fill(child: MuseumCardHairline()),
-        ],
+
+          final Widget body;
+          if (fillBody) {
+            final top = constraints.maxHeight * (hero * 0.58).clamp(0.08, 0.16);
+            body = Stack(
+              fit: StackFit.expand,
+              children: [
+                CardBackBackdrop(image: image, heroFraction: hero),
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  top: 0,
+                  bottom: 8,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: top),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        titleWidget,
+                        if (timelineBlock != null) ...[
+                          const SizedBox(height: 6),
+                          timelineBlock,
+                        ],
+                        const SizedBox(height: 8),
+                        Expanded(child: panels),
+                        if (bottom != null) ...[
+                          const SizedBox(height: 6),
+                          bottom!,
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            body = Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(color: theme.museumBodyColor),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CardBackBackdrop(
+                            image: image,
+                            fullCardSize: cardSize,
+                          ),
+                          Positioned(
+                            left: 12,
+                            right: 12,
+                            bottom: 10,
+                            child: titleWidget,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (timelineBlock != null) ...[
+                            timelineBlock,
+                            const SizedBox(height: 8),
+                          ],
+                          panels,
+                          if (bottom != null) ...[
+                            const SizedBox(height: 6),
+                            bottom!,
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          }
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              body,
+              CardBackCornerActions(wiki: wiki, onHistory: onHistory),
+              const Positioned.fill(child: MuseumCardHairline()),
+            ],
+          );
+        },
       ),
     );
   }

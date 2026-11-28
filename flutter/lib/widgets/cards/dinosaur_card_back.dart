@@ -9,6 +9,7 @@ import 'card_back_body.dart';
 import 'card_history_drawer.dart';
 import 'cladogram_strip.dart';
 import 'dinosaur_card_image.dart';
+import 'card_back_backdrop.dart';
 import 'geologic_timeline.dart';
 import 'museum_card_frame.dart';
 
@@ -59,13 +60,11 @@ class DinosaurCardBack extends StatelessWidget {
   Widget build(BuildContext context) {
     final nodes = dinosaur.cladogramNodes();
     final period = dinosaur.displayPeriod;
+    final attributeItems = _attributeItems(dinosaur);
     final attributes = CardBackSection(
       title: 'Attributes',
       expandChild: true,
-      child: CardAttributeGrid(
-        attributes: _attributeItems(dinosaur),
-        fill: true,
-      ),
+      child: CardAttributeGrid(attributes: attributeItems, fill: true),
     );
 
     return MuseumCardFrame(
@@ -81,6 +80,8 @@ class DinosaurCardBack extends StatelessWidget {
         scale: 0.92,
         showYearLabels: true,
       ),
+      fillBody: true,
+      heroFraction: CardBackBackdrop.defaultHeroFraction,
       panels: nodes.isEmpty
           ? attributes
           : MuseumPanelRow(

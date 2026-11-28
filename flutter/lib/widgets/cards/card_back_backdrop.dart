@@ -11,12 +11,18 @@ class CardBackBackdrop extends StatelessWidget {
     super.key,
     required this.image,
     this.heroFraction = defaultHeroFraction,
+    this.fullCardSize,
   });
 
   final Widget image;
 
   /// Fraction of the card height occupied by the illustration.
+  /// Ignored when [fullCardSize] is set and this widget is sized to the hero.
   final double heroFraction;
+
+  /// When set (bottom-stack mode), crop against the full card size while this
+  /// widget fills its parent (the flexible hero slot).
+  final Size? fullCardSize;
 
   static const defaultHeroFraction = 0.25;
 
@@ -24,79 +30,78 @@ class CardBackBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final body = cardTheme.museumBodyColor;
-    final hero = heroFraction.clamp(0.08, 0.4);
     return ColoredBox(
       color: body,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          _SecondQuarterHero(image: image, heroFraction: hero),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0x40000000),
-                  const Color(0x00000000),
-                  body.withValues(alpha: 0.2),
-                  body,
-                  body,
-                ],
-                stops: [
-                  0.0,
-                  hero * 0.48,
-                  hero * 0.80,
-                  hero,
-                  1.0,
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SecondQuarterHero extends StatelessWidget {
-  const _SecondQuarterHero({required this.image, required this.heroFraction});
-
-  final Widget image;
-  final double heroFraction;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = constraints.maxWidth;
-        final cardHeight = constraints.maxHeight;
-        final heroHeight = cardHeight * heroFraction;
-        return Align(
-          alignment: Alignment.topCenter,
-          child: ClipRect(
-            child: SizedBox(
-              width: cardWidth,
-              height: heroHeight,
-              child: OverflowBox(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cardWidth = fullCardSize?.width ?? constraints.maxWidth;
+          final cardHeight = fullCardSize?.height ?? constraints.maxHeight;
+          final heroHeight = fullCardSize != null
+              ? constraints.maxHeight
+              : cardHeight * heroFraction.clamp(0.08, 0.45);
+          if (heroHeight <= 0 || cardHeight <= 0) {
+            return const SizedBox.shrink();
+          }
+          final heroStop = fullCardSize != null
+              ? 1.0
+              : (heroHeight / cardHeight).clamp(0.08, 1.0);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Align(
                 alignment: Alignment.topCenter,
-                minWidth: cardWidth,
-                maxWidth: cardWidth,
-                minHeight: cardHeight,
-                maxHeight: cardHeight,
-                child: Transform.translate(
-                  offset: Offset(0, -heroHeight),
+                child: ClipRect(
                   child: SizedBox(
-                    width: cardWidth,
-                    height: cardHeight,
-                    child: image,
+                    width: constraints.maxWidth,
+                    height: fullCardSize != null
+                        ? constraints.maxHeight
+                        : heroHeight,
+                    child: OverflowBox(
+                      alignment: Alignment.topCenter,
+                      minWidth: cardWidth,
+                      maxWidth: cardWidth,
+                      minHeight: cardHeight,
+                      maxHeight: cardHeight,
+                      child: Transform.translate(
+                        offset: Offset(0, -heroHeight),
+                        child: SizedBox(
+                          width: cardWidth,
+                          height: cardHeight,
+                          child: image,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        );
-      },
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0x40000000),
+                      const Color(0x00000000),
+                      body.withValues(alpha: 0.2),
+                      body,
+                      body,
+                    ],
+                    stops: fullCardSize != null
+                        ? const [0.0, 0.35, 0.72, 0.92, 1.0]
+                        : [
+                            0.0,
+                            heroStop * 0.48,
+                            heroStop * 0.80,
+                            heroStop,
+                            1.0,
+                          ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

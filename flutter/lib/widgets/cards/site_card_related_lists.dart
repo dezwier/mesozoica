@@ -5,6 +5,7 @@ import '../../controllers/auth_controller.dart';
 import '../../models/site.dart';
 import '../../services/site_service.dart';
 import '../../theme/dino_card_theme.dart';
+import 'card_back_body.dart';
 import 'card_record_thumb.dart';
 import 'fossil_card_dialog.dart';
 import 'fossil_card_image.dart';
@@ -19,6 +20,9 @@ class SiteCardFossils extends StatefulWidget {
     this.tappable = true,
     this.isOpen = true,
     this.use2Rows = false,
+    this.sectionTitle,
+    this.hideWhenEmpty = false,
+    this.sectionBodyHeight = 88,
   });
 
   final int siteId;
@@ -27,6 +31,14 @@ class SiteCardFossils extends StatefulWidget {
   final bool tappable;
   final bool isOpen;
   final bool use2Rows;
+
+  /// When set, wraps thumbs in a [CardBackSection] with this tab title.
+  final String? sectionTitle;
+
+  /// When true, renders nothing while loading or if the site has no fossils.
+  final bool hideWhenEmpty;
+
+  final double sectionBodyHeight;
 
   @override
   State<SiteCardFossils> createState() => _SiteCardFossilsState();
@@ -120,6 +132,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
       future: _fossilsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
+          if (widget.hideWhenEmpty) return const SizedBox.shrink();
           return const Center(
             child: SizedBox(
               width: 18,
@@ -130,6 +143,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
         }
 
         if (snapshot.hasError) {
+          if (widget.hideWhenEmpty) return const SizedBox.shrink();
           return Center(
             child: Text(
               'Could not load site record',
@@ -143,6 +157,7 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
 
         final fossils = snapshot.data ?? const <SiteFossilThumb>[];
         if (fossils.isEmpty) {
+          if (widget.hideWhenEmpty) return const SizedBox.shrink();
           return Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -178,11 +193,10 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
           );
         }
 
+        late final Widget body;
         if (!widget.use2Rows) {
-          // Render original horizontal scrollable list of square thumbs
           final thumbSize = widget.thumbSize;
-          final aspectRatio = 1.0;
-          return ListView.separated(
+          body = ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
             padding: EdgeInsets.zero,
@@ -193,17 +207,14 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
                 context: context,
                 fossil: fossils[index],
                 thumbSize: thumbSize,
-                aspectRatio: aspectRatio,
+                aspectRatio: 1.0,
               );
             },
           );
-        }
-
-        if (!widget.isOpen) {
-          // Closed state when there are fossils
+        } else if (!widget.isOpen) {
           final count = fossils.length;
           final word = count == 1 ? 'Fossil' : 'Fossils';
-          return Center(
+          body = Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
@@ -236,73 +247,86 @@ class _SiteCardFossilsState extends State<SiteCardFossils> {
               ),
             ),
           );
-        }
+        } else {
+          final thumbSize = widget.thumbSize;
+          const aspectRatio = 3 / 4;
+          final count = fossils.length;
+          final use2RowsGrid = count > 6;
 
-        // Open state: show 3:4 ratio of cards when they fit (length <= 6), else 2 rows, centered
-        final thumbSize = widget.thumbSize;
-        final aspectRatio = 3 / 4;
-        final count = fossils.length;
-        final use2RowsGrid = count > 6;
-
-        Widget rowContent(List<Widget> rowItems) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var j = 0; j < rowItems.length; j++) ...[
-                if (j > 0) const SizedBox(width: _gap),
-                rowItems[j],
+          Widget rowContent(List<Widget> rowItems) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var j = 0; j < rowItems.length; j++) ...[
+                  if (j > 0) const SizedBox(width: _gap),
+                  rowItems[j],
+                ],
               ],
-            ],
-          );
-        }
+            );
+          }
 
-        Widget content;
-        if (!use2RowsGrid) {
-          final rowItems = [
-            for (final f in fossils)
-              _buildThumb(
+          late final Widget content;
+          if (!use2RowsGrid) {
+            content = rowContent([
+              for (final f in fossils)
+                _buildThumb(
+                  context: context,
+                  fossil: f,
+                  thumbSize: thumbSize,
+                  aspectRatio: aspectRatio,
+                ),
+            ]);
+          } else {
+            final firstRow = <Widget>[];
+            final secondRow = <Widget>[];
+            for (var i = 0; i < count; i++) {
+              final thumb = _buildThumb(
                 context: context,
-                fossil: f,
+                fossil: fossils[i],
                 thumbSize: thumbSize,
                 aspectRatio: aspectRatio,
-              ),
-          ];
-          content = rowContent(rowItems);
-        } else {
-          final firstRow = <Widget>[];
-          final secondRow = <Widget>[];
-          for (var i = 0; i < count; i++) {
-            final thumb = _buildThumb(
-              context: context,
-              fossil: fossils[i],
-              thumbSize: thumbSize,
-              aspectRatio: aspectRatio,
-            );
-            if (i % 2 == 0) {
-              firstRow.add(thumb);
-            } else {
-              secondRow.add(thumb);
+              );
+              if (i % 2 == 0) {
+                firstRow.add(thumb);
+              } else {
+                secondRow.add(thumb);
+              }
             }
-          }
-          content = Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              rowContent(firstRow),
-              if (secondRow.isNotEmpty) ...[
-                const SizedBox(height: _gap),
-                rowContent(secondRow),
+            content = Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                rowContent(firstRow),
+                if (secondRow.isNotEmpty) ...[
+                  const SizedBox(height: _gap),
+                  rowContent(secondRow),
+                ],
               ],
-            ],
+            );
+          }
+
+          body = SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: Center(child: content),
           );
         }
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const ClampingScrollPhysics(),
-          child: Center(child: content),
-        );
+        final sectionTitle = widget.sectionTitle?.trim();
+        if (sectionTitle != null && sectionTitle.isNotEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: CardBackSection(
+              title: sectionTitle,
+              child: SizedBox(
+                height: widget.sectionBodyHeight,
+                child: body,
+              ),
+            ),
+          );
+        }
+        return body;
       },
     );
   }

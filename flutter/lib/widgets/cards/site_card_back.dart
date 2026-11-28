@@ -44,9 +44,7 @@ class SiteCardBack extends StatelessWidget {
       subtitle: periodLine,
       titleFontSize: titleFontSize,
       subtitleFontSize: subtitleFontSize,
-      // Compact hero so timeline + dimensions + fossils fit full-width.
-      heroFraction: 0.13,
-      fillBody: true,
+      fillBody: false,
       timeline: GeologicTimeline.fromAgeRange(
         minAgeMa: site.titleIsRevealed ? site.minAgeMa : null,
         maxAgeMa: site.titleIsRevealed ? site.maxAgeMa : null,
@@ -55,27 +53,23 @@ class SiteCardBack extends StatelessWidget {
         showYearLabels: true,
       ),
       panels: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: CardBackSection(
-              title: 'Site dimensions',
-              expandChild: true,
+          CardBackSection(
+            title: 'Site dimensions',
+            child: SizedBox(
+              height: 132,
               child: SiteCardDimensions(site: site),
             ),
           ),
-          const SizedBox(height: 8),
-          CardBackSection(
-            title: 'Fossils',
-            child: SizedBox(
-              height: 88,
-              child: SiteCardFossils(
-                siteId: site.siteId,
-                thumbSize: 64,
-                tappable: true,
-                use2Rows: false,
-              ),
-            ),
+          SiteCardFossils(
+            siteId: site.siteId,
+            thumbSize: 64,
+            tappable: true,
+            use2Rows: false,
+            sectionTitle: 'Fossils',
+            hideWhenEmpty: true,
           ),
         ],
       ),
