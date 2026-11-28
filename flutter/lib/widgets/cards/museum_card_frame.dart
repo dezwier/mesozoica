@@ -357,7 +357,8 @@ class MuseumSectionTab extends StatelessWidget {
 
 Path _museumSectionTabPath(Size size, {required bool inclineOnRight}) {
   const cut = 12.0;
-  const radius = 5.0;
+  // Match museum card corner radius (16) so corner tabs sit flush visually.
+  const radius = 11.0;
   // Wider top; bottom tapers on the inner (inclined) side.
   final corners = inclineOnRight
       ? <Offset>[

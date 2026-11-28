@@ -89,14 +89,14 @@ class SiteCardFront extends StatelessWidget {
           ),
           if (showIdBadge)
             Positioned(
-              top: 5,
-              left: 5,
+              top: 9,
+              left: 9,
               child: OccurrenceIdBadge(label: site.occurrenceIdBadgeLabel),
             ),
           if (showStatus)
             Positioned(
-              top: 5,
-              right: 5,
+              top: 9,
+              right: 9,
               child: SiteStatusBadge(
                 status: status,
                 onStatusSelected: onStatusSelected,

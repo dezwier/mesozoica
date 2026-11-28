@@ -55,14 +55,14 @@ class FossilCardFront extends StatelessWidget {
           ),
           if (showIdBadge)
             Positioned(
-              top: 5,
-              left: 5,
+              top: 9,
+              left: 9,
               child: OccurrenceIdBadge(label: fossil.occurrenceIdBadgeLabel),
             ),
           if (showStatus)
             Positioned(
-              top: 5,
-              right: 5,
+              top: 9,
+              right: 9,
               child: FossilStatusBadge(
                 status: status,
                 onStatusSelected: onStatusSelected,

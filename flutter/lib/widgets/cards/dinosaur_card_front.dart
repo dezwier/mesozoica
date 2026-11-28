@@ -64,14 +64,14 @@ class DinosaurCardFront extends StatelessWidget {
           ),
           if (showIdBadge)
             Positioned(
-              top: 5,
-              left: 5,
+              top: 9,
+              left: 9,
               child: OccurrenceIdBadge(label: dinosaur.occurrenceIdBadgeLabel),
             ),
           if (showBadges && showStatus && status.isNotEmpty)
             Positioned(
-              top: 5,
-              right: 5,
+              top: 9,
+              right: 9,
               child: DinosaurStatusBadge(status: status),
             ),
           Positioned(
