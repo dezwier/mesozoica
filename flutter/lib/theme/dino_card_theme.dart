@@ -135,11 +135,12 @@ class DinoCardTheme {
     );
   }
 
+  /// Uniform fallback; prefer [MuseumCardHairline] for the top-lit gold rim.
   BoxDecoration museumHairlineDecoration() {
     return BoxDecoration(
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: cardAccent.withValues(alpha: isLight ? 0.32 : 0.40),
+        color: cardAccent.withValues(alpha: isLight ? 0.12 : 0.16),
         width: 0.7,
       ),
     );

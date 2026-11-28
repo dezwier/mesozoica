@@ -119,18 +119,97 @@ class MuseumCardFrame extends StatelessWidget {
   }
 }
 
+/// Shared top-lit gold rim: bright lip, soft sides, barely-there bottom.
+List<Color> _museumGoldRimColors({
+  required Color gold,
+  required bool isLight,
+}) {
+  final lip = Color.lerp(gold, const Color(0xFFFFF1D0), 0.42)!;
+  return [
+    lip.withValues(alpha: isLight ? 0.62 : 0.88),
+    gold.withValues(alpha: isLight ? 0.22 : 0.32),
+    gold.withValues(alpha: isLight ? 0.07 : 0.10),
+    gold.withValues(alpha: isLight ? 0.03 : 0.045),
+  ];
+}
+
+const _museumGoldRimStops = [0.0, 0.14, 0.55, 1.0];
+
+LinearGradient _museumGoldRimGradient({
+  required Color gold,
+  required bool isLight,
+}) {
+  return LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: _museumGoldRimColors(gold: gold, isLight: isLight),
+    stops: _museumGoldRimStops,
+  );
+}
+
 /// Thin gold edge painted over a card face so the photo cannot cover it.
+/// Same top-lit fade as [MuseumInnerCard] (bottom barely visible).
 class MuseumCardHairline extends StatelessWidget {
   const MuseumCardHairline({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = DinoCardTheme.of(context);
     return IgnorePointer(
-      child: DecoratedBox(
-        decoration: DinoCardTheme.of(context).museumHairlineDecoration(),
+      child: CustomPaint(
+        painter: _MuseumGoldRimStrokePainter(
+          gold: theme.cardAccent,
+          isLight: theme.isLight,
+          radius: DinoCardTheme.borderRadius,
+          strokeWidth: 0.85,
+        ),
       ),
     );
   }
+}
+
+class _MuseumGoldRimStrokePainter extends CustomPainter {
+  const _MuseumGoldRimStrokePainter({
+    required this.gold,
+    required this.isLight,
+    required this.radius,
+    required this.strokeWidth,
+  });
+
+  final Color gold;
+  final bool isLight;
+  final double radius;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final inset = strokeWidth / 2;
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        inset,
+        inset,
+        size.width - strokeWidth,
+        size.height - strokeWidth,
+      ),
+      Radius.circular((radius - inset).clamp(0.0, radius)),
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..shader = _museumGoldRimGradient(
+        gold: gold,
+        isLight: isLight,
+      ).createShader(Offset.zero & size);
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MuseumGoldRimStrokePainter oldDelegate) =>
+      oldDelegate.gold != gold ||
+      oldDelegate.isLight != isLight ||
+      oldDelegate.radius != radius ||
+      oldDelegate.strokeWidth != strokeWidth;
 }
 
 /// Inner plaque: a thin gold rim that catches light along the top edge.
@@ -144,21 +223,10 @@ class MuseumInnerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = DinoCardTheme.of(context);
     final gold = theme.cardAccent;
-    final lip = Color.lerp(gold, const Color(0xFFFFF1D0), 0.42)!;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            lip.withValues(alpha: theme.isLight ? 0.62 : 0.88),
-            gold.withValues(alpha: theme.isLight ? 0.24 : 0.34),
-            gold.withValues(alpha: theme.isLight ? 0.10 : 0.14),
-            gold.withValues(alpha: theme.isLight ? 0.20 : 0.30),
-          ],
-          stops: const [0.0, 0.14, 0.58, 1.0],
-        ),
+        gradient: _museumGoldRimGradient(gold: gold, isLight: theme.isLight),
         boxShadow: [
           BoxShadow(
             color: gold.withValues(alpha: theme.isLight ? 0.08 : 0.14),
@@ -214,7 +282,10 @@ class MuseumSectionTab extends StatelessWidget {
     );
 
     return CustomPaint(
-      painter: _MuseumSectionTabBorderPainter(color: gold),
+      painter: _MuseumSectionTabBorderPainter(
+        gold: gold,
+        isLight: theme.isLight,
+      ),
       child: ClipPath(
         clipper: const _MuseumSectionTabClipper(),
         child: ColoredBox(
@@ -289,22 +360,29 @@ class _MuseumSectionTabClipper extends CustomClipper<Path> {
 }
 
 class _MuseumSectionTabBorderPainter extends CustomPainter {
-  const _MuseumSectionTabBorderPainter({required this.color});
+  const _MuseumSectionTabBorderPainter({
+    required this.gold,
+    required this.isLight,
+  });
 
-  final Color color;
+  final Color gold;
+  final bool isLight;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 1.0
+      ..shader = _museumGoldRimGradient(
+        gold: gold,
+        isLight: isLight,
+      ).createShader(Offset.zero & size);
     canvas.drawPath(_museumSectionTabPath(size), paint);
   }
 
   @override
   bool shouldRepaint(covariant _MuseumSectionTabBorderPainter oldDelegate) =>
-      oldDelegate.color != color;
+      oldDelegate.gold != gold || oldDelegate.isLight != isLight;
 }
 
 class MuseumPanelRow extends StatelessWidget {

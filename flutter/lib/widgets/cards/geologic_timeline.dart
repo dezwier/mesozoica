@@ -8,18 +8,22 @@ enum GeologicTimelineAxis { vertical, horizontal }
 
 /// Map pin hues from `period_colors.yaml` `site_markers`, with a static
 /// fallback for widget tests that have not loaded [GameConfig].
+/// Cretaceous is nudged slightly browner on the timeline only.
 Color _pinColor(String period) {
+  final key = period.toLowerCase();
+  if (key == 'cretaceous') {
+    return const Color(0xFF8F6145);
+  }
   try {
     return periodMarkerColor(period);
   } on StateError {
-    switch (period.toLowerCase()) {
+    switch (key) {
       case 'jurassic':
         return const Color(0xFF4F8F68);
       case 'triassic':
         return const Color(0xFFDD8500);
-      case 'cretaceous':
       default:
-        return const Color(0xFF8D6E63);
+        return const Color(0xFF8F6145);
     }
   }
 }
