@@ -25,7 +25,7 @@ class CardAttributeGrid extends StatelessWidget {
   /// Kept for call-site compatibility; all attributes are always shown.
   final bool isOpen;
 
-  /// Kept for call-site compatibility. Rows are always a single column.
+  /// Badge columns per row (default 1).
   final int? columns;
 
   /// Stretch each row to share the parent's height.
@@ -35,21 +35,61 @@ class CardAttributeGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (attributes.isEmpty) return const SizedBox.shrink();
     final cardTheme = DinoCardTheme.of(context);
+    final cols = (columns ?? 1).clamp(1, attributes.length);
+
+    final rows = <List<CardAttributeItem>>[];
+    for (var i = 0; i < attributes.length; i += cols) {
+      final end = (i + cols).clamp(0, attributes.length);
+      rows.add(attributes.sublist(i, end));
+    }
 
     return Column(
       mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
       children: [
-        for (var i = 0; i < attributes.length; i++) ...[
-          if (i > 0) const SizedBox(height: 7),
+        for (var r = 0; r < rows.length; r++) ...[
+          if (r > 0) const SizedBox(height: 7),
           if (fill)
             Expanded(
-              child: _AttributeBadge(item: attributes[i], theme: cardTheme),
+              child: _AttributeRow(
+                items: rows[r],
+                theme: cardTheme,
+                stretch: true,
+              ),
             )
           else
-            _AttributeBadge(item: attributes[i], theme: cardTheme),
+            _AttributeRow(items: rows[r], theme: cardTheme, stretch: false),
         ],
       ],
     );
+  }
+}
+
+class _AttributeRow extends StatelessWidget {
+  const _AttributeRow({
+    required this.items,
+    required this.theme,
+    required this.stretch,
+  });
+
+  final List<CardAttributeItem> items;
+  final DinoCardTheme theme;
+  final bool stretch;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const SizedBox(width: 7),
+          Expanded(
+            child: _AttributeBadge(item: items[i], theme: theme),
+          ),
+        ],
+      ],
+    );
+    if (stretch) return row;
+    return IntrinsicHeight(child: row);
   }
 }
 
@@ -108,7 +148,7 @@ class _AttributeBadge extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _AttributeIcon(label: item.label, gold: gold),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, textConstraints) {
@@ -146,7 +186,6 @@ class _AttributeBadge extends StatelessWidget {
                           ),
                         ],
                       );
-                      // Wrap within the badge; scale down if needed so height stays put.
                       if (!textConstraints.hasBoundedHeight) {
                         return block;
                       }
@@ -180,8 +219,8 @@ class _AttributeIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final asset = museumAttributeIconAsset(label);
     return SizedBox(
-      width: 28,
-      height: 28,
+      width: 26,
+      height: 26,
       child: asset != null
           ? Image.asset(
               asset,
@@ -190,7 +229,7 @@ class _AttributeIcon extends StatelessWidget {
             )
           : MuseumGlyphIcon(
               glyph: museumGlyphForAttribute(label),
-              size: 22,
+              size: 20,
               color: Color.lerp(gold, const Color(0xFFF5E6C8), 0.35),
             ),
     );

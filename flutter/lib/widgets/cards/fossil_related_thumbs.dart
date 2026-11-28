@@ -11,13 +11,13 @@ import 'dinosaur_card_image.dart';
 import 'site_card_dialog.dart';
 import 'site_card_image.dart';
 
-/// Site and dinosaur thumbnails on the fossil card back.
+/// Site and dinosaur thumbnails on the fossil card back — one scrollable row.
 class FossilRelatedThumbs extends StatelessWidget {
   const FossilRelatedThumbs({super.key, required this.fossil});
 
   final FossilSummary fossil;
 
-  static const _gap = 14.0;
+  static const _gap = 10.0;
 
   String get _siteLabel {
     final formation = fossil.geologicalFormation?.trim();
@@ -41,67 +41,59 @@ class FossilRelatedThumbs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasSite = fossil.siteId != null;
-    final thumbCount = hasSite ? 2 : 1;
     final aspectRatio = DinoCardTheme.fossilThumbAspectRatio;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final maxHeight = constraints.maxHeight;
+        final thumbHeight = constraints.maxHeight.isFinite &&
+                constraints.maxHeight > 0
+            ? constraints.maxHeight
+            : 88.0;
+        final thumbWidth = thumbHeight * aspectRatio;
+        final labelFontSize = (thumbWidth * 0.11).clamp(10.0, 13.0);
 
-        var thumbHeight = maxHeight;
-        var thumbWidth = thumbHeight * aspectRatio;
-        final totalWidth = thumbCount * thumbWidth + (thumbCount - 1) * _gap;
-
-        if (totalWidth > maxWidth) {
-          thumbHeight =
-              (maxWidth - (thumbCount - 1) * _gap) / (thumbCount * aspectRatio);
-          thumbWidth = thumbHeight * aspectRatio;
+        Widget thumb({
+          required Widget image,
+          required String label,
+          required VoidCallback onTap,
+        }) {
+          return SizedBox(
+            width: thumbWidth,
+            height: thumbHeight,
+            child: CardRecordThumb(
+              image: image,
+              label: label,
+              labelFontSize: labelFontSize,
+              onTap: onTap,
+            ),
+          );
         }
 
-        final labelFontSize = (thumbWidth * 0.11).clamp(11.0, 14.0);
-
-        return Align(
-          alignment: Alignment.center,
-          child: SizedBox(
-            height: thumbHeight,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (hasSite) ...[
-                  SizedBox(
-                    width: thumbWidth,
-                    child: CardRecordThumb(
-                      image: SiteCardImage(imageUrl: fossil.siteMainImageUrl),
-                      label: _siteLabel,
-                      labelFontSize: labelFontSize,
-                      onTap: () => showSiteCardDialog(
-                        context,
-                        siteId: fossil.siteId!,
-                        dataSource: _siteDataSource,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: _gap),
-                ],
-                SizedBox(
-                  width: thumbWidth,
-                  child: CardRecordThumb(
-                    image: DinosaurCardImage(
-                      imageUrl: fossil.dinosaurMainImageUrl,
-                    ),
-                    label: fossil.dinosaurName,
-                    labelFontSize: labelFontSize,
-                    onTap: () => showDinosaurCardDialog(
-                      context,
-                      dinosaurId: fossil.dinosaurId,
-                    ),
-                  ),
+        return ListView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          children: [
+            if (hasSite) ...[
+              thumb(
+                image: SiteCardImage(imageUrl: fossil.siteMainImageUrl),
+                label: _siteLabel,
+                onTap: () => showSiteCardDialog(
+                  context,
+                  siteId: fossil.siteId!,
+                  dataSource: _siteDataSource,
                 ),
-              ],
+              ),
+              const SizedBox(width: _gap),
+            ],
+            thumb(
+              image: DinosaurCardImage(imageUrl: fossil.dinosaurMainImageUrl),
+              label: fossil.dinosaurName,
+              onTap: () => showDinosaurCardDialog(
+                context,
+                dinosaurId: fossil.dinosaurId,
+              ),
             ),
-          ),
+          ],
         );
       },
     );

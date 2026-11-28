@@ -68,35 +68,43 @@ class FossilCardBack extends StatelessWidget {
         scale: 0.92,
         showYearLabels: true,
       ),
-      panels: MuseumPanelRow(
-        matchHeight: true,
-        left: CardBackSection(
-          expandChild: true,
-          title: 'Attributes',
-          child: CardAttributeGrid(
-            fill: true,
-            attributes: [
-              CardAttributeItem('Category', fossil.displayImpCategory),
-              CardAttributeItem('Sub category', fossil.displayImpSubcategory),
-              CardAttributeItem(
-                'Preservation',
-                fossil.displayImpPreservationQuality,
+      panels: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: CardBackSection(
+              expandChild: true,
+              title: 'Attributes',
+              child: CardAttributeGrid(
+                columns: 2,
+                fill: true,
+                attributes: [
+                  CardAttributeItem('Category', fossil.displayImpCategory),
+                  CardAttributeItem(
+                    'Sub category',
+                    fossil.displayImpSubcategory,
+                  ),
+                  CardAttributeItem(
+                    'Preservation',
+                    fossil.displayImpPreservationQuality,
+                  ),
+                  CardAttributeItem(
+                    'Completeness',
+                    fossil.displayImpCompleteness,
+                  ),
+                ],
               ),
-              CardAttributeItem('Completeness', fossil.displayImpCompleteness),
-            ],
+            ),
           ),
-        ),
-        right: CardBackSection(
-          title: 'Linked cards',
-          expandChild: true,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 148),
+          const SizedBox(height: 8),
+          CardBackSection(
+            title: 'Linked cards',
+            child: SizedBox(
+              height: 88,
               child: FossilRelatedThumbs(fossil: fossil),
             ),
           ),
-        ),
+        ],
       ),
       wiki: showWiki
           ? () => FossilRecordDrawer.show(context, fossil: fossil)

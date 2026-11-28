@@ -9,7 +9,6 @@ import '../../controllers/auth_controller.dart';
 import '../../features/discovery/discovery.dart';
 import '../../theme/dino_card_theme.dart';
 import 'card_section_panel.dart';
-import 'museum_card_frame.dart';
 
 /// Site card panel: four horizontal odd_* axes + vertical depth.
 class SiteCardDimensions extends StatelessWidget {
@@ -109,80 +108,57 @@ class SiteCardDimensions extends StatelessWidget {
                 dimensionAccuracies.length)
             .clamp(0.0, 1.0);
 
-    return MuseumInnerCard(
-      child: CardSectionPanel(
-        decoration: const BoxDecoration(),
-        labelWidget: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Site dimensions'.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: cardTheme
-                  .sectionLabelStyle(fontSize: 8.5)
-                  .copyWith(
-                    fontFamily: DinoCardTheme.titleFontFamily,
-                    color: cardTheme.cardAccent,
-                    letterSpacing: 1.4,
-                    fontWeight: FontWeight.w700,
+    // Plaque + section tab come from [CardBackSection] on the site card back.
+    return CardSectionPanel(
+      decoration: const BoxDecoration(),
+      labelWidget: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: SiteDocumentationProgressHeader(
+          progress: averageDocumentation,
+          message: site.documented == true || averageDocumentation >= 1.0
+              ? 'Site documented'
+              : inRange
+              ? 'Documenting — continues while locked'
+              : 'Move within range to continue',
+          active: inRange,
+          complete: site.documented == true || averageDocumentation >= 1.0,
+          cardTheme: cardTheme,
+          height: 18.0,
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+      labelGap: 6,
+      expandChild: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                for (var i = 0; i < horizontalDisplays.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 4),
+                  Expanded(
+                    child: _HorizontalDimensionRow(
+                      label: horizontalDisplays[i].$1,
+                      display: horizontalDisplays[i].$2,
+                      cardTheme: cardTheme,
+                      showExactMarker: showExactMarker,
+                    ),
                   ),
+                ],
+              ],
             ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: SiteDocumentationProgressHeader(
-                progress: averageDocumentation,
-                message: site.documented == true || averageDocumentation >= 1.0
-                    ? 'Site documented'
-                    : inRange
-                    ? 'Documenting — continues while locked'
-                    : 'Move within range to continue',
-                active: inRange,
-                complete:
-                    site.documented == true || averageDocumentation >= 1.0,
-                cardTheme: cardTheme,
-                height: 18.0,
-              ),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        labelGap: 6,
-        child: SizedBox(
-          height: 108,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < horizontalDisplays.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 4),
-                      Expanded(
-                        child: _HorizontalDimensionRow(
-                          label: horizontalDisplays[i].$1,
-                          display: horizontalDisplays[i].$2,
-                          cardTheme: cardTheme,
-                          showExactMarker: showExactMarker,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 40,
-                child: _VerticalDepthAxis(
-                  display: depthDisplay,
-                  cardTheme: cardTheme,
-                  showExactMarker: showExactMarker,
-                ),
-              ),
-            ],
           ),
-        ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 40,
+            child: _VerticalDepthAxis(
+              display: depthDisplay,
+              cardTheme: cardTheme,
+              showExactMarker: showExactMarker,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -307,9 +283,16 @@ class _HorizontalDimensionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = cardTheme
-        .statLabelStyle(fontSize: 8.5)
-        .copyWith(fontFamily: DinoCardTheme.titleFontFamily);
+    // Museum plaques are always dark — use cream/gold ink, not theme body text.
+    final labelStyle = TextStyle(
+      fontFamily: DinoCardTheme.titleFontFamily,
+      color: cardTheme.museumTileLabel,
+      fontSize: 8.5,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.3,
+      height: 1.1,
+    );
+    final track = const Color(0xFFF6EFE4);
     return Row(
       children: [
         SizedBox(
@@ -319,7 +302,7 @@ class _HorizontalDimensionRow extends StatelessWidget {
             textAlign: TextAlign.right,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: labelStyle.copyWith(letterSpacing: 0.3),
+            style: labelStyle,
           ),
         ),
         const SizedBox(width: 9),
@@ -333,8 +316,8 @@ class _HorizontalDimensionRow extends StatelessWidget {
                     trueValue: display!.trueValue,
                     accuracy: display!.effectiveAccuracy,
                     showExactMarker: showExactMarker,
-                    trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.28),
-                    tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.45),
+                    trackColor: track.withValues(alpha: 0.22),
+                    tickColor: track.withValues(alpha: 0.40),
                     bandColor: cardTheme.cardAccent,
                   ),
                 ),
@@ -357,9 +340,15 @@ class _VerticalDepthAxis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = cardTheme
-        .statLabelStyle(fontSize: 8.5)
-        .copyWith(fontFamily: DinoCardTheme.titleFontFamily);
+    final labelStyle = TextStyle(
+      fontFamily: DinoCardTheme.titleFontFamily,
+      color: cardTheme.museumTileLabel,
+      fontSize: 8.5,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.3,
+      height: 1.1,
+    );
+    final track = const Color(0xFFF6EFE4);
     return Column(
       children: [
         Text(
@@ -367,7 +356,7 @@ class _VerticalDepthAxis extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: labelStyle.copyWith(letterSpacing: 0.3),
+          style: labelStyle,
         ),
         const SizedBox(height: 7),
         Expanded(
@@ -380,8 +369,8 @@ class _VerticalDepthAxis extends StatelessWidget {
                     trueValue: display!.trueValue,
                     accuracy: display!.effectiveAccuracy,
                     showExactMarker: showExactMarker,
-                    trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.28),
-                    tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.45),
+                    trackColor: track.withValues(alpha: 0.22),
+                    tickColor: track.withValues(alpha: 0.40),
                     bandColor: cardTheme.cardAccent,
                   ),
                 ),
@@ -399,6 +388,7 @@ class _AxisTrackPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final track = const Color(0xFFF6EFE4);
     return CustomPaint(
       painter: vertical
           ? _VerticalAxisPainter(
@@ -407,8 +397,8 @@ class _AxisTrackPlaceholder extends StatelessWidget {
               trueValue: null,
               accuracy: 0,
               showExactMarker: false,
-              trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.22),
-              tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.35),
+              trackColor: track.withValues(alpha: 0.18),
+              tickColor: track.withValues(alpha: 0.32),
               bandColor: Colors.transparent,
             )
           : _HorizontalAxisPainter(
@@ -417,8 +407,8 @@ class _AxisTrackPlaceholder extends StatelessWidget {
               trueValue: null,
               accuracy: 0,
               showExactMarker: false,
-              trackColor: cardTheme.cardTextMuted.withValues(alpha: 0.22),
-              tickColor: cardTheme.cardTextMuted.withValues(alpha: 0.35),
+              trackColor: track.withValues(alpha: 0.18),
+              tickColor: track.withValues(alpha: 0.32),
               bandColor: Colors.transparent,
             ),
     );

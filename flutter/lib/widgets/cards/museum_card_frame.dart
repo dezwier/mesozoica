@@ -23,6 +23,7 @@ class MuseumCardFrame extends StatelessWidget {
     this.titleFontSize = 28,
     this.subtitleFontSize = 12,
     this.fillBody = true,
+    this.heroFraction = CardBackBackdrop.defaultHeroFraction,
   });
 
   final Widget image;
@@ -41,18 +42,22 @@ class MuseumCardFrame extends StatelessWidget {
   /// When false, panels keep their intrinsic height and scale down to fit.
   final bool fillBody;
 
+  /// Fraction of card height used by the top hero image.
+  final double heroFraction;
+
   @override
   Widget build(BuildContext context) {
     final theme = DinoCardTheme.of(context);
     final subtitleText = subtitle?.trim();
     final showSubtitle = subtitleText != null && subtitleText.isNotEmpty;
+    final hero = heroFraction.clamp(0.08, 0.4);
 
     return AspectRatio(
       aspectRatio: DinoCardTheme.cardAspectRatio,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CardBackBackdrop(image: image),
+          CardBackBackdrop(image: image, heroFraction: hero),
           Positioned(
             left: 12,
             right: 12,
@@ -60,7 +65,8 @@ class MuseumCardFrame extends StatelessWidget {
             bottom: 8,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final top = constraints.maxHeight * 0.15;
+                // Title sits in the lower hero band; shrink with heroFraction.
+                final top = constraints.maxHeight * (hero * 0.58).clamp(0.08, 0.16);
                 return Padding(
                   padding: EdgeInsets.only(top: top),
                   child: Column(

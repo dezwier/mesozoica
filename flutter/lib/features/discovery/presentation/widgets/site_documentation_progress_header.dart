@@ -35,7 +35,9 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ColoredBox(color: cardTheme.cardTextMuted.withValues(alpha: 0.12)),
+            ColoredBox(
+              color: const Color(0xFFF6EFE4).withValues(alpha: 0.10),
+            ),
             TweenAnimationBuilder<double>(
               tween: Tween(end: value),
               duration: const Duration(milliseconds: 450),
@@ -66,7 +68,7 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
                         ? Icons.auto_awesome_rounded
                         : Icons.location_on_outlined,
                     size: iconSize,
-                    color: cardTheme.cardTextPrimary,
+                    color: cardTheme.museumTileInk,
                   ),
                   SizedBox(width: height < 26 ? 4 : 6),
                   Expanded(
@@ -74,22 +76,24 @@ class SiteDocumentationProgressHeader extends StatelessWidget {
                       message,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: cardTheme
-                          .sectionLabelStyle(fontSize: fontSize)
-                          .copyWith(
-                            fontFamily: DinoCardTheme.titleFontFamily,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      style: TextStyle(
+                        fontFamily: DinoCardTheme.titleFontFamily,
+                        color: cardTheme.museumTileInk,
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
                     ),
                   ),
                   Text(
                     '${(value * 100).round()}%',
-                    style: cardTheme
-                        .sectionLabelStyle(fontSize: fontSize)
-                        .copyWith(
-                          fontFamily: DinoCardTheme.titleFontFamily,
-                          fontWeight: FontWeight.w900,
-                        ),
+                    style: TextStyle(
+                      fontFamily: DinoCardTheme.titleFontFamily,
+                      color: cardTheme.museumTileInk,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
                   ),
                 ],
               ),

@@ -2,28 +2,35 @@ import 'package:flutter/material.dart';
 
 import '../../theme/dino_card_theme.dart';
 
-/// Sharp hero across the top quarter of a card back.
+/// Sharp hero across the top of a card back.
 ///
 /// The window shows the second quarter of the card-aspect image, counting
 /// from the top, and never stretches it.
 class CardBackBackdrop extends StatelessWidget {
-  const CardBackBackdrop({super.key, required this.image});
+  const CardBackBackdrop({
+    super.key,
+    required this.image,
+    this.heroFraction = defaultHeroFraction,
+  });
 
   final Widget image;
 
   /// Fraction of the card height occupied by the illustration.
-  static const heroFraction = 0.25;
+  final double heroFraction;
+
+  static const defaultHeroFraction = 0.25;
 
   @override
   Widget build(BuildContext context) {
     final cardTheme = DinoCardTheme.of(context);
     final body = cardTheme.museumBodyColor;
+    final hero = heroFraction.clamp(0.08, 0.4);
     return ColoredBox(
       color: body,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          _SecondQuarterHero(image: image),
+          _SecondQuarterHero(image: image, heroFraction: hero),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -36,7 +43,13 @@ class CardBackBackdrop extends StatelessWidget {
                   body,
                   body,
                 ],
-                stops: const [0.0, 0.12, 0.20, 0.25, 1.0],
+                stops: [
+                  0.0,
+                  hero * 0.48,
+                  hero * 0.80,
+                  hero,
+                  1.0,
+                ],
               ),
             ),
           ),
@@ -47,9 +60,10 @@ class CardBackBackdrop extends StatelessWidget {
 }
 
 class _SecondQuarterHero extends StatelessWidget {
-  const _SecondQuarterHero({required this.image});
+  const _SecondQuarterHero({required this.image, required this.heroFraction});
 
   final Widget image;
+  final double heroFraction;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +71,7 @@ class _SecondQuarterHero extends StatelessWidget {
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
         final cardHeight = constraints.maxHeight;
-        final heroHeight = cardHeight * CardBackBackdrop.heroFraction;
+        final heroHeight = cardHeight * heroFraction;
         return Align(
           alignment: Alignment.topCenter,
           child: ClipRect(
