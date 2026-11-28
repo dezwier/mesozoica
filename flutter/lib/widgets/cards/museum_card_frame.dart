@@ -68,7 +68,10 @@ class MuseumCardFrame extends StatelessWidget {
                     children: [
                       _MuseumTitle(
                         title: title,
-                        subtitle: showSubtitle ? subtitleText : null,
+                        // Period/subtitle becomes the timeline section tab.
+                        subtitle: timeline != null
+                            ? null
+                            : (showSubtitle ? subtitleText : null),
                         trailing: trailing,
                         titleFontSize: titleFontSize,
                         subtitleFontSize: subtitleFontSize,
@@ -76,8 +79,8 @@ class MuseumCardFrame extends StatelessWidget {
                       ),
                       if (timeline != null) ...[
                         const SizedBox(height: 6),
-                        MuseumInnerCard(
-                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 5),
+                        _TimelineSection(
+                          title: showSubtitle ? subtitleText : null,
                           child: SizedBox(height: 46, child: timeline),
                         ),
                       ],
@@ -119,30 +122,57 @@ class MuseumCardFrame extends StatelessWidget {
   }
 }
 
+/// Timeline plaque with the same diagonal tab as Attributes / Cladogram.
+class _TimelineSection extends StatelessWidget {
+  const _TimelineSection({required this.child, this.title});
+
+  final String? title;
+  final Widget child;
+
+  static const _tabOverlap = 9.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = title?.trim();
+    final hasTab = label != null && label.isNotEmpty;
+    final panel = MuseumInnerCard(
+      padding: EdgeInsets.fromLTRB(8, hasTab ? 10 : 6, 8, 5),
+      child: child,
+    );
+    if (!hasTab) return panel;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: _tabOverlap),
+          child: panel,
+        ),
+        Positioned(left: 0, top: 0, child: MuseumSectionTab(label: label)),
+      ],
+    );
+  }
+}
+
 /// Shared top-lit gold rim: bright lip, soft sides, barely-there bottom.
-List<Color> _museumGoldRimColors({
-  required Color gold,
-  required bool isLight,
-}) {
+/// Always the dark-plaque intensity (museum cards ignore app light theme).
+List<Color> _museumGoldRimColors({required Color gold}) {
   final lip = Color.lerp(gold, const Color(0xFFFFF1D0), 0.42)!;
   return [
-    lip.withValues(alpha: isLight ? 0.62 : 0.88),
-    gold.withValues(alpha: isLight ? 0.22 : 0.32),
-    gold.withValues(alpha: isLight ? 0.07 : 0.10),
-    gold.withValues(alpha: isLight ? 0.03 : 0.045),
+    lip.withValues(alpha: 0.88),
+    gold.withValues(alpha: 0.32),
+    gold.withValues(alpha: 0.10),
+    gold.withValues(alpha: 0.045),
   ];
 }
 
 const _museumGoldRimStops = [0.0, 0.14, 0.55, 1.0];
 
-LinearGradient _museumGoldRimGradient({
-  required Color gold,
-  required bool isLight,
-}) {
+LinearGradient _museumGoldRimGradient({required Color gold}) {
   return LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: _museumGoldRimColors(gold: gold, isLight: isLight),
+    colors: _museumGoldRimColors(gold: gold),
     stops: _museumGoldRimStops,
   );
 }
@@ -159,7 +189,6 @@ class MuseumCardHairline extends StatelessWidget {
       child: CustomPaint(
         painter: _MuseumGoldRimStrokePainter(
           gold: theme.cardAccent,
-          isLight: theme.isLight,
           radius: DinoCardTheme.borderRadius,
           strokeWidth: 0.85,
         ),
@@ -171,13 +200,11 @@ class MuseumCardHairline extends StatelessWidget {
 class _MuseumGoldRimStrokePainter extends CustomPainter {
   const _MuseumGoldRimStrokePainter({
     required this.gold,
-    required this.isLight,
     required this.radius,
     required this.strokeWidth,
   });
 
   final Color gold;
-  final bool isLight;
   final double radius;
   final double strokeWidth;
 
@@ -197,17 +224,13 @@ class _MuseumGoldRimStrokePainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..shader = _museumGoldRimGradient(
-        gold: gold,
-        isLight: isLight,
-      ).createShader(Offset.zero & size);
+      ..shader = _museumGoldRimGradient(gold: gold).createShader(Offset.zero & size);
     canvas.drawRRect(rrect, paint);
   }
 
   @override
   bool shouldRepaint(covariant _MuseumGoldRimStrokePainter oldDelegate) =>
       oldDelegate.gold != gold ||
-      oldDelegate.isLight != isLight ||
       oldDelegate.radius != radius ||
       oldDelegate.strokeWidth != strokeWidth;
 }
@@ -226,18 +249,16 @@ class MuseumInnerCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: _museumGoldRimGradient(gold: gold, isLight: theme.isLight),
+        gradient: _museumGoldRimGradient(gold: gold),
         boxShadow: [
           BoxShadow(
-            color: gold.withValues(alpha: theme.isLight ? 0.08 : 0.14),
+            color: gold.withValues(alpha: 0.14),
             blurRadius: 6,
             spreadRadius: -2,
             offset: const Offset(0, 1),
           ),
           BoxShadow(
-            color: const Color(
-              0xFF000000,
-            ).withValues(alpha: theme.isLight ? 0.05 : 0.22),
+            color: const Color(0xFF000000).withValues(alpha: 0.22),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -248,12 +269,10 @@ class MuseumInnerCard extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15.4),
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: theme.isLight
-                  ? const [Color(0xF7FFFFFF), Color(0xEBF4EADF)]
-                  : const [Color(0xF21E1814), Color(0xF2100C0A)],
+              colors: [Color(0xF21E1814), Color(0xF2100C0A)],
             ),
           ),
           child: padding == null
@@ -265,41 +284,66 @@ class MuseumInnerCard extends StatelessWidget {
   }
 }
 
-/// Left-inset section title tab — wider on top, tapering on the right
-/// (Attributes / Cladogram plaque labels).
+/// Which card edge the tab sits on — incline faces the inner side.
+enum MuseumSectionTabEdge { left, right }
+
+/// Section / corner title tab — wider on top, tapering toward the card interior
+/// (Attributes / Cladogram / front corner badges).
 class MuseumSectionTab extends StatelessWidget {
-  const MuseumSectionTab({super.key, required this.label});
+  const MuseumSectionTab({
+    super.key,
+    required this.label,
+    this.edge = MuseumSectionTabEdge.left,
+    this.fontSize = 8,
+    /// Softer fill / border — used for front corner badges over imagery.
+    this.soft = false,
+  });
 
   final String label;
+  final MuseumSectionTabEdge edge;
+  final double fontSize;
+  final bool soft;
 
   @override
   Widget build(BuildContext context) {
     final theme = DinoCardTheme.of(context);
     final gold = theme.cardAccent;
-    final fill = Color.alphaBlend(
-      gold.withValues(alpha: theme.isLight ? 0.10 : 0.16),
-      theme.isLight ? const Color(0xE6221C18) : const Color(0xF214100E),
-    );
+    final fill = soft
+        ? Color.alphaBlend(
+            gold.withValues(alpha: 0.08),
+            const Color(0x9914100E),
+          )
+        : Color.alphaBlend(
+            gold.withValues(alpha: 0.16),
+            const Color(0xF214100E),
+          );
+    final inclineOnRight = edge == MuseumSectionTabEdge.left;
+    final padding = inclineOnRight
+        ? const EdgeInsets.fromLTRB(10, 5, 18, 5)
+        : const EdgeInsets.fromLTRB(18, 5, 10, 5);
+    final labelColor = soft
+        ? Color.lerp(gold, const Color(0xFFF5E6C8), 0.55)!.withValues(alpha: 0.88)
+        : Color.lerp(gold, const Color(0xFFF5E6C8), 0.35);
 
     return CustomPaint(
       painter: _MuseumSectionTabBorderPainter(
         gold: gold,
-        isLight: theme.isLight,
+        inclineOnRight: inclineOnRight,
+        soft: soft,
       ),
       child: ClipPath(
-        clipper: const _MuseumSectionTabClipper(),
+        clipper: _MuseumSectionTabClipper(inclineOnRight: inclineOnRight),
         child: ColoredBox(
           color: fill,
           child: Padding(
-            // Extra right inset so label clears the bottom taper.
-            padding: const EdgeInsets.fromLTRB(10, 5, 18, 5),
+            padding: padding,
             child: Text(
               label.toUpperCase(),
               style: theme
-                  .sectionLabelStyle(fontSize: 8)
+                  .sectionLabelStyle(fontSize: fontSize)
                   .copyWith(
-                    color: Color.lerp(gold, const Color(0xFFF5E6C8), 0.35),
-                    letterSpacing: 1.6,
+                    color: labelColor,
+                    letterSpacing: 1.4,
                     fontWeight: FontWeight.w700,
                     height: 1.1,
                   ),
@@ -311,15 +355,23 @@ class MuseumSectionTab extends StatelessWidget {
   }
 }
 
-Path _museumSectionTabPath(Size size) {
+Path _museumSectionTabPath(Size size, {required bool inclineOnRight}) {
   const cut = 12.0;
   const radius = 5.0;
-  final corners = <Offset>[
-    Offset.zero,
-    Offset(size.width, 0),
-    Offset(size.width - cut, size.height),
-    Offset(0, size.height),
-  ];
+  // Wider top; bottom tapers on the inner (inclined) side.
+  final corners = inclineOnRight
+      ? <Offset>[
+          Offset.zero,
+          Offset(size.width, 0),
+          Offset(size.width - cut, size.height),
+          Offset(0, size.height),
+        ]
+      : <Offset>[
+          Offset.zero,
+          Offset(size.width, 0),
+          Offset(size.width, size.height),
+          Offset(cut, size.height),
+        ];
   return _roundedPolygon(corners, radius);
 }
 
@@ -350,39 +402,61 @@ Path _roundedPolygon(List<Offset> corners, double radius) {
 }
 
 class _MuseumSectionTabClipper extends CustomClipper<Path> {
-  const _MuseumSectionTabClipper();
+  const _MuseumSectionTabClipper({required this.inclineOnRight});
+
+  final bool inclineOnRight;
 
   @override
-  Path getClip(Size size) => _museumSectionTabPath(size);
+  Path getClip(Size size) =>
+      _museumSectionTabPath(size, inclineOnRight: inclineOnRight);
 
   @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+  bool shouldReclip(covariant _MuseumSectionTabClipper oldClipper) =>
+      oldClipper.inclineOnRight != inclineOnRight;
 }
 
 class _MuseumSectionTabBorderPainter extends CustomPainter {
   const _MuseumSectionTabBorderPainter({
     required this.gold,
-    required this.isLight,
+    required this.inclineOnRight,
+    this.soft = false,
   });
 
   final Color gold;
-  final bool isLight;
+  final bool inclineOnRight;
+  final bool soft;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final shader = soft
+        ? LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.lerp(gold, const Color(0xFFFFF1D0), 0.5)!
+                  .withValues(alpha: 0.42),
+              gold.withValues(alpha: 0.18),
+              gold.withValues(alpha: 0.06),
+              gold.withValues(alpha: 0.03),
+            ],
+            stops: _museumGoldRimStops,
+          ).createShader(Offset.zero & size)
+        : _museumGoldRimGradient(gold: gold).createShader(Offset.zero & size);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..shader = _museumGoldRimGradient(
-        gold: gold,
-        isLight: isLight,
-      ).createShader(Offset.zero & size);
-    canvas.drawPath(_museumSectionTabPath(size), paint);
+      ..strokeWidth = soft ? 0.8 : 1.0
+      ..shader = shader;
+    canvas.drawPath(
+      _museumSectionTabPath(size, inclineOnRight: inclineOnRight),
+      paint,
+    );
   }
 
   @override
   bool shouldRepaint(covariant _MuseumSectionTabBorderPainter oldDelegate) =>
-      oldDelegate.gold != gold || oldDelegate.isLight != isLight;
+      oldDelegate.gold != gold ||
+      oldDelegate.inclineOnRight != inclineOnRight ||
+      oldDelegate.soft != soft;
 }
 
 class MuseumPanelRow extends StatelessWidget {
@@ -458,9 +532,7 @@ class _MuseumTitle extends StatelessWidget {
                 .titleStyle(fontSize: subtitleFontSize + 1)
                 .copyWith(
                   // Soft parchment-gold — less white than the title.
-                  color: theme.isLight
-                      ? const Color(0xFF8C6232)
-                      : const Color(0xFFD8C4A0),
+                  color: const Color(0xFFD8C4A0),
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.4,
                   height: 1.25,

@@ -55,8 +55,8 @@ class ToolCardFront extends StatelessWidget {
           ),
           if (showIdBadge)
             Positioned(
-              top: 14,
-              left: 14,
+              top: 5,
+              left: 5,
               child: OccurrenceIdBadge(label: tool.occurrenceIdBadgeLabel),
             ),
           Positioned(

@@ -94,45 +94,36 @@ class DinoCardTheme {
   }
 
   /// Warm field behind the card-back hero.
-  Color get museumBodyColor =>
-      isLight ? const Color(0xFFF3EBE1) : const Color(0xFF120E0B);
+  /// Museum cards always use the dark plaque look in both app themes.
+  Color get museumBodyColor => const Color(0xFF120E0B);
 
-  /// Attribute badge fill — parchment in light, deep leather in dark.
-  Color get museumTileColor =>
-      isLight ? const Color(0xFFFFFBF6) : const Color(0xFF1C1612);
+  /// Attribute badge fill — deep leather (same in light and dark app theme).
+  Color get museumTileColor => const Color(0xFF1C1612);
 
-  Color get museumTileColorEnd =>
-      isLight ? const Color(0xFFF3E8DA) : const Color(0xFF120E0B);
+  Color get museumTileColorEnd => const Color(0xFF120E0B);
 
-  Color get museumTileInk =>
-      isLight ? const Color(0xFF3A2A1E) : const Color(0xFFF0E4D4);
+  Color get museumTileInk => const Color(0xFFF0E4D4);
 
-  Color get museumTileLabel =>
-      isLight ? const Color(0xFF8C6232) : const Color(0xFFC9A46E);
+  Color get museumTileLabel => const Color(0xFFC9A46E);
 
-  /// Title sitting on the dark (or parchment) body under the hero.
-  Color get museumTitleColor =>
-      isLight ? const Color(0xFF3E2723) : const Color(0xFFF6EFE4);
+  /// Title sitting on the dark body under the hero.
+  Color get museumTitleColor => const Color(0xFFF6EFE4);
 
   BoxDecoration museumPanelDecoration() {
     return BoxDecoration(
       borderRadius: BorderRadius.circular(16),
-      gradient: LinearGradient(
+      gradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: isLight
-            ? const [Color(0xF2FFFFFF), Color(0xE6F4EADF)]
-            : const [Color(0xF2261C16), Color(0xF2120E0B)],
+        colors: [Color(0xF2261C16), Color(0xF2120E0B)],
       ),
       border: Border.all(
-        color: cardAccent.withValues(alpha: isLight ? 0.22 : 0.28),
+        color: cardAccent.withValues(alpha: 0.28),
         width: 0.6,
       ),
       boxShadow: [
         BoxShadow(
-          color: const Color(
-            0xFF000000,
-          ).withValues(alpha: isLight ? 0.05 : 0.22),
+          color: const Color(0xFF000000).withValues(alpha: 0.22),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),
@@ -145,7 +136,7 @@ class DinoCardTheme {
     return BoxDecoration(
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: cardAccent.withValues(alpha: isLight ? 0.12 : 0.16),
+        color: cardAccent.withValues(alpha: 0.16),
         width: 0.7,
       ),
     );
@@ -303,13 +294,14 @@ class DinoCardTheme {
   }
 
   /// Small timeline annotations (e.g. "252 Ma").
+  /// Museum plaques are always dark, so keep light-on-dark contrast.
   Color timelineAnnotationColor() {
-    return isLight ? cardTextMuted : cardTextPrimary.withValues(alpha: 0.5);
+    return const Color(0xFFF6EFE4).withValues(alpha: 0.62);
   }
 
   /// Period names on the geologic timeline.
   Color periodLabelColor() {
-    return isLight ? cardTextSecondary : cardAccent.withValues(alpha: 0.9);
+    return cardAccent.withValues(alpha: 0.95);
   }
 
   /// Stat / section panels — matches profile cards (radius 10, elevation 1,

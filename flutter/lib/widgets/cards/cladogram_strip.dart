@@ -129,9 +129,8 @@ class CladogramStrip extends StatelessWidget {
 }
 
 TextStyle _nodeStyle(DinoCardTheme cardTheme, bool isLast, double scale) {
-  final color = cardTheme.isLight
-      ? cardTheme.museumTileInk
-      : (isLast ? const Color(0xFFF0D7A4) : const Color(0xFFE6D3BE));
+  // Museum cards always use the dark plaque palette.
+  final color = isLast ? const Color(0xFFF0D7A4) : const Color(0xFFE6D3BE);
   return TextStyle(
     fontFamily: DinoCardTheme.titleFontFamily,
     color: color,

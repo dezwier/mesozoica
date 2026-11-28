@@ -71,23 +71,21 @@ class _AttributeBadge extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            lip.withValues(alpha: theme.isLight ? 0.55 : 0.72),
-            gold.withValues(alpha: theme.isLight ? 0.18 : 0.26),
-            gold.withValues(alpha: theme.isLight ? 0.06 : 0.08),
-            gold.withValues(alpha: theme.isLight ? 0.025 : 0.035),
+            lip.withValues(alpha: 0.72),
+            gold.withValues(alpha: 0.26),
+            gold.withValues(alpha: 0.08),
+            gold.withValues(alpha: 0.035),
           ],
           stops: const [0.0, 0.16, 0.55, 1.0],
         ),
         boxShadow: [
           BoxShadow(
-            color: gold.withValues(alpha: theme.isLight ? 0.10 : 0.14),
+            color: gold.withValues(alpha: 0.14),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
           BoxShadow(
-            color: const Color(
-              0xFF000000,
-            ).withValues(alpha: theme.isLight ? 0.12 : 0.28),
+            color: const Color(0xFF000000).withValues(alpha: 0.28),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -107,45 +105,60 @@ class _AttributeBadge extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 7, 11, 7),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _AttributeIcon(label: item.label, gold: gold),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.label.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme
-                            .statLabelStyle(fontSize: 7.5)
-                            .copyWith(
-                              fontFamily: DinoCardTheme.titleFontFamily,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.15,
-                              height: 1.05,
-                              color: theme.museumTileLabel,
-                            ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        item.value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme
-                            .titleStyle(
-                              fontSize: 13,
-                              color: theme.museumTileInk,
-                            )
-                            .copyWith(
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.02,
-                              height: 1.1,
-                            ),
-                      ),
-                    ],
+                  child: LayoutBuilder(
+                    builder: (context, textConstraints) {
+                      final block = Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.label.toUpperCase(),
+                            softWrap: true,
+                            style: theme
+                                .statLabelStyle(fontSize: 7.5)
+                                .copyWith(
+                                  fontFamily: DinoCardTheme.titleFontFamily,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.15,
+                                  height: 1.05,
+                                  color: theme.museumTileLabel,
+                                ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            item.value,
+                            softWrap: true,
+                            style: theme
+                                .titleStyle(
+                                  fontSize: 13,
+                                  color: theme.museumTileInk,
+                                )
+                                .copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.02,
+                                  height: 1.15,
+                                ),
+                          ),
+                        ],
+                      );
+                      // Wrap within the badge; scale down if needed so height stays put.
+                      if (!textConstraints.hasBoundedHeight) {
+                        return block;
+                      }
+                      return FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: textConstraints.maxWidth,
+                          child: block,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
