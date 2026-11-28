@@ -97,13 +97,18 @@ class DinoCardTheme {
   Color get museumBodyColor =>
       isLight ? const Color(0xFFF3EBE1) : const Color(0xFF120E0B);
 
-  /// Cream attribute tiles. Same family in both themes so rows stay legible.
+  /// Attribute badge fill — parchment in light, deep leather in dark.
   Color get museumTileColor =>
-      isLight ? const Color(0xFFFFFBF6) : const Color(0xFFF6E7D4);
+      isLight ? const Color(0xFFFFFBF6) : const Color(0xFF1C1612);
 
-  Color get museumTileInk => const Color(0xFF3A2A1E);
+  Color get museumTileColorEnd =>
+      isLight ? const Color(0xFFF3E8DA) : const Color(0xFF120E0B);
 
-  Color get museumTileLabel => const Color(0xFF8C6232);
+  Color get museumTileInk =>
+      isLight ? const Color(0xFF3A2A1E) : const Color(0xFFF0E4D4);
+
+  Color get museumTileLabel =>
+      isLight ? const Color(0xFF8C6232) : const Color(0xFFC9A46E);
 
   /// Title sitting on the dark (or parchment) body under the hero.
   Color get museumTitleColor =>

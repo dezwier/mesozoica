@@ -10,7 +10,7 @@ class CardAttributeItem {
   const CardAttributeItem(this.label, this.value);
 }
 
-/// Soft museum attribute badges — icon well, gold lip, serif value.
+/// Soft museum attribute badges — bare icon, gold lip, themed fill.
 class CardAttributeGrid extends StatelessWidget {
   const CardAttributeGrid({
     super.key,
@@ -71,21 +71,23 @@ class _AttributeBadge extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            lip.withValues(alpha: theme.isLight ? 0.55 : 0.78),
-            gold.withValues(alpha: theme.isLight ? 0.18 : 0.28),
-            gold.withValues(alpha: theme.isLight ? 0.06 : 0.09),
-            gold.withValues(alpha: theme.isLight ? 0.025 : 0.04),
+            lip.withValues(alpha: theme.isLight ? 0.55 : 0.72),
+            gold.withValues(alpha: theme.isLight ? 0.18 : 0.26),
+            gold.withValues(alpha: theme.isLight ? 0.06 : 0.08),
+            gold.withValues(alpha: theme.isLight ? 0.025 : 0.035),
           ],
           stops: const [0.0, 0.16, 0.55, 1.0],
         ),
         boxShadow: [
           BoxShadow(
-            color: gold.withValues(alpha: theme.isLight ? 0.10 : 0.16),
+            color: gold.withValues(alpha: theme.isLight ? 0.10 : 0.14),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
           BoxShadow(
-            color: const Color(0xFF000000).withValues(alpha: 0.18),
+            color: const Color(
+              0xFF000000,
+            ).withValues(alpha: theme.isLight ? 0.12 : 0.28),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -99,16 +101,14 @@ class _AttributeBadge extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: theme.isLight
-                  ? const [Color(0xFFFFFCF8), Color(0xFFF3E8DA)]
-                  : const [Color(0xFFF7EFE4), Color(0xFFE8D7C4)],
+              colors: [theme.museumTileColor, theme.museumTileColorEnd],
             ),
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 7, 11, 7),
             child: Row(
               children: [
-                _AttributeIconWell(label: item.label, gold: gold),
+                _AttributeIcon(label: item.label, gold: gold),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -157,11 +157,8 @@ class _AttributeBadge extends StatelessWidget {
   }
 }
 
-class _AttributeIconWell extends StatelessWidget {
-  const _AttributeIconWell({
-    required this.label,
-    required this.gold,
-  });
+class _AttributeIcon extends StatelessWidget {
+  const _AttributeIcon({required this.label, required this.gold});
 
   final String label;
   final Color gold;
@@ -169,62 +166,20 @@ class _AttributeIconWell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final asset = museumAttributeIconAsset(label);
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          center: const Alignment(-0.35, -0.45),
-          radius: 1.05,
-          colors: [
-            Color.lerp(gold, const Color(0xFFFFF1D0), 0.35)!,
-            gold.withValues(alpha: 0.55),
-            const Color(0xFF3A2A1E).withValues(alpha: 0.55),
-          ],
-          stops: const [0.0, 0.45, 1.0],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: gold.withValues(alpha: 0.35),
-            blurRadius: 6,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(1.1),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              center: const Alignment(-0.3, -0.4),
-              radius: 1.0,
-              colors: [
-                const Color(0xFF2A221C),
-                const Color(0xFF15110E),
-              ],
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: asset != null
+          ? Image.asset(
+              asset,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            )
+          : MuseumGlyphIcon(
+              glyph: museumGlyphForAttribute(label),
+              size: 22,
+              color: Color.lerp(gold, const Color(0xFFF5E6C8), 0.35),
             ),
-          ),
-          child: Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: asset != null
-                  ? Image.asset(
-                      asset,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.medium,
-                    )
-                  : MuseumGlyphIcon(
-                      glyph: museumGlyphForAttribute(label),
-                      size: 18,
-                      color: Color.lerp(gold, const Color(0xFFF5E6C8), 0.4),
-                    ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
