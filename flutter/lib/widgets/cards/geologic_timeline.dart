@@ -341,9 +341,11 @@ class _HorizontalTimeline extends StatelessWidget {
     final barTop = barBandTop + (_rangeIndicatorHeight - _barHeight) / 2;
     final maTop = barBandTop + _rangeIndicatorHeight + _barToMaGap;
 
-    // Hard color cuts at Triassic/Jurassic (201) and Jurassic/Cretaceous (145).
+    // Soft fades centered on Triassic/Jurassic (201) and Jurassic/Cretaceous (145).
     final t201 = _leftFractionForMa(201);
     final t145 = _leftFractionForMa(145);
+    // ~±8 Ma blend width on the 252→66 Ma track.
+    final blend = (8.0 / (minMa - maxMa)).clamp(0.02, 0.08);
     final triassic = _pinColor('triassic');
     final jurassic = _pinColor('jurassic');
     final cretaceous = _pinColor('cretaceous');
@@ -363,7 +365,7 @@ class _HorizontalTimeline extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(99),
                 // Left = older (Triassic) → right = younger (Cretaceous),
-                // same hues as map period pins; transitions at 201 & 145 Ma.
+                // same hues as map period pins; soft fades at 201 & 145 Ma.
                 gradient: LinearGradient(
                   colors: [
                     triassic,
@@ -373,7 +375,14 @@ class _HorizontalTimeline extends StatelessWidget {
                     cretaceous,
                     cretaceous,
                   ],
-                  stops: [0.0, t201, t201, t145, t145, 1.0],
+                  stops: [
+                    0.0,
+                    (t201 - blend).clamp(0.0, 1.0),
+                    (t201 + blend).clamp(0.0, 1.0),
+                    (t145 - blend).clamp(0.0, 1.0),
+                    (t145 + blend).clamp(0.0, 1.0),
+                    1.0,
+                  ],
                 ),
                 boxShadow: [
                   BoxShadow(

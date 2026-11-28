@@ -353,11 +353,14 @@ class _MuseumTitle extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme
-                .bodyStyle(fontSize: subtitleFontSize + 1)
+                .titleStyle(fontSize: subtitleFontSize + 1)
                 .copyWith(
-                  color: theme.cardTextPrimary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.15,
+                  // Soft parchment-gold — less white than the title.
+                  color: theme.isLight
+                      ? const Color(0xFF8C6232)
+                      : const Color(0xFFD8C4A0),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.4,
                   height: 1.25,
                 ),
           ),
